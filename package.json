@@ -9,7 +9,10 @@
     "build": "node scripts/copy-data.js && next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
     "@genkit-ai/googleai": "^1.14.1",
@@ -43,6 +46,7 @@
     "date-fns": "^3.6.0",
     "date-fns-tz": "^3.2.0",
     "dotenv": "^16.5.0",
+    "drizzle-orm": "^0.32.1",
     "embla-carousel-react": "^8.6.0",
     "firebase": "^11.9.1",
     "framer-motion": "^12.23.12",
@@ -75,6 +79,7 @@
     "@types/node": "^20",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "drizzle-kit": "^0.23.0",
     "eslint": "9.34.0",
     "eslint-config-next": "15.5.0",
     "genkit-cli": "^1.14.1",
