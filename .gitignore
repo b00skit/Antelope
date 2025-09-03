@@ -40,6 +40,8 @@ tsconfig.tsbuildinfo
 .firebase/
 firebase-debug.log
 
-# Forms
-/data/forms/*
-public/data/
+# public data
+public/data/*
+
+# Database
+local.db
