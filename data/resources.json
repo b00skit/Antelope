@@ -1,0 +1,42 @@
+
+{
+    "resources": [
+        {
+            "id": "penal-code",
+            "title": "San Andreas Penal Code",
+            "description": "Access the official San Andreas penal code.",
+            "icon": "BookOpen",
+            "type": "link",
+            "href": "URL_PENAL_CODE"
+        },
+        {
+            "id": "bail-schedule",
+            "title": "Bail Schedule",
+            "description": "View the official bail and bond schedule.",
+            "icon": "Landmark",
+            "type": "link",
+            "href": "URL_BAIL_SCHEDULE"
+        },
+        {
+            "id": "traffic-citations",
+            "title": "Traffic Citations",
+            "description": "Review key legal precedents when issuing traffic citations.",
+            "icon": "Car",
+            "type": "dialog",
+            "content": {
+                "title": "Traffic Citations",
+                "body": "Upon the issuance of a traffic citation, the defendant must be legally informed of their rights and the associated legal process. A signature on the citation is not required, as it only serves to acknowledge receipt and is not an admission of guilt. Citations may also be issued electronically, in which case they are delivered via post to the defendant's registered address.\n\nKey information regarding citations:\n- A citation must be either paid or appealed within twenty-eight (28) days of its issue date. An appeal involves formally contesting the violation in court. **(SA P.C. 1007)**\n- Payment of the citation constitutes a legal admission of guilt, which results in automatic case dismissal if appealed **(SA People v. Wyse)**.\n- Failure to pay or appeal may result in a warrant being issued for the unpaid fine. This authorizes peace officers to seize or impound personal assets to cover the amount owed, and can lead to additional penalties such as a driver's license suspension. **(SA P.C. 1210 & 1211)**"
+            }
+        },
+        {
+            "id": "miranda-rights",
+            "title": "Miranda Rights",
+            "description": "Before questioning a suspect, they must be read their rights to make their statements admissible in court, as they have to be advised the risk to self-incrimination.",
+            "icon": "ShieldCheck",
+            "type": "default",
+            "button_text": "Copy Verbatim Rights",
+            "button_action": "copy",
+            "button_content": "You have the right to remain silent. Anything you say may be used against you in a court of law. You have the right to the presence of an attorney during any questioning. If you cannot afford an attorney, one will be appointed for you. Do you understand?"
+        }
+    ]
+}

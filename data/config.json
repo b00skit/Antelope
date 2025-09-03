@@ -1,0 +1,18 @@
+{
+    "SITE_LIVE": true,
+    "SITE_NAME": "Faction Panel+",
+    "SITE_VERSION": "1.0.0",
+    "CACHE_VERSION": "cookie-apxn-1",
+    "LOCAL_STORAGE_VERSION": "cookie-apxn-1",
+    "SITE_LOGO": "/img/logos/MDC-Panel.svg",
+    "SITE_FAVICON": "/img/favicon/favicon.ico",
+    "SITE_IMAGE": "/img/logos/MDC-Panel-OG.png",
+    "SITE_DESCRIPTION": "Faction Panel+ - Multi-functional faction panel for community use.",
+    "SITE_DISCORD_CONTACT": "booskit",
+    "BETA_ENABLED": true,
+    "BETA_CODE": null,
+    "CONTENT_DELIVERY_NETWORK": "https://sys.booskit.dev/cdn/serve.php",
+    "URL_GITHUB": "https://github.com/b00skit/MDC-Panel-plus",
+    "URL_DISCORD": "https://discord.gg/rxfYd23TNz",
+    "URL_KOFI": "https://ko-fi.com/booskit"
+}
