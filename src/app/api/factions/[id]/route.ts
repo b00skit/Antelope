@@ -1,3 +1,4 @@
+
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
@@ -44,9 +45,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         }
         
         // Use a transaction to delete all members first, then the faction itself.
-        await db.transaction(async (tx) => {
-            await tx.delete(factionMembers).where(eq(factionMembers.factionId, factionId));
-            await tx.delete(factions).where(eq(factions.id, factionId));
+        db.transaction((tx) => {
+            tx.delete(factionMembers).where(eq(factionMembers.factionId, factionId)).run();
+            tx.delete(factions).where(eq(factions.id, factionId)).run();
         });
 
         return NextResponse.json({ success: true, message: 'Faction has been unenrolled successfully.' });
