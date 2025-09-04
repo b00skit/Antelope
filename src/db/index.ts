@@ -15,9 +15,8 @@ if (process.env.DATABASE_URL) {
   // PostgreSQL. We require it dynamically to avoid build-time resolution
   // errors when the package isn't present.
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { Pool } = require('pg');
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { drizzle } = require('drizzle-orm/node-postgres');
+  const { Pool } = await import('pg');
+  const { drizzle } = await import('drizzle-orm/node-postgres');
 
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   db = drizzle(pool, { schema });

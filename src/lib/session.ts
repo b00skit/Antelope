@@ -1,6 +1,6 @@
 import { cookies, headers } from 'next/headers';
 import { NextRequest } from 'next/server';
-import { randomBytes } from 'node:crypto';
+import { randomBytes } from 'crypto';
 import { db } from '@/db';
 import { sessions } from '@/db/schema';
 import { eq, and, gt } from 'drizzle-orm';
