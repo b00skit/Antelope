@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { getSession } from '@/lib/session';
 
 const protectedRoutes = [
     '/',
@@ -20,19 +19,18 @@ const protectedRoutes = [
 ];
 const publicRoutes = ['/login'];
 
-export async function middleware(request: NextRequest) {
-  const token = request.cookies.get('session')?.value;
-  const session = token ? await getSession(token) : null;
+export function middleware(request: NextRequest) {
+  const hasSession = Boolean(request.cookies.get('session')?.value);
   const { pathname } = request.nextUrl;
 
   const isProtectedRoute = protectedRoutes.some(route => pathname === route || (route !== '/' && pathname.startsWith(route + '/')));
   const isPublicRoute = publicRoutes.includes(pathname);
   
-  if (isProtectedRoute && !session) {
+  if (isProtectedRoute && !hasSession) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  if (isPublicRoute && session) {
+  if (isPublicRoute && hasSession) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
