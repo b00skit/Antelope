@@ -43,6 +43,10 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         if (membership.rank < membership.faction.moderation_rank) {
             return NextResponse.json({ error: 'You do not have the required rank to manage this faction.' }, { status: 403 });
         }
+
+        if (!membership.joined) {
+            return NextResponse.json({ error: 'You must join the faction panel before managing it.' }, { status: 403 });
+        }
         
         // Use a transaction to delete all members first, then the faction itself.
         db.transaction((tx) => {

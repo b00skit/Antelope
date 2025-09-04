@@ -162,7 +162,7 @@ export default function FactionsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {userFactions.map(({ faction, rank, joined }) => {
                         const canJoin = !joined && rank >= faction.access_rank;
-                        const canManage = rank >= faction.moderation_rank;
+                        const canManage = joined && rank >= faction.moderation_rank;
 
                         return (
                             <Card key={faction.id}>

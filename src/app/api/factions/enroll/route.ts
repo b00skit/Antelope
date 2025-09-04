@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
                 userId: session.userId!,
                 factionId: id,
                 rank: user_rank,
-                joined: false, // User has not "joined" it in the panel yet
+                joined: true, // Auto-join the faction upon enrollment
             }).run();
         });
 
