@@ -5,9 +5,10 @@ import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { AlertTriangle, Loader2, PlusCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import Link from 'next/link';
 
 interface Faction {
     id: number;
@@ -70,6 +71,14 @@ export default function FactionsPage() {
             <PageHeader
                 title="Your Factions"
                 description="Your faction memberships synced from GTA:World."
+                actions={
+                    <Button asChild>
+                        <Link href="/factions/enroll">
+                            <PlusCircle />
+                            Enroll Faction
+                        </Link>
+                    </Button>
+                }
             />
             
             {error && (
@@ -92,9 +101,9 @@ export default function FactionsPage() {
                         <CardTitle>No Factions Found</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p>We couldn't find any factions for your account that are registered with this panel.</p>
+                        <p>We couldn't find any of your factions registered with this panel.</p>
                         <p className="text-sm text-muted-foreground mt-2">
-                           This page automatically syncs with your GTA:World UCP data. If you've recently joined a faction, it may take up to 24 hours to appear.
+                           If you are in a high-ranking position within a faction, you can add it to the panel using the button above.
                         </p>
                     </CardContent>
                 </Card>
