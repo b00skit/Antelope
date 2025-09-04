@@ -8,5 +8,5 @@ if (!dbFile) {
   throw new Error('DB_FILE_NAME is not set');
 }
 
-const sqlite = new Database(dbFile);
+const sqlite = new Database(dbFile, { fileMustExist: false, readonly: false });
 export const db = drizzle(sqlite, { schema });
