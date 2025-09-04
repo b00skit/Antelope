@@ -17,7 +17,23 @@ export function useSession() {
     async function fetchSession() {
       setIsLoading(true);
       try {
-        const response = await fetch('/api/auth/session');
+        let csrfToken: string | null = null;
+        if (typeof window !== 'undefined') {
+          csrfToken = sessionStorage.getItem('csrfToken');
+          if (!csrfToken) {
+            const match = document.cookie
+              .split('; ')
+              .find(row => row.startsWith('csrf-token='));
+            csrfToken = match ? match.split('=')[1] : null;
+            if (csrfToken) {
+              sessionStorage.setItem('csrfToken', csrfToken);
+            }
+          }
+        }
+
+        const response = await fetch('/api/auth/session', {
+          headers: { 'x-csrf-token': csrfToken || '' },
+        });
         const data = await response.json();
         setSession(data);
       } catch (error) {

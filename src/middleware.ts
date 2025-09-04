@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { getIronSession } from 'iron-session';
-import { SessionData, sessionOptions } from '@/lib/session';
+import { getSessionFromRequest } from '@/lib/session';
 
 const protectedRoutes = [
     '/',
@@ -22,17 +21,17 @@ const protectedRoutes = [
 const publicRoutes = ['/login'];
 
 export async function middleware(request: NextRequest) {
-  const session = await getIronSession<SessionData>(request.cookies, sessionOptions);
+  const session = await getSessionFromRequest(request);
   const { pathname } = request.nextUrl;
 
   const isProtectedRoute = protectedRoutes.some(route => pathname === route || (route !== '/' && pathname.startsWith(route + '/')));
   const isPublicRoute = publicRoutes.includes(pathname);
   
-  if (isProtectedRoute && !session.isLoggedIn) {
+  if (isProtectedRoute && !session) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
-  
-  if (isPublicRoute && session.isLoggedIn) {
+
+  if (isPublicRoute && session) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
