@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 
 interface Session {
   isLoggedIn: boolean;
@@ -10,9 +11,11 @@ interface Session {
 export function useSession() {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const pathname = usePathname();
 
   useEffect(() => {
     async function fetchSession() {
+      setIsLoading(true);
       try {
         const response = await fetch('/api/auth/session');
         const data = await response.json();
@@ -25,7 +28,7 @@ export function useSession() {
       }
     }
     fetchSession();
-  }, []);
+  }, [pathname]);
 
   return { session, isLoading };
 }
