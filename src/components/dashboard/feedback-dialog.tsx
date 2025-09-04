@@ -74,15 +74,22 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
     setIsSubmitting(true);
     
     try {
+        const getCookie = (name: string) => {
+            if (typeof document === 'undefined') return null;
+            const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+            return match ? decodeURIComponent(match[1]) : null;
+        };
+        const csrf = getCookie('csrf-token') || '';
         const response = await fetch('/api/feedback', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrf },
             body: JSON.stringify({
                 isPositive: feedbackType === 'positive',
                 feedback: feedbackText,
                 reasons: selectedReasons,
                 pathname: pathname,
             }),
+            credentials: 'include',
         });
 
         if (!response.ok) {

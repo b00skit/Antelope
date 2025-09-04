@@ -14,10 +14,21 @@ export function useSession() {
   const pathname = usePathname();
 
   useEffect(() => {
+    function getCookie(name: string) {
+      if (typeof document === 'undefined') return null;
+      const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+      return match ? decodeURIComponent(match[1]) : null;
+    }
     async function fetchSession() {
       setIsLoading(true);
       try {
-        const response = await fetch('/api/auth/session');
+        const csrf = getCookie('csrf-token') || '';
+        const response = await fetch('/api/auth/session', {
+          headers: {
+            'x-csrf-token': csrf,
+          },
+          credentials: 'include',
+        });
         const data = await response.json();
         setSession(data);
       } catch (error) {
