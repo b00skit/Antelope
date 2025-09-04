@@ -9,7 +9,9 @@ import { SessionData, sessionOptions } from '@/lib/session';
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
-  const session = await getIronSession<SessionData>(cookies(), sessionOptions);
+  // Call cookies() first to get the cookie store
+  const cookieStore = await cookies(); 
+  const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
 
   if (!code) {
     return new Response('Missing authorization code', { status: 400 });

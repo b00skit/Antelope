@@ -7,7 +7,9 @@ import { SessionData, sessionOptions } from '@/lib/session';
 import bcrypt from 'bcryptjs';
 
 export async function POST(request: Request) {
-  const session = await getIronSession<SessionData>(cookies(), sessionOptions);
+  // Call cookies() first to get the cookie store
+  const cookieStore = await cookies(); 
+  const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
   const { username, password } = await request.json();
 
   if (!username || !password) {
