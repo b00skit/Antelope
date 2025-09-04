@@ -29,12 +29,15 @@ export function LoginForm() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
     });
+    const data = await response.json();
 
     if (response.ok) {
+      if (data.csrfToken) {
+        sessionStorage.setItem('csrfToken', data.csrfToken);
+      }
       router.push('/');
       router.refresh(); // This will re-fetch server components and update the UI
     } else {
-      const data = await response.json();
       setError(data.message || 'An unexpected error occurred.');
       setIsLoading(false);
     }

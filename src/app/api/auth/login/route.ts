@@ -1,15 +1,10 @@
 import { db } from '@/db';
 import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-import { cookies } from 'next/headers';
-import { IronSession, getIronSession } from 'iron-session';
-import { SessionData, sessionOptions } from '@/lib/session';
+import { createSession } from '@/lib/session';
 import bcrypt from 'bcryptjs';
 
 export async function POST(request: Request) {
-  // Call cookies() first to get the cookie store
-  const cookieStore = await cookies(); 
-  const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
   const { username, password } = await request.json();
 
   if (!username || !password) {
@@ -31,13 +26,12 @@ export async function POST(request: Request) {
       return new Response(JSON.stringify({ message: 'Invalid credentials' }), { status: 401 });
     }
 
-    // Set session
-    session.isLoggedIn = true;
-    session.userId = user.id;
-    session.username = user.username;
-    await session.save();
+    const { csrfToken } = await createSession(user.id, user.username);
 
-    return new Response(JSON.stringify({ message: 'Login successful' }), { status: 200 });
+    return new Response(
+      JSON.stringify({ message: 'Login successful', csrfToken }),
+      { status: 200 }
+    );
   } catch (error) {
     console.error('Login error:', error);
     return new Response(JSON.stringify({ message: 'An internal error occurred' }), { status: 500 });

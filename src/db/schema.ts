@@ -28,12 +28,21 @@ export const factionMembers = sqliteTable('faction_members', {
     }
 });
 
+export const sessions = sqliteTable('sessions', {
+    token: text('token').primaryKey(),
+    userId: integer('user_id').notNull().references(() => users.id),
+    username: text('username').notNull(),
+    csrfToken: text('csrf_token').notNull(),
+    gtawAccessToken: text('gtaw_access_token'),
+    expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+});
+
 export const usersRelations = relations(users, ({ many }) => ({
 	factionMembers: many(factionMembers),
 }));
 
 export const factionsRelations = relations(factions, ({ many }) => ({
-	factionMembers: many(factionMembers),
+        factionMembers: many(factionMembers),
 }));
 
 export const factionMembersRelations = relations(factionMembers, ({ one }) => ({
@@ -41,8 +50,15 @@ export const factionMembersRelations = relations(factionMembers, ({ one }) => ({
 		fields: [factionMembers.userId],
 		references: [users.id],
 	}),
-	faction: one(factions, {
-		fields: [factionMembers.factionId],
-		references: [factions.id],
-	}),
+        faction: one(factions, {
+                fields: [factionMembers.factionId],
+                references: [factions.id],
+        }),
+}));
+
+export const sessionsRelations = relations(sessions, ({ one }) => ({
+        user: one(users, {
+                fields: [sessions.userId],
+                references: [users.id],
+        }),
 }));
