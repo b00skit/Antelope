@@ -1,3 +1,4 @@
+
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
@@ -43,23 +44,23 @@ export async function POST(request: NextRequest) {
         }
 
         // Use a transaction to ensure both operations succeed or fail together
-        await db.transaction(async (tx) => {
+        db.transaction((tx) => {
             // 1. Insert the new faction
-            await tx.insert(factions).values({
+            tx.insert(factions).values({
                 id,
                 name,
                 color,
                 access_rank,
                 moderation_rank,
-            });
+            }).run();
 
             // 2. Add the current user as a member of this new faction
-            await tx.insert(factionMembers).values({
+            tx.insert(factionMembers).values({
                 userId: session.userId!,
                 factionId: id,
                 rank: user_rank,
                 joined: false, // User has not "joined" it in the panel yet
-            });
+            }).run();
         });
 
         return NextResponse.json({ success: true, message: 'Faction enrolled successfully.' }, { status: 201 });
