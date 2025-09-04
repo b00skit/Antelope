@@ -39,11 +39,22 @@ export default function FactionsPage() {
     const router = useRouter();
 
     useEffect(() => {
+        const getCookie = (name: string) => {
+            if (typeof document === 'undefined') return null;
+            const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+            return match ? decodeURIComponent(match[1]) : null;
+        };
         const fetchAndSyncFactions = async () => {
             setIsLoading(true);
             setError(null);
             try {
-                const response = await fetch('/api/factions/sync');
+                const csrf = getCookie('csrf-token') || '';
+                const response = await fetch('/api/factions/sync', {
+                    headers: {
+                        'x-csrf-token': csrf,
+                    },
+                    credentials: 'include',
+                });
                 
                 if (!response.ok) {
                     const errorData = await response.json();

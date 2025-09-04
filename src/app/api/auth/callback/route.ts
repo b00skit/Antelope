@@ -3,15 +3,13 @@ import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { IronSession, getIronSession } from 'iron-session';
-import { SessionData, sessionOptions } from '@/lib/session';
+import { createSession } from '@/lib/session';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
   // Call cookies() first to get the cookie store
-  const cookieStore = await cookies(); 
-  const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
+  const cookieStore = await cookies();
 
   if (!code) {
     return new Response('Missing authorization code', { status: 400 });
@@ -73,12 +71,19 @@ export async function GET(request: Request) {
       user = result[0];
     }
 
-    // 4. Set session
-    session.isLoggedIn = true;
-    session.userId = user.id;
-    session.username = user.username;
-    session.gtaw_access_token = accessToken;
-    await session.save();
+    const { id, csrfToken } = await createSession(user.id, accessToken);
+    cookieStore.set('session', id, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+    });
+    cookieStore.set('csrf-token', csrfToken, {
+      httpOnly: false,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+    });
 
     return redirect('/');
 

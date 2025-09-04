@@ -9,6 +9,14 @@ export const users = sqliteTable('users', {
   last_sync_timestamp: integer('last_sync_timestamp', { mode: 'timestamp' }),
 });
 
+export const sessions = sqliteTable('sessions', {
+  id: text('id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id),
+  csrfToken: text('csrf_token').notNull(),
+  gtawAccessToken: text('gtaw_access_token'),
+  createdAt: integer('created_at', { mode: 'timestamp' }),
+});
+
 export const factions = sqliteTable('factions', {
     id: integer('id').primaryKey(),
     name: text('name').notNull(),

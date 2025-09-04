@@ -8,7 +8,7 @@ const envPath = process.env.DB_FILE_NAME;
 const dbFile = envPath
   ? isAbsolute(envPath)
     ? envPath
-    : join(process.cwd(), envPath)
+    : join(tmpdir(), envPath)
   : join(tmpdir(), 'local.db');
 
 export default defineConfig({

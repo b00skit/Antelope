@@ -2,14 +2,12 @@ import { db } from '@/db';
 import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { cookies } from 'next/headers';
-import { IronSession, getIronSession } from 'iron-session';
-import { SessionData, sessionOptions } from '@/lib/session';
 import bcrypt from 'bcryptjs';
+import { createSession } from '@/lib/session';
 
 export async function POST(request: Request) {
   // Call cookies() first to get the cookie store
-  const cookieStore = await cookies(); 
-  const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
+  const cookieStore = await cookies();
   const { username, password } = await request.json();
 
   if (!username || !password) {
@@ -31,11 +29,19 @@ export async function POST(request: Request) {
       return new Response(JSON.stringify({ message: 'Invalid credentials' }), { status: 401 });
     }
 
-    // Set session
-    session.isLoggedIn = true;
-    session.userId = user.id;
-    session.username = user.username;
-    await session.save();
+    const { id, csrfToken } = await createSession(user.id);
+    cookieStore.set('session', id, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+    });
+    cookieStore.set('csrf-token', csrfToken, {
+      httpOnly: false,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+    });
 
     return new Response(JSON.stringify({ message: 'Login successful' }), { status: 200 });
   } catch (error) {

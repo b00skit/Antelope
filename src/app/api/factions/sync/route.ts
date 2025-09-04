@@ -1,18 +1,17 @@
-import { getIronSession } from 'iron-session';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
-import { SessionData, sessionOptions } from '@/lib/session';
 import { db } from '@/db';
 import { users, factionMembers, factions } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
+import { getSession, SessionRecord } from '@/lib/session';
 
-async function syncFactions(session: SessionData) {
-    if (!session.isLoggedIn || !session.gtaw_access_token) {
+async function syncFactions(session: SessionRecord) {
+    if (!session.gtawAccessToken) {
         return { success: false, error: 'Not authenticated or no access token available.' };
     }
 
     const user = await db.query.users.findFirst({
-        where: eq(users.id, session.userId!),
+        where: eq(users.id, session.userId),
     });
 
     if (!user) {
@@ -30,7 +29,7 @@ async function syncFactions(session: SessionData) {
     try {
         const factionsResponse = await fetch('https://ucp.gta.world/api/factions', {
             headers: {
-                Authorization: `Bearer ${session.gtaw_access_token}`,
+                Authorization: `Bearer ${session.gtawAccessToken}`,
             },
         });
 
@@ -106,13 +105,17 @@ async function syncFactions(session: SessionData) {
 
 export async function GET(request: NextRequest) {
     try {
-        // Call cookies() first to get the cookie store
-        const cookieStore = await cookies(); 
-        const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-        if (!session.isLoggedIn) {
+        const cookieStore = await cookies();
+        const token = cookieStore.get('session')?.value;
+        const csrf = request.headers.get('x-csrf-token');
+        if (!token || !csrf) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
-        
+        const session = await getSession(token);
+        if (!session || session.csrfToken !== csrf) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const syncResult = await syncFactions(session);
 
         if (!syncResult.success) {
@@ -120,7 +123,7 @@ export async function GET(request: NextRequest) {
         }
         
         const userFactions = await db.query.factionMembers.findMany({
-            where: eq(factionMembers.userId, session.userId!),
+            where: eq(factionMembers.userId, session.userId),
             with: {
                 faction: true,
             },
