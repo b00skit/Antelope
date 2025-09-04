@@ -20,19 +20,28 @@ export default function Error({
     // Log the error to an external reporting service
     console.error(error);
 
+    const getCookie = (name: string) => {
+      if (typeof document === 'undefined') return null;
+      const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+      return match ? decodeURIComponent(match[1]) : null;
+    };
+    const csrf = getCookie('csrf-token') || '';
+
     fetch('/api/error', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'x-csrf-token': csrf,
       },
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         error: {
           message: error.message,
           stack: error.stack,
           digest: error.digest,
         },
-        path: pathname 
+        path: pathname
       }),
+      credentials: 'include',
     }).catch(e => console.error("Failed to send error report:", e));
 
   }, [error, pathname])
