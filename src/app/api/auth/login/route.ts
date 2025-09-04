@@ -3,7 +3,7 @@ import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { cookies } from 'next/headers';
 import { IronSession, getIronSession } from 'iron-session';
-import { SessionData, sessionOptions } from '@/lib/session';
+import { SessionData, sessionOptions, createServerSession } from '@/lib/session';
 import bcrypt from 'bcryptjs';
 
 export async function POST(request: Request) {
@@ -31,11 +31,11 @@ export async function POST(request: Request) {
       return new Response(JSON.stringify({ message: 'Invalid credentials' }), { status: 401 });
     }
 
-    // Set session
+    const { id, csrfToken } = await createServerSession(user.id);
     session.isLoggedIn = true;
-    session.userId = user.id;
-    session.username = user.username;
+    session.sessionId = id;
     await session.save();
+    cookieStore.set('csrf-token', csrfToken, { httpOnly: false, sameSite: 'strict' });
 
     return new Response(JSON.stringify({ message: 'Login successful' }), { status: 200 });
   } catch (error) {
