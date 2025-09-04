@@ -184,9 +184,11 @@ export default function FactionsPage() {
                                     )}
                                     {canManage && (
                                         <>
-                                        <Button variant="secondary">
-                                            <Settings />
-                                            Manage
+                                        <Button variant="secondary" asChild>
+                                            <Link href={`/factions/manage/${faction.id}`}>
+                                                <Settings />
+                                                Manage
+                                            </Link>
                                         </Button>
                                          <AlertDialog>
                                             <AlertDialogTrigger asChild>
