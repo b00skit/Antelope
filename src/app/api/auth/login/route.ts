@@ -2,14 +2,13 @@ import { db } from '@/db';
 import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { cookies } from 'next/headers';
-import { IronSession, getIronSession } from 'iron-session';
-import { SessionData, sessionOptions } from '@/lib/session';
+import { getSession } from '@/lib/session';
 import bcrypt from 'bcryptjs';
 
 export async function POST(request: Request) {
   // Call cookies() first to get the cookie store
-  const cookieStore = await cookies(); 
-  const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
+  const cookieStore = await cookies();
+  const session = await getSession(cookieStore);
   const { username, password } = await request.json();
 
   if (!username || !password) {

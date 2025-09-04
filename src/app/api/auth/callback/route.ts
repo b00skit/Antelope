@@ -3,15 +3,14 @@ import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { IronSession, getIronSession } from 'iron-session';
-import { SessionData, sessionOptions } from '@/lib/session';
+import { getSession } from '@/lib/session';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
   // Call cookies() first to get the cookie store
-  const cookieStore = await cookies(); 
-  const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
+  const cookieStore = await cookies();
+  const session = await getSession(cookieStore);
 
   if (!code) {
     return new Response('Missing authorization code', { status: 400 });

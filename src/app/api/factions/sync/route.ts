@@ -1,7 +1,6 @@
-import { getIronSession } from 'iron-session';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
-import { SessionData, sessionOptions } from '@/lib/session';
+import { SessionData, getSession } from '@/lib/session';
 import { db } from '@/db';
 import { users, factionMembers, factions } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
@@ -107,8 +106,8 @@ async function syncFactions(session: SessionData) {
 export async function GET(request: NextRequest) {
     try {
         // Call cookies() first to get the cookie store
-        const cookieStore = await cookies(); 
-        const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
+          const cookieStore = await cookies();
+          const session = await getSession(cookieStore);
         if (!session.isLoggedIn) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }

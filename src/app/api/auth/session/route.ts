@@ -1,13 +1,12 @@
-import { getIronSession } from 'iron-session';
 import { cookies } from 'next/headers';
-import { SessionData, sessionOptions } from '@/lib/session';
+import { getSession } from '@/lib/session';
 
 export async function GET() {
   // Call cookies() first to get the cookie store
   const cookieStore = await cookies(); 
   
-  // Pass the resolved cookie store to getIronSession
-  const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
+  // Pass the resolved cookie store to getSession
+  const session = await getSession(cookieStore);
   
   if (!session.isLoggedIn) {
     return new Response(JSON.stringify({ isLoggedIn: false }), { status: 200 });
