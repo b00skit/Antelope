@@ -4,6 +4,7 @@ export interface SessionData {
   userId?: number;
   username?: string;
   isLoggedIn: boolean;
+  gtaw_access_token?: string;
 }
 
 export const sessionOptions: IronSessionOptions = {

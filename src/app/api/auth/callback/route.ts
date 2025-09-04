@@ -75,6 +75,7 @@ export async function GET(request: Request) {
     session.isLoggedIn = true;
     session.userId = user.id;
     session.username = user.username;
+    session.gtaw_access_token = accessToken;
     await session.save();
 
     return redirect('/');

@@ -21,6 +21,7 @@ import {
   History,
   LogOut,
   User,
+  Users
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useState, useEffect } from 'react';
@@ -185,6 +186,18 @@ export function SidebarNav() {
               <Link href="/">
                 <LayoutGrid />
                 <span>Dashboard</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+           <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={isActive('/factions')}
+              tooltip="Factions"
+            >
+              <Link href="/factions">
+                <Users />
+                <span>Factions</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
