@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutGrid,
   Settings,
@@ -19,6 +19,8 @@ import {
   MessageSquare,
   Map,
   History,
+  LogOut,
+  User,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useState, useEffect } from 'react';
@@ -38,6 +40,16 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import announcementsData from '../../../data/announcements.json';
 import { FeedbackDialog } from '../dashboard/feedback-dialog';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+  } from "@/components/ui/dropdown-menu"
+import { useSession } from '@/hooks/use-session';
+  
 
 type SiteConfig = {
   SITE_NAME: string;
@@ -52,6 +64,9 @@ export function SidebarNav() {
   const { state } = useSidebar();
   const [unreadCount, setUnreadCount] = useState(0);
   const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
+  const { session, isLoading } = useSession();
+  const router = useRouter();
+
 
   useEffect(() => {
     setMounted(true);
@@ -82,10 +97,51 @@ export function SidebarNav() {
 
 
   const isActive = (path: string) => {
-    return pathname === path || pathname.startsWith(path + '/');
+    if (path === '/') return pathname === '/';
+    return pathname.startsWith(path);
   };
 
   const siteName = config?.SITE_NAME.replace('+', '') || 'MDC Panel';
+
+  const handleLogout = () => {
+    router.push('/api/auth/logout');
+  }
+
+  const UserButton = () => {
+    if (isLoading) {
+        return <SidebarMenuButton tooltip="Loading...">...</SidebarMenuButton>;
+    }
+
+    if (session?.isLoggedIn) {
+        return (
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <SidebarMenuButton tooltip={session.username}>
+                        <User />
+                        <span>{session.username}</span>
+                    </SidebarMenuButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent side="right" align="start">
+                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout}>
+                        <LogOut className="mr-2 h-4 w-4" />
+                        <span>Log out</span>
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+        );
+    }
+    
+    return (
+        <SidebarMenuButton asChild tooltip="Login">
+            <Link href="/login">
+                <User />
+                <span>Login</span>
+            </Link>
+        </SidebarMenuButton>
+    )
+  }
 
   return (
     <>
@@ -138,6 +194,9 @@ export function SidebarNav() {
       <SidebarFooter className="p-2">
         <Separator className="my-2" />
         <SidebarMenu>
+          <SidebarMenuItem>
+            <UserButton />
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={() => setIsFeedbackDialogOpen(true)}
