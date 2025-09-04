@@ -17,7 +17,14 @@ export function useSession() {
     async function fetchSession() {
       setIsLoading(true);
       try {
-        const response = await fetch('/api/auth/session');
+        const csrfToken =
+          document.cookie
+            .split('; ')
+            .find((row) => row.startsWith('csrf-token='))
+            ?.split('=')[1] || '';
+        const response = await fetch('/api/auth/session', {
+          headers: { 'X-CSRF-Token': csrfToken },
+        });
         const data = await response.json();
         setSession(data);
       } catch (error) {

@@ -43,7 +43,14 @@ export default function FactionsPage() {
             setIsLoading(true);
             setError(null);
             try {
-                const response = await fetch('/api/factions/sync');
+                const csrfToken =
+                    document.cookie
+                        .split('; ')
+                        .find((row) => row.startsWith('csrf-token='))
+                        ?.split('=')[1] || '';
+                const response = await fetch('/api/factions/sync', {
+                    headers: { 'X-CSRF-Token': csrfToken },
+                });
                 
                 if (!response.ok) {
                     const errorData = await response.json();

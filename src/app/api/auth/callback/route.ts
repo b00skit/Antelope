@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { IronSession, getIronSession } from 'iron-session';
-import { SessionData, sessionOptions } from '@/lib/session';
+import { SessionData, sessionOptions, createServerSession } from '@/lib/session';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -73,12 +73,11 @@ export async function GET(request: Request) {
       user = result[0];
     }
 
-    // 4. Set session
+    const { id, csrfToken } = await createServerSession(user.id, accessToken);
     session.isLoggedIn = true;
-    session.userId = user.id;
-    session.username = user.username;
-    session.gtaw_access_token = accessToken;
+    session.sessionId = id;
     await session.save();
+    cookieStore.set('csrf-token', csrfToken, { httpOnly: false, sameSite: 'strict' });
 
     return redirect('/');
 
