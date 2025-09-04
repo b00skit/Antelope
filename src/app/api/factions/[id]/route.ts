@@ -1,0 +1,58 @@
+import { cookies } from 'next/headers';
+import { NextRequest, NextResponse } from 'next/server';
+import { getSession } from '@/lib/session';
+import { db } from '@/db';
+import { factions, factionMembers } from '@/db/schema';
+import { and, eq } from 'drizzle-orm';
+
+interface RouteParams {
+    params: {
+        id: string;
+    }
+}
+
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
+    const cookieStore = await cookies();
+    const session = await getSession(cookieStore);
+
+    if (!session.isLoggedIn || !session.userId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    const factionId = parseInt(params.id, 10);
+    if (isNaN(factionId)) {
+        return NextResponse.json({ error: 'Invalid faction ID.' }, { status: 400 });
+    }
+
+    try {
+        const membership = await db.query.factionMembers.findFirst({
+            where: and(
+                eq(factionMembers.userId, session.userId),
+                eq(factionMembers.factionId, factionId)
+            ),
+            with: {
+                faction: true,
+            }
+        });
+
+        if (!membership) {
+            return NextResponse.json({ error: 'You are not a member of this faction.' }, { status: 403 });
+        }
+        
+        if (membership.rank < membership.faction.moderation_rank) {
+            return NextResponse.json({ error: 'You do not have the required rank to manage this faction.' }, { status: 403 });
+        }
+        
+        // Use a transaction to delete all members first, then the faction itself.
+        await db.transaction(async (tx) => {
+            await tx.delete(factionMembers).where(eq(factionMembers.factionId, factionId));
+            await tx.delete(factions).where(eq(factions.id, factionId));
+        });
+
+        return NextResponse.json({ success: true, message: 'Faction has been unenrolled successfully.' });
+
+    } catch (error) {
+        console.error(`[API Faction Delete] Error deleting faction ${factionId}:`, error);
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    }
+}
