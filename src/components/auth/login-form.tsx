@@ -32,7 +32,7 @@ export function LoginForm() {
 
     if (response.ok) {
       router.push('/');
-      router.refresh();
+      router.refresh(); // This will re-fetch server components and update the UI
     } else {
       const data = await response.json();
       setError(data.message || 'An unexpected error occurred.');
