@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -5,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, Loader2, PlusCircle, Pencil, Trash2 } from 'lucide-react';
+import { AlertTriangle, Loader2, PlusCircle, Pencil, Trash2, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
@@ -42,7 +43,7 @@ const RosterRowSkeleton = () => (
         <TableCell><Skeleton className="h-5 w-1/2" /></TableCell>
         <TableCell><Skeleton className="h-5 w-1/4" /></TableCell>
         <TableCell><Skeleton className="h-5 w-1/3" /></TableCell>
-        <TableCell><Skeleton className="h-8 w-20" /></TableCell>
+        <TableCell className="flex gap-2"><Skeleton className="h-8 w-8" /><Skeleton className="h-8 w-8" /></TableCell>
     </TableRow>
 );
 
@@ -148,36 +149,43 @@ export default function ActivityRostersPage() {
                                         </TableCell>
                                         <TableCell>{format(new Date(roster.created_at), 'PPP')}</TableCell>
                                         <TableCell>
-                                            {roster.isOwner && (
-                                                <div className="flex gap-2">
-                                                    <Button variant="outline" size="icon" asChild>
-                                                        <Link href={`/activity-rosters/edit/${roster.id}`}>
-                                                            <Pencil className="h-4 w-4" />
-                                                        </Link>
-                                                    </Button>
-                                                    <AlertDialog>
-                                                        <AlertDialogTrigger asChild>
-                                                            <Button variant="destructive" size="icon">
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        </AlertDialogTrigger>
-                                                        <AlertDialogContent>
-                                                            <AlertDialogHeader>
-                                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                                <AlertDialogDescription>
-                                                                    This will permanently delete the roster "{roster.name}". This action cannot be undone.
-                                                                </AlertDialogDescription>
-                                                            </AlertDialogHeader>
-                                                            <AlertDialogFooter>
-                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                <AlertDialogAction onClick={() => handleDelete(roster.id)}>
-                                                                    Yes, Delete Roster
-                                                                </AlertDialogAction>
-                                                            </AlertDialogFooter>
-                                                        </AlertDialogContent>
-                                                    </AlertDialog>
-                                                </div>
-                                            )}
+                                            <div className="flex gap-2">
+                                                <Button variant="outline" size="icon" asChild>
+                                                    <Link href={`/activity-rosters/${roster.id}`}>
+                                                        <Eye className="h-4 w-4" />
+                                                    </Link>
+                                                </Button>
+                                                {roster.isOwner && (
+                                                    <>
+                                                        <Button variant="outline" size="icon" asChild>
+                                                            <Link href={`/activity-rosters/edit/${roster.id}`}>
+                                                                <Pencil className="h-4 w-4" />
+                                                            </Link>
+                                                        </Button>
+                                                        <AlertDialog>
+                                                            <AlertDialogTrigger asChild>
+                                                                <Button variant="destructive" size="icon">
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </AlertDialogTrigger>
+                                                            <AlertDialogContent>
+                                                                <AlertDialogHeader>
+                                                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                                    <AlertDialogDescription>
+                                                                        This will permanently delete the roster "{roster.name}". This action cannot be undone.
+                                                                    </AlertDialogDescription>
+                                                                </AlertDialogHeader>
+                                                                <AlertDialogFooter>
+                                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                    <AlertDialogAction onClick={() => handleDelete(roster.id)}>
+                                                                        Yes, Delete Roster
+                                                                    </AlertDialogAction>
+                                                                </AlertDialogFooter>
+                                                            </AlertDialogContent>
+                                                        </AlertDialog>
+                                                    </>
+                                                )}
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ))
