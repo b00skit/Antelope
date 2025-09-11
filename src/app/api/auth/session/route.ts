@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { users, factionMembers } from '@/db/schema';
+import { users, factionMembers, factions } from '@/db/schema';
 import { and, eq } from 'drizzle-orm';
 
 export async function GET() {
@@ -15,6 +15,9 @@ export async function GET() {
   // Check for active faction
   const user = await db.query.users.findFirst({
     where: eq(users.id, session.userId),
+    with: {
+        selectedFaction: true,
+    }
   });
   
   let hasActiveFaction = false;
@@ -35,5 +38,6 @@ export async function GET() {
     isLoggedIn: true,
     username: session.username,
     hasActiveFaction,
+    activeFaction: user?.selectedFaction,
   }), { status: 200 });
 }

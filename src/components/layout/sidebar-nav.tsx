@@ -145,6 +145,8 @@ export function SidebarNav() {
     )
   }
 
+  const showActivityRosters = session?.hasActiveFaction && session.activeFaction?.feature_flags?.activity_rosters_enabled;
+
   return (
     <>
       <FeedbackDialog open={isFeedbackDialogOpen} onOpenChange={setIsFeedbackDialogOpen} />
@@ -202,7 +204,7 @@ export function SidebarNav() {
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
-          {session?.hasActiveFaction && (
+          {showActivityRosters && (
             <SidebarMenuItem>
                 <SidebarMenuButton
                 asChild

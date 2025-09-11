@@ -21,6 +21,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import type { factions } from '@/db/schema';
+import { Switch } from '../ui/switch';
 
 type Faction = typeof factions.$inferSelect;
 
@@ -33,6 +34,7 @@ const formSchema = z.object({
     color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color code, e.g., #FFFFFF").optional().nullable(),
     access_rank: z.coerce.number().min(1, "Rank must be at least 1").max(20, "Rank must be 20 or less"),
     moderation_rank: z.coerce.number().min(1, "Rank must be at least 1").max(20, "Rank must be 20 or less"),
+    activity_rosters_enabled: z.boolean().default(true),
 });
 
 export function ManageFactionClientPage({ faction }: ManageFactionClientPageProps) {
@@ -46,6 +48,7 @@ export function ManageFactionClientPage({ faction }: ManageFactionClientPageProp
             color: faction.color,
             access_rank: faction.access_rank ?? 15,
             moderation_rank: faction.moderation_rank ?? 15,
+            activity_rosters_enabled: faction.feature_flags?.activity_rosters_enabled ?? true,
         },
     });
 
@@ -142,6 +145,36 @@ export function ManageFactionClientPage({ faction }: ManageFactionClientPageProp
                                     )}
                                 />
                             </div>
+
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Feature Flags</CardTitle>
+                                    <CardDescription>Enable or disable specific features for this faction.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <FormField
+                                        control={form.control}
+                                        name="activity_rosters_enabled"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                                <div className="space-y-0.5">
+                                                    <FormLabel>Activity Rosters</FormLabel>
+                                                    <FormDescription>
+                                                        Allow members to create and view activity rosters.
+                                                    </FormDescription>
+                                                </div>
+                                                <FormControl>
+                                                    <Switch
+                                                        checked={field.value}
+                                                        onCheckedChange={field.onChange}
+                                                    />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                </CardContent>
+                            </Card>
+                            
                             {form.formState.errors.root && (
                                 <Alert variant="destructive">
                                     <AlertTriangle className="h-4 w-4" />

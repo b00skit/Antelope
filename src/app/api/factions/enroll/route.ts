@@ -13,7 +13,8 @@ const enrollSchema = z.object({
     color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Color must be a valid hex code.").optional().nullable(),
     access_rank: z.number().int().min(1).max(20),
     moderation_rank: z.number().int().min(1).max(20),
-    user_rank: z.number().int()
+    user_rank: z.number().int(),
+    activity_rosters_enabled: z.boolean().default(true),
 });
 
 export async function POST(request: NextRequest) {
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Invalid input.', details: parsed.error.flatten() }, { status: 400 });
     }
 
-    const { id, name, color, access_rank, moderation_rank, user_rank } = parsed.data;
+    const { id, name, color, access_rank, moderation_rank, user_rank, activity_rosters_enabled } = parsed.data;
 
     try {
         // Check if faction already exists
@@ -52,6 +53,9 @@ export async function POST(request: NextRequest) {
                 color,
                 access_rank,
                 moderation_rank,
+                feature_flags: {
+                    activity_rosters_enabled,
+                }
             }).run();
 
             // 2. Add the current user as a member of this new faction

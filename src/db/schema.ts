@@ -17,6 +17,7 @@ export const factions = sqliteTable('factions', {
     color: text('color'),
     access_rank: integer('access_rank').default(15),
     moderation_rank: integer('moderation_rank').default(15),
+    feature_flags: text('feature_flags', { mode: 'json' }).$type<{ activity_rosters_enabled?: boolean; }>().default({ activity_rosters_enabled: true }),
 });
 
 export const factionMembers = sqliteTable('faction_members', {

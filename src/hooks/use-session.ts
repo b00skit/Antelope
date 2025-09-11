@@ -3,10 +3,21 @@
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 
+interface Faction {
+    id: number;
+    name: string;
+    color: string | null;
+    access_rank: number | null;
+    moderation_rank: number | null;
+    feature_flags: {
+        activity_rosters_enabled?: boolean;
+    } | null;
+}
 interface Session {
   isLoggedIn: boolean;
   username?: string;
   hasActiveFaction?: boolean;
+  activeFaction?: Faction | null;
 }
 
 export function useSession() {
