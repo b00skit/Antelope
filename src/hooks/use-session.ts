@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 interface Session {
   isLoggedIn: boolean;
   username?: string;
+  hasActiveFaction?: boolean;
 }
 
 export function useSession() {
@@ -22,7 +23,7 @@ export function useSession() {
         setSession(data);
       } catch (error) {
         console.error('Failed to fetch session', error);
-        setSession({ isLoggedIn: false });
+        setSession({ isLoggedIn: false, hasActiveFaction: false });
       } finally {
         setIsLoading(false);
       }

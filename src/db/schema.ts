@@ -1,5 +1,6 @@
 import { sqliteTable, text, integer, primaryKey } from 'drizzle-orm/sqlite-core';
 import { relations } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 
 export const users = sqliteTable('users', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -29,16 +30,29 @@ export const factionMembers = sqliteTable('faction_members', {
     }
 });
 
+export const activityRosters = sqliteTable('activity_rosters', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    factionId: integer('faction_id').notNull().references(() => factions.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    roster_setup_json: text('roster_setup_json'),
+    is_public: integer('is_public', { mode: 'boolean' }).default(false),
+    created_by: integer('created_by').notNull().references(() => users.id),
+    created_at: integer('created_at', { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
+    updated_at: integer('updated_at', { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
+});
+
 export const usersRelations = relations(users, ({ many, one }) => ({
 	factionMembers: many(factionMembers),
     selectedFaction: one(factions, {
         fields: [users.selected_faction_id],
         references: [factions.id],
     }),
+    activityRosters: many(activityRosters),
 }));
 
 export const factionsRelations = relations(factions, ({ many }) => ({
 	factionMembers: many(factionMembers),
+    activityRosters: many(activityRosters),
 }));
 
 export const factionMembersRelations = relations(factionMembers, ({ one }) => ({
@@ -50,4 +64,15 @@ export const factionMembersRelations = relations(factionMembers, ({ one }) => ({
 		fields: [factionMembers.factionId],
 		references: [factions.id],
 	}),
+}));
+
+export const activityRostersRelations = relations(activityRosters, ({ one }) => ({
+    faction: one(factions, {
+        fields: [activityRosters.factionId],
+        references: [factions.id],
+    }),
+    author: one(users, {
+        fields: [activityRosters.created_by],
+        references: [users.id],
+    }),
 }));

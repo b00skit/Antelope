@@ -21,7 +21,8 @@ import {
   History,
   LogOut,
   User,
-  Users
+  Users,
+  ClipboardList
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useState, useEffect } from 'react';
@@ -201,6 +202,20 @@ export function SidebarNav() {
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
+          {session?.hasActiveFaction && (
+            <SidebarMenuItem>
+                <SidebarMenuButton
+                asChild
+                isActive={isActive('/activity-rosters')}
+                tooltip="Activity Rosters"
+                >
+                <Link href="/activity-rosters">
+                    <ClipboardList />
+                    <span>Activity Rosters</span>
+                </Link>
+                </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
         </SidebarMenu>
       </SidebarContent>
 
