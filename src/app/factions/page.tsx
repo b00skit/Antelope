@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, Loader2, PlusCircle, LogIn, Settings, Trash2 } from 'lucide-react';
+import { AlertTriangle, Loader2, PlusCircle, LogIn, Settings, Trash2, CheckCircle, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
@@ -21,6 +21,8 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 interface Faction {
     id: number;
@@ -35,6 +37,12 @@ interface UserFaction {
     rank: number;
     joined: boolean;
 }
+
+interface FactionsData {
+    factions: UserFaction[];
+    selectedFactionId: number | null;
+}
+
 
 const FactionCardSkeleton = () => (
     <Card>
@@ -53,6 +61,7 @@ const FactionCardSkeleton = () => (
 
 export default function FactionsPage() {
     const [userFactions, setUserFactions] = useState<UserFaction[]>([]);
+    const [selectedFactionId, setSelectedFactionId] = useState<number | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState<number | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -73,8 +82,9 @@ export default function FactionsPage() {
                 throw new Error(errorData.error || 'Failed to sync factions.');
             }
             
-            const data = await response.json();
+            const data: FactionsData = await response.json();
             setUserFactions(data.factions);
+            setSelectedFactionId(data.selectedFactionId);
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -109,6 +119,25 @@ export default function FactionsPage() {
             if (!res.ok) throw new Error(data.error);
             toast({ title: 'Success', description: data.message });
             fetchAndSyncFactions(); // Refresh data
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Error', description: err.message });
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const handleSelectFaction = async (factionId: number) => {
+        setActionLoading(factionId);
+        try {
+            const res = await fetch(`/api/user/select-faction`, { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ factionId }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+            toast({ title: 'Success', description: 'Active faction updated.' });
+            setSelectedFactionId(factionId);
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Error', description: err.message });
         } finally {
@@ -163,23 +192,35 @@ export default function FactionsPage() {
                     {userFactions.map(({ faction, rank, joined }) => {
                         const canJoin = !joined && rank >= faction.access_rank;
                         const canManage = joined && rank >= faction.moderation_rank;
+                        const isSelected = selectedFactionId === faction.id;
 
                         return (
-                            <Card key={faction.id}>
+                            <Card key={faction.id} className={cn(isSelected && 'border-primary ring-2 ring-primary/50')}>
                                 <CardHeader>
-                                    <CardTitle>{faction.name}</CardTitle>
-                                    <CardDescription>Your Rank: {rank}</CardDescription>
+                                    <div className="flex items-start justify-between">
+                                        <div>
+                                            <CardTitle>{faction.name}</CardTitle>
+                                            <CardDescription>Your Rank: {rank}</CardDescription>
+                                        </div>
+                                        {isSelected && <Badge variant="outline" className="border-primary text-primary"><Star className="mr-1 h-3 w-3" /> Active</Badge>}
+                                    </div>
                                 </CardHeader>
                                 <CardContent>
                                     <p className="text-sm text-muted-foreground">
                                         {joined ? "You have joined this faction's panel." : "You have not joined this faction's panel yet."}
                                     </p>
                                 </CardContent>
-                                <CardFooter className="flex gap-2">
+                                <CardFooter className="flex flex-wrap gap-2">
                                     {canJoin && (
                                         <Button onClick={() => handleJoin(faction.id)} disabled={actionLoading === faction.id}>
                                             {actionLoading === faction.id ? <Loader2 className="animate-spin" /> : <LogIn />}
                                             Join Panel
+                                        </Button>
+                                    )}
+                                    {joined && !isSelected && (
+                                        <Button variant="outline" onClick={() => handleSelectFaction(faction.id)} disabled={actionLoading === faction.id}>
+                                            {actionLoading === faction.id ? <Loader2 className="animate-spin" /> : <CheckCircle />}
+                                            Set Active
                                         </Button>
                                     )}
                                     {canManage && (

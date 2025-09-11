@@ -118,6 +118,10 @@ export async function GET(request: NextRequest) {
             return NextResponse.json(syncResult, { status: 500 });
         }
         
+        const user = await db.query.users.findFirst({
+            where: eq(users.id, session.userId!),
+        });
+
         const userFactions = await db.query.factionMembers.findMany({
             where: eq(factionMembers.userId, session.userId!),
             with: {
@@ -125,7 +129,10 @@ export async function GET(request: NextRequest) {
             },
         });
         
-        return NextResponse.json({ factions: userFactions });
+        return NextResponse.json({ 
+            factions: userFactions,
+            selectedFactionId: user?.selected_faction_id 
+        });
 
     } catch (error) {
         console.error('[API Factions Sync] Error:', error);

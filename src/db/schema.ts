@@ -7,6 +7,7 @@ export const users = sqliteTable('users', {
   password: text('password'), // Nullable for OAuth users
   gtaw_user_id: integer('gtaw_user_id').unique(),
   last_sync_timestamp: integer('last_sync_timestamp', { mode: 'timestamp' }),
+  selected_faction_id: integer('selected_faction_id').references(() => factions.id, { onDelete: 'set null' }),
 });
 
 export const factions = sqliteTable('factions', {
@@ -28,8 +29,12 @@ export const factionMembers = sqliteTable('faction_members', {
     }
 });
 
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ many, one }) => ({
 	factionMembers: many(factionMembers),
+    selectedFaction: one(factions, {
+        fields: [users.selected_faction_id],
+        references: [factions.id],
+    }),
 }));
 
 export const factionsRelations = relations(factions, ({ many }) => ({
