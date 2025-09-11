@@ -6,10 +6,20 @@ import { users, factionMembers, activityRosters } from '@/db/schema';
 import { and, eq, or, desc } from 'drizzle-orm';
 import { z } from 'zod';
 
+const jsonString = z.string().refine((value) => {
+    if (!value) return true; // Allow empty string
+    try {
+      JSON.parse(value);
+      return true;
+    } catch (e) {
+      return false;
+    }
+}, { message: "Must be a valid JSON object." });
+
 const createRosterSchema = z.object({
     name: z.string().min(3, "Roster name must be at least 3 characters long."),
     is_public: z.boolean().default(false),
-    roster_setup_json: z.string().optional(),
+    roster_setup_json: jsonString.optional().nullable(),
 });
 
 // GET /api/rosters - Fetches rosters for the user's active faction

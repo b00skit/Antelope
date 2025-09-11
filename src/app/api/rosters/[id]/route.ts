@@ -3,13 +3,111 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
 import { activityRosters } from '@/db/schema';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
+import { z } from 'zod';
+
 
 interface RouteParams {
     params: {
         id: string;
     }
 }
+
+const jsonString = z.string().refine((value) => {
+    if (!value) return true; // Allow empty string
+    try {
+      JSON.parse(value);
+      return true;
+    } catch (e) {
+      return false;
+    }
+}, { message: "Must be a valid JSON object." });
+
+const updateRosterSchema = z.object({
+    name: z.string().min(3, "Roster name must be at least 3 characters long."),
+    is_public: z.boolean().default(false),
+    roster_setup_json: jsonString.optional().nullable(),
+});
+
+// GET /api/rosters/[id] - Gets a single roster for editing
+export async function GET(request: NextRequest, { params }: RouteParams) {
+    const cookieStore = await cookies();
+    const session = await getSession(cookieStore);
+
+    if (!session.isLoggedIn || !session.userId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const rosterId = parseInt(params.id, 10);
+    if (isNaN(rosterId)) {
+        return NextResponse.json({ error: 'Invalid roster ID.' }, { status: 400 });
+    }
+
+    try {
+        const roster = await db.query.activityRosters.findFirst({
+            where: and(
+                eq(activityRosters.id, rosterId),
+                eq(activityRosters.created_by, session.userId)
+            ),
+        });
+
+        if (!roster) {
+            return NextResponse.json({ error: 'Roster not found or you do not have permission to edit it.' }, { status: 404 });
+        }
+        
+        return NextResponse.json({ roster });
+
+    } catch (error) {
+        console.error(`[API Roster GET] Error getting roster ${rosterId}:`, error);
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    }
+}
+
+
+// PUT /api/rosters/[id] - Updates a specific roster
+export async function PUT(request: NextRequest, { params }: RouteParams) {
+    const cookieStore = await cookies();
+    const session = await getSession(cookieStore);
+
+    if (!session.isLoggedIn || !session.userId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const rosterId = parseInt(params.id, 10);
+    if (isNaN(rosterId)) {
+        return NextResponse.json({ error: 'Invalid roster ID.' }, { status: 400 });
+    }
+    
+    const body = await request.json();
+    const parsed = updateRosterSchema.safeParse(body);
+
+    if (!parsed.success) {
+        return NextResponse.json({ error: 'Invalid input.', details: parsed.error.flatten() }, { status: 400 });
+    }
+    
+    try {
+        const result = await db.update(activityRosters)
+            .set({ 
+                ...parsed.data, 
+                updated_at: sql`(strftime('%s', 'now'))` 
+            })
+            .where(and(
+                eq(activityRosters.id, rosterId),
+                eq(activityRosters.created_by, session.userId)
+            )).returning();
+
+        if (result.length === 0) {
+            return NextResponse.json({ error: 'Roster not found or you do not have permission to edit it.' }, { status: 404 });
+        }
+        
+        return NextResponse.json({ success: true, message: 'Roster updated successfully.' });
+
+    } catch (error) {
+        console.error(`[API Roster PUT] Error updating roster ${rosterId}:`, error);
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    }
+}
+
 
 // DELETE /api/rosters/[id] - Deletes a specific roster
 export async function DELETE(request: NextRequest, { params }: RouteParams) {

@@ -12,6 +12,23 @@ interface RouteParams {
     }
 }
 
+interface Member {
+    character_id: number;
+    character_name: string;
+    rank: number;
+    rank_name: string;
+    last_online: string | null;
+    last_duty: string | null;
+}
+
+interface RosterFilters {
+    include_ranks?: number[];
+    exclude_ranks?: number[];
+    include_members?: string[];
+    exclude_members?: string[];
+}
+
+
 export async function GET(request: NextRequest, { params }: RouteParams) {
     const cookieStore = await cookies();
     const session = await getSession(cookieStore);
@@ -71,19 +88,48 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         }
         
         const gtawFactionData = await factionApiResponse.json();
+        let members: Member[] = gtawFactionData.data.members;
 
-        // 3. Return combined data
+        // 3. Apply JSON filters if they exist
+        if (roster.roster_setup_json) {
+            try {
+                const filters: RosterFilters = JSON.parse(roster.roster_setup_json);
+                
+                members = members.filter(member => {
+                    const charName = member.character_name.replace('_', ' ');
+
+                    if (filters.include_ranks && filters.include_ranks.length > 0 && !filters.include_ranks.includes(member.rank)) {
+                        return false;
+                    }
+                    if (filters.exclude_ranks && filters.exclude_ranks.includes(member.rank)) {
+                        return false;
+                    }
+                    if (filters.include_members && filters.include_members.length > 0 && !filters.include_members.some(name => charName.includes(name))) {
+                        return false;
+                    }
+                    if (filters.exclude_members && filters.exclude_members.some(name => charName.includes(name))) {
+                        return false;
+                    }
+                    return true;
+                });
+            } catch (e) {
+                console.error(`[API Roster View] Invalid JSON in roster ${rosterId}:`, e);
+                // Fail gracefully by returning unfiltered list
+            }
+        }
+
+
+        // 4. Return combined and filtered data
         return NextResponse.json({
             roster: {
                 id: roster.id,
                 name: roster.name,
-                roster_setup_json: roster.roster_setup_json,
             },
             faction: {
                 id: roster.faction.id,
                 name: roster.faction.name,
             },
-            members: gtawFactionData.data.members,
+            members: members,
         });
 
     } catch (error) {
