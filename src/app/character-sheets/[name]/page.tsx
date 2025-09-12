@@ -10,7 +10,7 @@ import { AlertTriangle, User, Briefcase, Users, Hash, MapPin, Calendar, Clock } 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
-import Image from 'next/image';
+import { CharacterImage } from '@/components/character-sheets/character-image';
 
 interface PageProps {
     params: {
@@ -142,18 +142,10 @@ export default async function CharacterSheetPage({ params }: PageProps) {
                         </CardHeader>
                         <CardContent>
                             <div className="aspect-square relative rounded-md overflow-hidden border">
-                                 <Image
-                                    src={characterImage}
+                                 <CharacterImage
+                                    initialSrc={characterImage}
                                     alt={`Mugshot of ${character.firstname} ${character.lastname}`}
-                                    fill
-                                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                                    className="object-cover"
-                                    priority
-                                    unoptimized
-                                    onError={(e) => {
-                                        e.currentTarget.srcset = `https://picsum.photos/seed/${character.character_id}/400/400`;
-                                        e.currentTarget.src = `https://picsum.photos/seed/${character.character_id}/400/400`;
-                                    }}
+                                    characterId={character.character_id}
                                 />
                             </div>
                         </CardContent>
