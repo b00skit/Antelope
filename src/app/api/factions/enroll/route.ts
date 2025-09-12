@@ -16,6 +16,8 @@ const enrollSchema = z.object({
     user_rank: z.number().int(),
     activity_rosters_enabled: z.boolean().default(true),
     character_sheets_enabled: z.boolean().default(true),
+    phpbb_api_url: z.string().url("Must be a valid URL").or(z.literal('')).optional().nullable(),
+    phpbb_api_key: z.string().optional().nullable(),
 });
 
 export async function POST(request: NextRequest) {
@@ -33,7 +35,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Invalid input.', details: parsed.error.flatten() }, { status: 400 });
     }
 
-    const { id, name, color, access_rank, moderation_rank, user_rank, activity_rosters_enabled, character_sheets_enabled } = parsed.data;
+    const { id, name, color, access_rank, moderation_rank, user_rank, activity_rosters_enabled, character_sheets_enabled, phpbb_api_url, phpbb_api_key } = parsed.data;
 
     try {
         // Check if faction already exists
@@ -57,7 +59,9 @@ export async function POST(request: NextRequest) {
                 feature_flags: {
                     activity_rosters_enabled,
                     character_sheets_enabled,
-                }
+                },
+                phpbb_api_url,
+                phpbb_api_key
             }).run();
 
             // 2. Add the current user as a member of this new faction

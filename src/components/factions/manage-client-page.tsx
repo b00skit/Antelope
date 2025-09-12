@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -22,6 +23,8 @@ import {
 } from "@/components/ui/form";
 import type { factions } from '@/db/schema';
 import { Switch } from '../ui/switch';
+import Link from 'next/link';
+import { Label } from '../ui/label';
 
 type Faction = typeof factions.$inferSelect;
 
@@ -36,6 +39,8 @@ const formSchema = z.object({
     moderation_rank: z.coerce.number().min(1, "Rank must be at least 1").max(20, "Rank must be 20 or less"),
     activity_rosters_enabled: z.boolean().default(true),
     character_sheets_enabled: z.boolean().default(true),
+    phpbb_api_url: z.string().url("Must be a valid URL").or(z.literal('')).optional().nullable(),
+    phpbb_api_key: z.string().optional().nullable(),
 });
 
 export function ManageFactionClientPage({ faction }: ManageFactionClientPageProps) {
@@ -51,8 +56,27 @@ export function ManageFactionClientPage({ faction }: ManageFactionClientPageProp
             moderation_rank: faction.moderation_rank ?? 15,
             activity_rosters_enabled: faction.feature_flags?.activity_rosters_enabled ?? true,
             character_sheets_enabled: faction.feature_flags?.character_sheets_enabled ?? true,
+            phpbb_api_url: faction.phpbb_api_url,
+            phpbb_api_key: faction.phpbb_api_key,
         },
     });
+    
+    const watchUrl = form.watch('phpbb_api_url');
+    const watchKey = form.watch('phpbb_api_key');
+
+    const apiEndpointPreview = React.useMemo(() => {
+        if (watchUrl && watchKey) {
+            try {
+                const url = new URL(watchUrl);
+                const baseUrl = url.pathname.endsWith('/') ? url.href : `${url.href}/`;
+                return `${baseUrl}app.php/booskit/phpbbapi/groups?key=${watchKey}`;
+            } catch (e) {
+                return "Invalid URL provided.";
+            }
+        }
+        return "Fill out both URL and Key to see the preview.";
+    }, [watchUrl, watchKey]);
+
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         try {
@@ -194,6 +218,48 @@ export function ManageFactionClientPage({ faction }: ManageFactionClientPageProp
                                             </FormItem>
                                         )}
                                     />
+                                </CardContent>
+                            </Card>
+
+                             <Card>
+                                <CardHeader>
+                                    <CardTitle>Forum Integration (Optional)</CardTitle>
+                                    <CardDescription>
+                                        Connect your phpBB forum to enable roster syncing and more. This requires the{' '}
+                                        <Link href="https://github.com/b00skit/phpbb-api-extension/" target="_blank" className="text-primary hover:underline">phpBB API Extension</Link> by booskit.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="phpbb_api_url"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>phpBB Forum URL</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="https://your-forum.com/phpbb/" {...field} value={field.value ?? ''} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                     <FormField
+                                        control={form.control}
+                                        name="phpbb_api_key"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>phpBB API Key</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="Enter your API key" {...field} value={field.value ?? ''} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <div>
+                                        <Label>REST API Endpoint Preview</Label>
+                                        <Input readOnly value={apiEndpointPreview} className="mt-1 font-mono text-xs" />
+                                    </div>
                                 </CardContent>
                             </Card>
                             

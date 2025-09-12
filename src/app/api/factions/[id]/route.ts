@@ -19,6 +19,8 @@ const updateSchema = z.object({
     moderation_rank: z.number().int().min(1).max(20),
     activity_rosters_enabled: z.boolean().default(true),
     character_sheets_enabled: z.boolean().default(true),
+    phpbb_api_url: z.string().url("Must be a valid URL").or(z.literal('')).optional().nullable(),
+    phpbb_api_key: z.string().optional().nullable(),
 });
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {

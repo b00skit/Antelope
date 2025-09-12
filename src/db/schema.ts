@@ -19,6 +19,8 @@ export const factions = sqliteTable('factions', {
     access_rank: integer('access_rank').default(15),
     moderation_rank: integer('moderation_rank').default(15),
     feature_flags: text('feature_flags', { mode: 'json' }).$type<{ activity_rosters_enabled?: boolean; character_sheets_enabled?: boolean; }>().default({ activity_rosters_enabled: true, character_sheets_enabled: true }),
+    phpbb_api_url: text('phpbb_api_url'),
+    phpbb_api_key: text('phpbb_api_key'),
 });
 
 export const factionMembers = sqliteTable('faction_members', {
