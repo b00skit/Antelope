@@ -2,6 +2,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
 import { SidebarProvider, Sidebar, SidebarInset } from '@/components/ui/sidebar';
 import { SidebarNav } from './sidebar-nav';
 import Image from 'next/image';
@@ -12,6 +13,20 @@ type LayoutProps = {
 };
 
 export function Layout({ children, footer }: LayoutProps) {
+  const pathname = usePathname();
+
+  // Don't render sidebar on the landing page or login page
+  if (pathname === '/' || pathname === '/login') {
+    return (
+       <div className="flex flex-col min-h-screen">
+            <div className="flex-grow">
+                {children}
+            </div>
+            {footer}
+        </div>
+    );
+  }
+  
   return (
     <SidebarProvider>
       <Sidebar>
