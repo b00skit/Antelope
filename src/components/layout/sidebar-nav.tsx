@@ -22,7 +22,8 @@ import {
   LogOut,
   User,
   Users,
-  ClipboardList
+  ClipboardList,
+  Search
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useState, useEffect } from 'react';
@@ -51,6 +52,7 @@ import {
     DropdownMenuTrigger,
   } from "@/components/ui/dropdown-menu"
 import { useSession } from '@/hooks/use-session';
+import { Input } from '../ui/input';
   
 
 type SiteConfig = {
@@ -68,6 +70,7 @@ export function SidebarNav() {
   const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
   const { session, isLoading } = useSession();
   const router = useRouter();
+  const [characterSearch, setCharacterSearch] = useState('');
 
 
   useEffect(() => {
@@ -107,6 +110,14 @@ export function SidebarNav() {
 
   const handleLogout = () => {
     router.push('/api/auth/logout');
+  }
+
+  const handleCharacterSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (characterSearch.trim()) {
+        const formattedName = characterSearch.trim().replace(/\s+/g, '_');
+        router.push(`/character-sheets/${formattedName}`);
+    }
   }
 
   const UserButton = () => {
@@ -180,6 +191,21 @@ export function SidebarNav() {
       </SidebarHeader>
 
       <SidebarContent className="p-2">
+        {showCharacterSheets && (
+            <div className={cn("p-2", state === 'collapsed' && 'hidden')}>
+                 <form onSubmit={handleCharacterSearch}>
+                    <div className="relative">
+                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Find Character..."
+                            className="pl-8 h-9"
+                            value={characterSearch}
+                            onChange={(e) => setCharacterSearch(e.target.value)}
+                        />
+                    </div>
+                </form>
+            </div>
+        )}
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
@@ -215,20 +241,6 @@ export function SidebarNav() {
                 <Link href="/activity-rosters">
                     <ClipboardList />
                     <span>Activity Rosters</span>
-                </Link>
-                </SidebarMenuButton>
-            </SidebarMenuItem>
-          )}
-          {showCharacterSheets && (
-            <SidebarMenuItem>
-                <SidebarMenuButton
-                asChild
-                isActive={isActive('/character-sheets')}
-                tooltip="Character Sheets"
-                >
-                <Link href="/character-sheets">
-                    <User />
-                    <span>Character Sheets</span>
                 </Link>
                 </SidebarMenuButton>
             </SidebarMenuItem>
