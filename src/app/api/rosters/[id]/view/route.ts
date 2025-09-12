@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { activityRosters, users, factionMembersCache, factionMembersAbasCache } from '@/db/schema';
+import { activityRosters, users, factionMembersCache, factionMembersAbasCache, forumApiCache } from '@/db/schema';
 import { and, eq, or, inArray } from 'drizzle-orm';
 
 interface RouteParams {
@@ -36,6 +36,89 @@ interface RosterFilters {
     alert_forum_users_missing?: boolean;
 }
 
+async function fetchForumData(roster: any, filters: RosterFilters) {
+    const includedUsernames = new Set<string>();
+    const excludedUsernames = new Set<string>();
+
+    if (roster.faction.phpbb_api_url && roster.faction.phpbb_api_key) {
+        const baseUrl = roster.faction.phpbb_api_url.endsWith('/') ? roster.faction.phpbb_api_url : `${roster.faction.phpbb_api_url}/`;
+        const apiKey = roster.faction.phpbb_api_key;
+
+        // Fetch Group Members
+        if (filters.forum_groups_included || filters.forum_groups_excluded) {
+            const groupIds = new Set([...(filters.forum_groups_included || []), ...(filters.forum_groups_excluded || [])]);
+            
+            const groupPromises = Array.from(groupIds).map(async (groupId) => {
+                try {
+                    const url = `${baseUrl}app.php/booskit/phpbbapi/group/${groupId}?key=${apiKey}`;
+                    const res = await fetch(url);
+                    if (!res.ok) {
+                        console.warn(`[API Roster View] Failed to fetch forum group ${groupId}. Status: ${res.status}`);
+                        return { groupId, members: [] };
+                    }
+                    const data = await res.json();
+                    const groupMembers = data.group?.members.map((m: any) => m.username) || [];
+                    const groupLeaders = data.group?.leaders.map((l: any) => l.username) || [];
+                    return { groupId, members: [...groupMembers, ...groupLeaders] };
+                } catch (e) {
+                    console.error(`[API Roster View] Error fetching forum group ${groupId}:`, e);
+                    return { groupId, members: [] };
+                }
+            });
+
+            const groupResults = await Promise.all(groupPromises);
+            const groupUserMap = new Map(groupResults.map(r => [r.groupId, r.members]));
+            
+            (filters.forum_groups_included || []).forEach(gid => {
+                groupUserMap.get(gid)?.forEach((username: string) => includedUsernames.add(username.replace('_', ' ')));
+            });
+
+            (filters.forum_groups_excluded || []).forEach(gid => {
+                groupUserMap.get(gid)?.forEach((username: string) => excludedUsernames.add(username.replace('_', ' ')));
+            });
+        }
+        
+        // Fetch Individual Users
+        if (filters.forum_users_included || filters.forum_users_excluded) {
+            const userIds = new Set([...(filters.forum_users_included || []), ...(filters.forum_users_excluded || [])]);
+
+            const userPromises = Array.from(userIds).map(async (userId) => {
+                try {
+                    const url = `${baseUrl}app.php/booskit/phpbbapi/user/${userId}?key=${apiKey}`;
+                    const res = await fetch(url);
+                    if (!res.ok) {
+                        console.warn(`[API Roster View] Failed to fetch forum user ${userId}. Status: ${res.status}`);
+                        return null;
+                    }
+                    const data = await res.json();
+                    return data.user?.username;
+                } catch(e) {
+                    console.error(`[API Roster View] Error fetching forum user ${userId}:`, e);
+                    return null;
+                }
+            });
+            
+            const usernames = await Promise.all(userPromises);
+            const userIdToUsernameMap = new Map(Array.from(userIds).map((id, index) => [id, usernames[index]]));
+
+            (filters.forum_users_included || []).forEach(uid => {
+                const username = userIdToUsernameMap.get(uid);
+                if (username) includedUsernames.add(username.replace('_', ' '));
+            });
+
+            (filters.forum_users_excluded || []).forEach(uid => {
+                const username = userIdToUsernameMap.get(uid);
+                if (username) excludedUsernames.add(username.replace('_', ' '));
+            });
+        }
+    }
+    
+    return {
+        includedUsernames: Array.from(includedUsernames),
+        excludedUsernames: Array.from(excludedUsernames),
+    }
+}
+
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
     const cookieStore = await cookies();
@@ -62,7 +145,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             return NextResponse.json({ error: 'No active faction selected.' }, { status: 400 });
         }
         
-        // 1. Verify user has access to this roster
         const roster = await db.query.activityRosters.findFirst({
             where: and(
                 eq(activityRosters.id, rosterId),
@@ -73,7 +155,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
                 )
             ),
             with: {
-                faction: true
+                faction: true,
+                forumCache: true,
             }
         });
 
@@ -90,7 +173,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             where: eq(factionMembersCache.faction_id, factionId)
         });
 
-        // 2. Decide whether to fetch from API or use cache
         if (forceSync || !cachedFaction || !cachedFaction.last_sync_timestamp || new Date(cachedFaction.last_sync_timestamp) < oneDayAgo) {
              const factionApiResponse = await fetch(`https://ucp.gta.world/api/faction/${factionId}`, {
                 headers: {
@@ -118,7 +200,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             members = cachedFaction.members || [];
         }
 
-        // 3. Augment with ABAS data
         const memberIds = members.map(m => m.character_id);
         if (memberIds.length > 0) {
             const abasCache = await db.query.factionMembersAbasCache.findMany({
@@ -139,135 +220,66 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         }
 
         let missingForumUsers: string[] = [];
-        // 4. Apply JSON filters if they exist
+        let includedUsernames = new Set<string>();
+        let excludedUsernames = new Set<string>();
+
         if (roster.roster_setup_json) {
             try {
                 const filters: RosterFilters = JSON.parse(roster.roster_setup_json);
-                let isForumFilterActive = false;
-                const includedUsernames = new Set<string>();
-                const excludedUsernames = new Set<string>();
+                const isForumFilterActive = filters.forum_groups_included?.length || filters.forum_groups_excluded?.length || filters.forum_users_included?.length || filters.forum_users_excluded?.length;
 
-                // Forum Integration Logic
-                if (roster.faction.phpbb_api_url && roster.faction.phpbb_api_key) {
-                    const baseUrl = roster.faction.phpbb_api_url.endsWith('/') ? roster.faction.phpbb_api_url : `${roster.faction.phpbb_api_url}/`;
-                    const apiKey = roster.faction.phpbb_api_key;
+                if (isForumFilterActive) {
+                    const cachedForumData = roster.forumCache;
+                    if (forceSync || !cachedForumData || !cachedForumData.last_sync_timestamp || new Date(cachedForumData.last_sync_timestamp) < oneDayAgo) {
+                        const forumData = await fetchForumData(roster, filters);
 
-                    // Fetch Group Members
-                    if (filters.forum_groups_included || filters.forum_groups_excluded) {
-                        isForumFilterActive = true;
-                        const groupIds = new Set([...(filters.forum_groups_included || []), ...(filters.forum_groups_excluded || [])]);
-                        
-                        const groupPromises = Array.from(groupIds).map(async (groupId) => {
-                            try {
-                                const url = `${baseUrl}app.php/booskit/phpbbapi/group/${groupId}?key=${apiKey}`;
-                                const res = await fetch(url);
-                                if (!res.ok) {
-                                    console.warn(`[API Roster View] Failed to fetch forum group ${groupId}. Status: ${res.status}`);
-                                    return { groupId, members: [] };
-                                }
-                                const data = await res.json();
-                                const groupMembers = data.group?.members.map((m: any) => m.username) || [];
-                                const groupLeaders = data.group?.leaders.map((l: any) => l.username) || [];
-                                return { groupId, members: [...groupMembers, ...groupLeaders] };
-                            } catch (e) {
-                                console.error(`[API Roster View] Error fetching forum group ${groupId}:`, e);
-                                return { groupId, members: [] };
-                            }
-                        });
-
-                        const groupResults = await Promise.all(groupPromises);
-                        const groupUserMap = new Map(groupResults.map(r => [r.groupId, r.members]));
-                        
-                        (filters.forum_groups_included || []).forEach(gid => {
-                            groupUserMap.get(gid)?.forEach((username: string) => includedUsernames.add(username.replace('_', ' ')));
-                        });
-
-                        (filters.forum_groups_excluded || []).forEach(gid => {
-                            groupUserMap.get(gid)?.forEach((username: string) => excludedUsernames.add(username.replace('_', ' ')));
-                        });
-                    }
-                    
-                    // Fetch Individual Users
-                    if (filters.forum_users_included || filters.forum_users_excluded) {
-                        isForumFilterActive = true;
-                        const userIds = new Set([...(filters.forum_users_included || []), ...(filters.forum_users_excluded || [])]);
-
-                        const userPromises = Array.from(userIds).map(async (userId) => {
-                            try {
-                                const url = `${baseUrl}app.php/booskit/phpbbapi/user/${userId}?key=${apiKey}`;
-                                const res = await fetch(url);
-                                if (!res.ok) {
-                                    console.warn(`[API Roster View] Failed to fetch forum user ${userId}. Status: ${res.status}`);
-                                    return null;
-                                }
-                                const data = await res.json();
-                                return data.user?.username;
-                            } catch(e) {
-                                console.error(`[API Roster View] Error fetching forum user ${userId}:`, e);
-                                return null;
-                            }
+                        await db.insert(forumApiCache).values({
+                            activity_roster_id: rosterId,
+                            data: forumData,
+                            last_sync_timestamp: now,
+                        }).onConflictDoUpdate({
+                            target: forumApiCache.activity_roster_id,
+                            set: { data: forumData, last_sync_timestamp: now },
                         });
                         
-                        const usernames = await Promise.all(userPromises);
-                        const userIdToUsernameMap = new Map(Array.from(userIds).map((id, index) => [id, usernames[index]]));
-
-                        (filters.forum_users_included || []).forEach(uid => {
-                            const username = userIdToUsernameMap.get(uid);
-                            if (username) includedUsernames.add(username.replace('_', ' '));
-                        });
-
-                        (filters.forum_users_excluded || []).forEach(uid => {
-                            const username = userIdToUsernameMap.get(uid);
-                            if (username) excludedUsernames.add(username.replace('_', ' '));
-                        });
-                    }
-
-                    if (filters.alert_forum_users_missing && isForumFilterActive) {
-                        const gtawUsernames = new Set(members.map(m => m.character_name.replace('_', ' ')));
-                        const finalIncluded = new Set([...includedUsernames].filter(u => !excludedUsernames.has(u)));
-                        missingForumUsers = [...finalIncluded].filter(fu => !gtawUsernames.has(fu));
+                        includedUsernames = new Set(forumData.includedUsernames);
+                        excludedUsernames = new Set(forumData.excludedUsernames);
+                    } else if (cachedForumData.data) {
+                        includedUsernames = new Set(cachedForumData.data.includedUsernames);
+                        excludedUsernames = new Set(cachedForumData.data.excludedUsernames);
                     }
                 }
                 
+                if (filters.alert_forum_users_missing && isForumFilterActive) {
+                    const gtawUsernames = new Set(members.map(m => m.character_name.replace('_', ' ')));
+                    const finalIncluded = new Set([...includedUsernames].filter(u => !excludedUsernames.has(u)));
+                    missingForumUsers = [...finalIncluded].filter(fu => !gtawUsernames.has(fu));
+                }
+
                 members = members.filter(member => {
                     const charName = member.character_name.replace('_', ' ');
 
-                    // Basic Filters
                     if (filters.include_ranks && filters.include_ranks.length > 0 && !filters.include_ranks.includes(member.rank)) return false;
                     if (filters.exclude_ranks && filters.exclude_ranks.includes(member.rank)) return false;
                     if (filters.include_members && filters.include_members.length > 0 && !filters.include_members.some(name => charName.includes(name))) return false;
                     if (filters.exclude_members && filters.exclude_members.some(name => charName.includes(name))) return false;
 
-                    // Forum Filters
                     if (isForumFilterActive) {
-                        const isExcluded = excludedUsernames.has(charName);
-                        if (isExcluded) return false;
-
-                        if (includedUsernames.size > 0 && !includedUsernames.has(charName)) {
-                            return false;
-                        }
+                        if (excludedUsernames.has(charName)) return false;
+                        if (includedUsernames.size > 0 && !includedUsernames.has(charName)) return false;
                     }
 
                     return true;
                 });
             } catch (e) {
                 console.error(`[API Roster View] Invalid JSON in roster ${rosterId}:`, e);
-                // Fail gracefully by returning unfiltered list
             }
         }
 
 
-        // 5. Return combined and filtered data
         return NextResponse.json({
-            roster: {
-                id: roster.id,
-                name: roster.name,
-            },
-            faction: {
-                id: roster.faction.id,
-                name: roster.faction.name,
-                features: roster.faction.feature_flags,
-            },
+            roster: { id: roster.id, name: roster.name },
+            faction: { id: roster.faction.id, name: roster.faction.name, features: roster.faction.feature_flags },
             members: Array.from(new Map(members.map(item => [item['character_id'], item])).values()),
             missingForumUsers: missingForumUsers
         });

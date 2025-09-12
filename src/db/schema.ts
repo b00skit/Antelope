@@ -64,6 +64,12 @@ export const factionMembersAbasCache = sqliteTable('faction_members_abas_cache',
     }
 });
 
+export const forumApiCache = sqliteTable('forum_api_cache', {
+    activity_roster_id: integer('activity_roster_id').primaryKey().references(() => activityRosters.id, { onDelete: 'cascade' }),
+    data: text('data', { mode: 'json' }).$type<{ includedUsernames: string[], excludedUsernames: string[] }>(),
+    last_sync_timestamp: integer('last_sync_timestamp', { mode: 'timestamp' }),
+});
+
 
 export const usersRelations = relations(users, ({ many, one }) => ({
 	factionMembers: many(factionMembers),
@@ -98,5 +104,16 @@ export const activityRostersRelations = relations(activityRosters, ({ one }) => 
     author: one(users, {
         fields: [activityRosters.created_by],
         references: [users.id],
+    }),
+    forumCache: one(forumApiCache, {
+        fields: [activityRosters.id],
+        references: [forumApiCache.activity_roster_id],
+    }),
+}));
+
+export const forumApiCacheRelations = relations(forumApiCache, ({ one }) => ({
+    activityRoster: one(activityRosters, {
+        fields: [forumApiCache.activity_roster_id],
+        references: [activityRosters.id],
     }),
 }));
