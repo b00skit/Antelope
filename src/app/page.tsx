@@ -105,7 +105,7 @@ export default function LandingPage() {
                         </div>
                         <div>
                             <Image
-                                src="https://picsum.photos/seed/integration/600/400"
+                                src="https://via.placeholder.com/600x400"
                                 alt="Integration diagram"
                                 width={600}
                                 height={400}
