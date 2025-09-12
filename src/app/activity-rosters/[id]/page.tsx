@@ -1,16 +1,18 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 interface Member {
     character_id: number;
@@ -39,7 +41,6 @@ const MemberRowSkeleton = () => (
 const formatTimestamp = (timestamp: string | null) => {
     if (!timestamp) return <Badge variant="secondary">Never</Badge>;
     const date = new Date(timestamp);
-    // Check if date is valid
     if (isNaN(date.getTime())) {
         return <Badge variant="destructive">Invalid Date</Badge>;
     }
@@ -50,35 +51,47 @@ const formatTimestamp = (timestamp: string | null) => {
 export default function RosterViewPage() {
     const [data, setData] = useState<RosterData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isSyncing, setIsSyncing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
     const params = useParams();
     const rosterId = params.id as string;
+    const { toast } = useToast();
+
+    const fetchRosterData = useCallback(async (forceSync = false) => {
+        if (forceSync) {
+            setIsSyncing(true);
+        } else {
+            setIsLoading(true);
+        }
+        setError(null);
+
+        try {
+            const url = forceSync ? `/api/rosters/${rosterId}/view?forceSync=true` : `/api/rosters/${rosterId}/view`;
+            const res = await fetch(url);
+            if (!res.ok) {
+                const errorData = await res.json();
+                if (errorData.reauth) router.push('/api/auth/logout');
+                throw new Error(errorData.error || 'Failed to fetch roster details.');
+            }
+            const responseData = await res.json();
+            setData(responseData);
+
+            if (forceSync) {
+                toast({ title: 'Success', description: 'Roster has been synced with the latest data.' });
+            }
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setIsLoading(false);
+            setIsSyncing(false);
+        }
+    }, [rosterId, router, toast]);
 
     useEffect(() => {
         if (!rosterId) return;
-
-        const fetchRosterData = async () => {
-            setIsLoading(true);
-            setError(null);
-            try {
-                const res = await fetch(`/api/rosters/${rosterId}/view`);
-                if (!res.ok) {
-                    const errorData = await res.json();
-                    if (errorData.reauth) router.push('/api/auth/logout');
-                    throw new Error(errorData.error || 'Failed to fetch roster details.');
-                }
-                const responseData = await res.json();
-                setData(responseData);
-            } catch (err: any) {
-                setError(err.message);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
         fetchRosterData();
-    }, [rosterId, router]);
+    }, [rosterId, fetchRosterData]);
     
     // Sort members by rank descending
     const sortedMembers = data?.members?.sort((a, b) => b.rank - a.rank) || [];
@@ -88,7 +101,16 @@ export default function RosterViewPage() {
             {isLoading ? (
                 <PageHeader title="Loading Roster..." description="Fetching the latest data..." />
             ) : data ? (
-                <PageHeader title={data.roster.name} description={`Full member roster for ${data.faction.name}`} />
+                <PageHeader 
+                    title={data.roster.name} 
+                    description={`Full member roster for ${data.faction.name}`}
+                    actions={
+                        <Button variant="outline" onClick={() => fetchRosterData(true)} disabled={isSyncing}>
+                           {isSyncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                            Force Sync
+                        </Button>
+                    }
+                />
             ) : (
                  <PageHeader title="Error" description="Could not load roster." />
             )}
@@ -124,7 +146,7 @@ export default function RosterViewPage() {
                             ) : sortedMembers.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={4} className="text-center h-24">
-                                        No members found for this faction.
+                                        No members found for this roster's filters.
                                     </TableCell>
                                 </TableRow>
                             ) : (

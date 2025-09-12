@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { activityRosters, users, factionMembers } from '@/db/schema';
+import { activityRosters, users, factionMembersCache } from '@/db/schema';
 import { and, eq, or } from 'drizzle-orm';
 
 interface RouteParams {
@@ -42,6 +42,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         return NextResponse.json({ error: 'Invalid roster ID.' }, { status: 400 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const forceSync = searchParams.get('forceSync') === 'true';
+
     try {
         const user = await db.query.users.findFirst({
             where: eq(users.id, session.userId),
@@ -70,25 +73,43 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             return NextResponse.json({ error: 'Roster not found or you do not have permission to view it.' }, { status: 404 });
         }
 
-        // 2. Fetch faction data from GTA:W API
-        const factionApiResponse = await fetch(`https://ucp.gta.world/api/faction/${roster.factionId}`, {
-            headers: {
-                Authorization: `Bearer ${session.gtaw_access_token}`,
-                'Accept': 'application/json',
-            },
+        const factionId = roster.factionId;
+        const now = new Date();
+        const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        
+        let members: Member[] = [];
+        const cachedFaction = await db.query.factionMembersCache.findFirst({
+            where: eq(factionMembersCache.faction_id, factionId)
         });
-        
-        if (!factionApiResponse.ok) {
-            const errorBody = await factionApiResponse.text();
-            console.error(`[API Roster View] Failed to fetch GTA:W faction data for faction ${roster.factionId}:`, errorBody);
-            if (factionApiResponse.status === 401) {
-                return NextResponse.json({ error: 'Your session has expired. Please log in again.', reauth: true }, { status: 401 });
+
+        // 2. Decide whether to fetch from API or use cache
+        if (forceSync || !cachedFaction || !cachedFaction.last_sync_timestamp || new Date(cachedFaction.last_sync_timestamp) < oneDayAgo) {
+             const factionApiResponse = await fetch(`https://ucp.gta.world/api/faction/${factionId}`, {
+                headers: {
+                    Authorization: `Bearer ${session.gtaw_access_token}`,
+                    'Accept': 'application/json',
+                },
+            });
+            
+            if (!factionApiResponse.ok) {
+                const errorBody = await factionApiResponse.text();
+                console.error(`[API Roster View] Failed to fetch GTA:W faction data for faction ${factionId}:`, errorBody);
+                if (factionApiResponse.status === 401) {
+                    return NextResponse.json({ error: 'Your session has expired. Please log in again.', reauth: true }, { status: 401 });
+                }
+                return NextResponse.json({ error: 'Failed to fetch roster data from GTA:World API.' }, { status: 502 });
             }
-            return NextResponse.json({ error: 'Failed to fetch roster data from GTA:World API.' }, { status: 502 });
+            
+            const gtawFactionData = await factionApiResponse.json();
+            members = gtawFactionData.data.members;
+
+            await db.insert(factionMembersCache)
+                .values({ faction_id: factionId, members: members, last_sync_timestamp: now })
+                .onConflictDoUpdate({ target: factionMembersCache.faction_id, set: { members: members, last_sync_timestamp: now } });
+        } else {
+            members = cachedFaction.members || [];
         }
-        
-        const gtawFactionData = await factionApiResponse.json();
-        let members: Member[] = gtawFactionData.data.members;
+
 
         // 3. Apply JSON filters if they exist
         if (roster.roster_setup_json) {
