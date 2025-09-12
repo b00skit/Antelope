@@ -246,7 +246,7 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
                             members={sectionMembers}
                             onMoveMember={handleMoveMember}
                             onEdit={() => { setEditingSection(section); setIsDialogOpen(true); }}
-                            onDelete={() => handleDelete(section.id)}
+                            onDelete={() => handleDeleteSection(section.id)}
                             onReorder={handleReorderSections}
                         />
                     );
