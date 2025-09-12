@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -49,6 +49,8 @@ export function EnrollClientPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const isSuperAdminMode = searchParams.get('superadmin') === 'true';
     const { toast } = useToast();
     
     const form = useForm<z.infer<typeof formSchema>>({
@@ -68,7 +70,8 @@ export function EnrollClientPage() {
             setIsLoading(true);
             setError(null);
             try {
-                const res = await fetch('/api/factions/eligible');
+                const url = isSuperAdminMode ? '/api/factions/eligible?superadmin=true' : '/api/factions/eligible';
+                const res = await fetch(url);
                 if (!res.ok) {
                     const errorData = await res.json();
                     if (errorData.reauth) router.push('/api/auth/logout');
@@ -83,7 +86,7 @@ export function EnrollClientPage() {
             }
         };
         fetchEligible();
-    }, [router]);
+    }, [router, isSuperAdminMode]);
 
     const handleSelectFaction = (factionId: string) => {
         const faction = eligibleFactions.find(f => f.id.toString() === factionId);
@@ -165,7 +168,12 @@ export function EnrollClientPage() {
                 <Card>
                     <CardHeader>
                         <CardTitle>Select a Faction</CardTitle>
-                        <CardDescription>Choose a faction you have leadership permissions for.</CardDescription>
+                        <CardDescription>
+                            {isSuperAdminMode 
+                                ? "Select any faction to enroll." 
+                                : "Choose a faction you have leadership permissions for."
+                            }
+                        </CardDescription>
                     </CardHeader>
                     <CardContent>
                          <Select onValueChange={handleSelectFaction}>
@@ -174,7 +182,7 @@ export function EnrollClientPage() {
                             </SelectTrigger>
                             <SelectContent>
                                 {eligibleFactions.map(f => (
-                                    <SelectItem key={f.id} value={f.id.toString()}>{f.name} (Rank {f.rank})</SelectItem>
+                                    <SelectItem key={f.id} value={f.id.toString()}>{f.name} {f.rank !== 99 && `(Rank ${f.rank})`}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
