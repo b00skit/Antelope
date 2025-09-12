@@ -1,3 +1,4 @@
+
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
@@ -52,30 +53,31 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             return NextResponse.json({ error: 'Roster not found or you lack permission.' }, { status: 404 });
         }
         
-        // This transaction ensures data consistency
-        await db.transaction(async (tx) => {
-            // Remove from source section
-            if (typeof sourceSectionId === 'number') {
-                const sourceSection = roster.sections.find(s => s.id === sourceSectionId);
-                if (sourceSection) {
-                    const updatedIds = (sourceSection.character_ids_json || []).filter(id => id !== characterId);
-                    await tx.update(activityRosterSections)
-                        .set({ character_ids_json: updatedIds })
-                        .where(eq(activityRosterSections.id, sourceSectionId));
-                }
+        // Remove from source section
+        if (typeof sourceSectionId === 'number') {
+            const sourceSection = roster.sections.find(s => s.id === sourceSectionId);
+            if (sourceSection) {
+                const updatedIds = (sourceSection.character_ids_json || []).filter(id => id !== characterId);
+                await db.update(activityRosterSections)
+                    .set({ character_ids_json: updatedIds })
+                    .where(eq(activityRosterSections.id, sourceSectionId));
             }
+        }
 
-            // Add to destination section
-            if (typeof destinationSectionId === 'number') {
-                const destSection = roster.sections.find(s => s.id === destinationSectionId);
-                if (destSection) {
-                    const updatedIds = [...(destSection.character_ids_json || []), characterId];
-                    await tx.update(activityRosterSections)
-                        .set({ character_ids_json: updatedIds })
-                        .where(eq(activityRosterSections.id, destinationSectionId));
-                }
+        // Add to destination section
+        if (typeof destinationSectionId === 'number') {
+            const destSection = roster.sections.find(s => s.id === destinationSectionId);
+            if (destSection) {
+                // Ensure no duplicates before adding
+                const currentIds = new Set(destSection.character_ids_json || []);
+                currentIds.add(characterId);
+                const updatedIds = Array.from(currentIds);
+                
+                await db.update(activityRosterSections)
+                    .set({ character_ids_json: updatedIds })
+                    .where(eq(activityRosterSections.id, destinationSectionId));
             }
-        });
+        }
 
         return NextResponse.json({ success: true, message: 'Member moved successfully.' });
 
