@@ -157,6 +157,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             with: {
                 faction: true,
                 forumCache: true,
+                sections: true,
             }
         });
 
@@ -281,7 +282,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             roster: { id: roster.id, name: roster.name },
             faction: { id: roster.faction.id, name: roster.faction.name, features: roster.faction.feature_flags },
             members: Array.from(new Map(members.map(item => [item['character_id'], item])).values()),
-            missingForumUsers: missingForumUsers
+            missingForumUsers: missingForumUsers,
+            sections: (roster.sections || []).map(s => ({
+                id: s.id,
+                name: s.name,
+                description: s.description,
+                character_ids_json: s.character_ids_json || [],
+                order: s.order ?? 0,
+            })).sort((a, b) => a.order - b.order),
         });
 
     } catch (error) {

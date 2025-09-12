@@ -132,10 +132,11 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
 
+            const newSection = { ...data.section, character_ids_json: data.section.character_ids_json || [] };
             if (editingSection) {
-                setSections(prev => prev.map(s => s.id === editingSection.id ? data.section : s));
+                setSections(prev => prev.map(s => s.id === editingSection.id ? newSection : s));
             } else {
-                setSections(prev => [...prev, data.section]);
+                setSections(prev => [...prev, newSection]);
             }
             toast({ title: 'Success', description: `Section ${editingSection ? 'updated' : 'created'}.` });
         } catch (err: any) {
@@ -245,7 +246,7 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
                             members={sectionMembers}
                             onMoveMember={handleMoveMember}
                             onEdit={() => { setEditingSection(section); setIsDialogOpen(true); }}
-                            onDelete={() => handleDelete(section.id)}
+                            onDelete={() => handleDeleteSection(section.id)}
                             onReorder={handleReorderSections}
                         />
                     );
