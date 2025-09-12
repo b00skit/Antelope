@@ -102,7 +102,7 @@ export function SidebarNav() {
 
 
   const isActive = (path: string) => {
-    if (path === '/') return pathname === '/';
+    if (path === '/dashboard') return pathname === '/dashboard';
     return pathname.startsWith(path);
   };
 
@@ -165,7 +165,7 @@ export function SidebarNav() {
       <SidebarHeader>
         <div className="flex w-full items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <Link href="/" className="flex items-center gap-2">
+            <Link href="/dashboard" className="flex items-center gap-2">
               <Image
                 src={
                   config?.SITE_FAVICON || '/img/logos/MDC-Panel-Favicon.svg'
@@ -210,10 +210,10 @@ export function SidebarNav() {
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              isActive={isActive('/')}
+              isActive={isActive('/dashboard')}
               tooltip="Dashboard"
             >
-              <Link href="/">
+              <Link href="/dashboard">
                 <LayoutGrid />
                 <span>Dashboard</span>
               </Link>

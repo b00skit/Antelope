@@ -81,7 +81,7 @@ export async function GET(request: Request) {
     session.role = user.role;
     await session.save();
 
-    return redirect('/');
+    return redirect('/dashboard');
 
   } catch (error) {
     console.error('OAuth callback error:', error);

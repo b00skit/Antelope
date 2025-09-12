@@ -31,7 +31,7 @@ export function LoginForm() {
     });
 
     if (response.ok) {
-      router.push('/');
+      router.push('/dashboard');
       router.refresh(); // This will re-fetch server components and update the UI
     } else {
       const data = await response.json();
