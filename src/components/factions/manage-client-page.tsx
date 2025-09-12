@@ -35,6 +35,7 @@ const formSchema = z.object({
     access_rank: z.coerce.number().min(1, "Rank must be at least 1").max(20, "Rank must be 20 or less"),
     moderation_rank: z.coerce.number().min(1, "Rank must be at least 1").max(20, "Rank must be 20 or less"),
     activity_rosters_enabled: z.boolean().default(true),
+    character_sheets_enabled: z.boolean().default(true),
 });
 
 export function ManageFactionClientPage({ faction }: ManageFactionClientPageProps) {
@@ -49,6 +50,7 @@ export function ManageFactionClientPage({ faction }: ManageFactionClientPageProp
             access_rank: faction.access_rank ?? 15,
             moderation_rank: faction.moderation_rank ?? 15,
             activity_rosters_enabled: faction.feature_flags?.activity_rosters_enabled ?? true,
+            character_sheets_enabled: faction.feature_flags?.character_sheets_enabled ?? true,
         },
     });
 
@@ -151,7 +153,7 @@ export function ManageFactionClientPage({ faction }: ManageFactionClientPageProp
                                     <CardTitle>Feature Flags</CardTitle>
                                     <CardDescription>Enable or disable specific features for this faction.</CardDescription>
                                 </CardHeader>
-                                <CardContent>
+                                <CardContent className="space-y-4">
                                     <FormField
                                         control={form.control}
                                         name="activity_rosters_enabled"
@@ -161,6 +163,26 @@ export function ManageFactionClientPage({ faction }: ManageFactionClientPageProp
                                                     <FormLabel>Activity Rosters</FormLabel>
                                                     <FormDescription>
                                                         Allow members to create and view activity rosters.
+                                                    </FormDescription>
+                                                </div>
+                                                <FormControl>
+                                                    <Switch
+                                                        checked={field.value}
+                                                        onCheckedChange={field.onChange}
+                                                    />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                     <FormField
+                                        control={form.control}
+                                        name="character_sheets_enabled"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                                <div className="space-y-0.5">
+                                                    <FormLabel>Character Sheets</FormLabel>
+                                                    <FormDescription>
+                                                        Allow members to view detailed character sheets.
                                                     </FormDescription>
                                                 </div>
                                                 <FormControl>

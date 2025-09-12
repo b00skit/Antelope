@@ -18,6 +18,7 @@ const updateSchema = z.object({
     access_rank: z.number().int().min(1).max(20),
     moderation_rank: z.number().int().min(1).max(20),
     activity_rosters_enabled: z.boolean().default(true),
+    character_sheets_enabled: z.boolean().default(true),
 });
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
@@ -63,13 +64,14 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             return NextResponse.json({ error: 'You must join the faction panel before managing it.' }, { status: 403 });
         }
         
-        const { activity_rosters_enabled, ...factionData } = parsed.data;
+        const { activity_rosters_enabled, character_sheets_enabled, ...factionData } = parsed.data;
 
         await db.update(factions)
             .set({
                 ...factionData,
                 feature_flags: {
                     activity_rosters_enabled,
+                    character_sheets_enabled,
                 }
             })
             .where(eq(factions.id, factionId));

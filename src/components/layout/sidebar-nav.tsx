@@ -146,6 +146,7 @@ export function SidebarNav() {
   }
 
   const showActivityRosters = session?.hasActiveFaction && session.activeFaction?.feature_flags?.activity_rosters_enabled;
+  const showCharacterSheets = session?.hasActiveFaction && session.activeFaction?.feature_flags?.character_sheets_enabled;
 
   return (
     <>
@@ -214,6 +215,20 @@ export function SidebarNav() {
                 <Link href="/activity-rosters">
                     <ClipboardList />
                     <span>Activity Rosters</span>
+                </Link>
+                </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
+          {showCharacterSheets && (
+            <SidebarMenuItem>
+                <SidebarMenuButton
+                asChild
+                isActive={isActive('/character-sheets')}
+                tooltip="Character Sheets"
+                >
+                <Link href="/character-sheets">
+                    <User />
+                    <span>Character Sheets</span>
                 </Link>
                 </SidebarMenuButton>
             </SidebarMenuItem>

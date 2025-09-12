@@ -1,0 +1,1 @@
+ALTER TABLE `factions` ADD `feature_flags` text DEFAULT '{"activity_rosters_enabled":true}';

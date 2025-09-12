@@ -11,6 +11,7 @@ interface Faction {
     moderation_rank: number | null;
     feature_flags: {
         activity_rosters_enabled?: boolean;
+        character_sheets_enabled?: boolean;
     } | null;
 }
 interface Session {

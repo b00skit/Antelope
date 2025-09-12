@@ -17,7 +17,7 @@ export const factions = sqliteTable('factions', {
     color: text('color'),
     access_rank: integer('access_rank').default(15),
     moderation_rank: integer('moderation_rank').default(15),
-    feature_flags: text('feature_flags', { mode: 'json' }).$type<{ activity_rosters_enabled?: boolean; }>().default({ activity_rosters_enabled: true }),
+    feature_flags: text('feature_flags', { mode: 'json' }).$type<{ activity_rosters_enabled?: boolean; character_sheets_enabled?: boolean; }>().default({ activity_rosters_enabled: true, character_sheets_enabled: true }),
 });
 
 export const factionMembers = sqliteTable('faction_members', {
@@ -40,6 +40,12 @@ export const activityRosters = sqliteTable('activity_rosters', {
     created_by: integer('created_by').notNull().references(() => users.id),
     created_at: integer('created_at', { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
     updated_at: integer('updated_at', { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
+});
+
+export const factionMembersCache = sqliteTable('faction_members_cache', {
+    faction_id: integer('faction_id').primaryKey(),
+    members: text('members', { mode: 'json' }).$type<any[]>(),
+    last_sync_timestamp: integer('last_sync_timestamp', { mode: 'timestamp' }),
 });
 
 export const usersRelations = relations(users, ({ many, one }) => ({
