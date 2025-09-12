@@ -6,11 +6,12 @@ import { db } from '@/db';
 import { users, factionMembersCache } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, User, Briefcase, Users, Hash, MapPin, Calendar, Clock } from 'lucide-react';
+import { AlertTriangle, User, Briefcase, Users, Hash, Calendar, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { CharacterImage } from '@/components/character-sheets/character-image';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface PageProps {
     params: {
@@ -128,63 +129,26 @@ export default async function CharacterSheetPage({ params }: PageProps) {
     const characterImage = `https://mdc.gta.world/img/persons/${character.firstname}_${character.lastname}.png?${Date.now()}`;
 
     return (
-        <div className="container mx-auto p-4 md:p-6 lg:p-8">
+        <div className="container mx-auto p-4 md:p-6 lg:p-8 space-y-6">
             <PageHeader
                 title="Character Record"
                 description={`Viewing file for ${character.firstname} ${character.lastname}`}
             />
             
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-1 space-y-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Mugshot</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="aspect-square relative rounded-md overflow-hidden border">
-                                 <CharacterImage
-                                    initialSrc={characterImage}
-                                    alt={`Mugshot of ${character.firstname} ${character.lastname}`}
-                                    characterId={character.character_id}
-                                />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Alternative Characters</CardTitle>
-                            <CardDescription>Other characters on this account.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            {character.alternative_characters && character.alternative_characters.length > 0 ? (
-                                <ul className="space-y-3">
-                                    {character.alternative_characters.map((alt: any) => (
-                                        <li key={alt.character_id} className="flex items-center gap-3 p-3 border rounded-md bg-muted/50">
-                                            <div className="flex-shrink-0 bg-background rounded-full p-2">
-                                                <User className="h-5 w-5 text-muted-foreground" />
-                                            </div>
-                                            <div>
-                                                <p className="font-semibold">{alt.character_name}</p>
-                                                <p className="text-sm text-muted-foreground">{alt.rank_name}</p>
-                                            </div>
-                                        </li>
-                                    ))}
-                                </ul>
-                            ) : (
-                                <p className="text-sm text-muted-foreground text-center py-4">No alternative characters found.</p>
-                            )}
-                        </CardContent>
-                    </Card>
-                </div>
-
-                <Card className="lg:col-span-2">
-                    <CardHeader>
-                        <CardTitle>Personnel File</CardTitle>
-                        <CardDescription>Official information for {character.firstname} {character.lastname}.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        <div>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Personnel File</CardTitle>
+                    <CardDescription>Official information for {character.firstname} {character.lastname}.</CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col md:flex-row gap-6">
+                    <div className="flex-shrink-0">
+                        <CharacterImage
+                            initialSrc={characterImage}
+                            alt={`Mugshot of ${character.firstname} ${character.lastname}`}
+                        />
+                    </div>
+                    <div className="flex-1 space-y-6">
+                         <div>
                              <h3 className="text-lg font-semibold mb-2">Identification</h3>
                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border rounded-lg p-4">
                                 <div className="flex items-center gap-3">
@@ -219,10 +183,45 @@ export default async function CharacterSheetPage({ params }: PageProps) {
                                 </div>
                              </div>
                         </div>
+                    </div>
+                </CardContent>
+            </Card>
 
-                    </CardContent>
-                </Card>
-            </div>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Alternative Characters</CardTitle>
+                    <CardDescription>Other characters on this account.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {character.alternative_characters && character.alternative_characters.length > 0 ? (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Character Name</TableHead>
+                                    <TableHead>Rank</TableHead>
+                                    <TableHead>ABAS</TableHead>
+                                    <TableHead>Last Online</TableHead>
+                                    <TableHead>Last On Duty</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {character.alternative_characters.map((alt: any) => (
+                                    <TableRow key={alt.character_id}>
+                                        <TableCell className="font-medium">{alt.character_name}</TableCell>
+                                        <TableCell>{alt.rank_name}</TableCell>
+                                        <TableCell>{alt.abas}</TableCell>
+                                        <TableCell>{formatTimestamp(alt.last_online)}</TableCell>
+                                        <TableCell>{formatTimestamp(alt.last_duty)}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    ) : (
+                        <p className="text-sm text-muted-foreground text-center py-4">No alternative characters found.</p>
+                    )}
+                </CardContent>
+            </Card>
+
         </div>
     );
 }
