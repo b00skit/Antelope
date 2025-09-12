@@ -1,4 +1,5 @@
 
+
 import { PageHeader } from '@/components/dashboard/page-header';
 import { notFound } from 'next/navigation';
 import { cookies } from 'next/headers';
@@ -7,7 +8,7 @@ import { db } from '@/db';
 import { users, factionMembersCache, factionMembersAbasCache } from '@/db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, User, Briefcase, Users, Hash, Calendar, Clock, Sigma } from 'lucide-react';
+import { AlertTriangle, User, Briefcase, Users, Hash, Calendar, Clock, Sigma, BookUser } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
@@ -20,11 +21,19 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import Link from 'next/link';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface PageProps {
     params: {
         name: string;
     }
+}
+
+interface ForumData {
+    id: number;
+    username: string;
+    email: string;
+    groups: { id: number; name: string; leader: boolean }[];
 }
 
 async function getCharacterData(name: string) {
@@ -42,8 +51,9 @@ async function getCharacterData(name: string) {
         return { error: 'No active faction selected.' };
     }
     const factionId = user.selectedFaction.id;
+    const { selectedFaction } = user;
 
-    const characterSheetsEnabled = user.selectedFaction.feature_flags?.character_sheets_enabled ?? false;
+    const characterSheetsEnabled = selectedFaction.feature_flags?.character_sheets_enabled ?? false;
 
     // Check feature flag
     if (!characterSheetsEnabled) {
@@ -129,7 +139,30 @@ async function getCharacterData(name: string) {
         }
     }
     
-    return { character: charData.data, totalAbas, characterSheetsEnabled };
+    // 5. Fetch forum data if integration is enabled
+    let forumData: ForumData | null = null;
+    if (selectedFaction.phpbb_api_url && selectedFaction.phpbb_api_key) {
+        try {
+            const forumUsername = characterName.replace(/ /g, '_');
+            const baseUrl = selectedFaction.phpbb_api_url.endsWith('/') ? selectedFaction.phpbb_api_url : `${selectedFaction.phpbb_api_url}/`;
+            const apiKey = selectedFaction.phpbb_api_key;
+            const forumApiUrl = `${baseUrl}app.php/booskit/phpbbapi/user/username/${forumUsername}?key=${apiKey}`;
+
+            const forumApiResponse = await fetch(forumApiUrl, { next: { revalidate: 3600 } }); // Cache for 1 hour
+            if (forumApiResponse.ok) {
+                const data = await forumApiResponse.json();
+                if (data.user) {
+                    forumData = data.user;
+                }
+            } else {
+                console.warn(`[Forum API] Failed to fetch data for ${forumUsername}. Status: ${forumApiResponse.status}`);
+            }
+        } catch (error) {
+            console.error(`[Forum API] Error fetching forum data:`, error);
+        }
+    }
+    
+    return { character: charData.data, totalAbas, characterSheetsEnabled, forumData };
 }
 
 const formatTimestamp = (timestamp: string | null) => {
@@ -170,7 +203,7 @@ export default async function CharacterSheetPage({ params }: PageProps) {
         )
     }
 
-    const { character, totalAbas, characterSheetsEnabled } = data;
+    const { character, totalAbas, characterSheetsEnabled, forumData } = data;
     const characterImage = `https://mdc.gta.world/img/persons/${character.firstname}_${character.lastname}.png?${Date.now()}`;
 
     return (
@@ -245,6 +278,28 @@ export default async function CharacterSheetPage({ params }: PageProps) {
                              </div>
                         </div>
                     </div>
+                    {forumData && (
+                        <div className="w-full md:w-1/3 lg:w-1/4 space-y-2">
+                             <h3 className="text-lg font-semibold mb-2 flex items-center gap-2"><BookUser /> Forum Profile</h3>
+                             <Card className="h-full">
+                                <CardContent className="p-4">
+                                    <ScrollArea className="h-48">
+                                        <div className="space-y-2">
+                                            {forumData.groups.length > 0 ? (
+                                                forumData.groups.map(group => (
+                                                    <Badge key={group.id} variant={group.leader ? "default" : "secondary"} className="mr-1 mb-1">
+                                                        {group.name}
+                                                    </Badge>
+                                                ))
+                                            ) : (
+                                                <p className="text-sm text-muted-foreground">No forum groups found.</p>
+                                            )}
+                                        </div>
+                                    </ScrollArea>
+                                </CardContent>
+                             </Card>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
