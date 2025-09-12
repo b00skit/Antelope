@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
         // Super Admin Flow: Fetch all factions
         if (isSuperAdmin && isSuperAdminMode) {
-            const allFactionsResponse = await fetch('https://ucp.gta.world/api/factions/list', {
+            const allFactionsResponse = await fetch('https://ucp.gta.world/api/factions', {
                 headers: {
                     Authorization: `Bearer ${session.gtaw_access_token}`,
                 },
