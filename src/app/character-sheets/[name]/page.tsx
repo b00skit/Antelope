@@ -5,14 +5,20 @@ import { cookies } from 'next/headers';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
 import { users, factionMembersCache, factionMembersAbasCache } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, User, Briefcase, Users, Hash, Calendar, Clock } from 'lucide-react';
+import { AlertTriangle, User, Briefcase, Users, Hash, Calendar, Clock, Sigma } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { CharacterImage } from '@/components/character-sheets/character-image';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface PageProps {
     params: {
@@ -116,7 +122,9 @@ async function getCharacterData(name: string) {
         charData.data.alternative_characters = uniqueAlts;
     }
     
-    return { character: charData.data };
+    const totalAbas = charactersToCache.reduce((sum, char) => sum + parseFloat(char.abas || '0'), 0);
+
+    return { character: charData.data, totalAbas };
 }
 
 const formatTimestamp = (timestamp: string | null) => {
@@ -157,7 +165,7 @@ export default async function CharacterSheetPage({ params }: PageProps) {
         )
     }
 
-    const { character } = data;
+    const { character, totalAbas } = data;
     const characterImage = `https://mdc.gta.world/img/persons/${character.firstname}_${character.lastname}.png?${Date.now()}`;
 
     return (
@@ -199,6 +207,22 @@ export default async function CharacterSheetPage({ params }: PageProps) {
                                     <Users className="h-5 w-5 text-primary" />
                                     <div><strong className="text-muted-foreground block text-sm">ABAS</strong> {character.abas}</div>
                                 </div>
+                                <div className="flex items-center gap-3 sm:col-span-2">
+                                     <Sigma className="h-5 w-5 text-primary" />
+                                     <div>
+                                         <strong className="text-muted-foreground block text-sm">Total ABAS</strong> 
+                                         <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <span className="cursor-help">{totalAbas?.toFixed(2) ?? 'N/A'}</span>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    <p>Sum of ABAS across all characters on this account.</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                     </div>
+                                 </div>
                              </div>
                         </div>
 

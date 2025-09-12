@@ -21,6 +21,7 @@ interface Member {
     last_duty: string | null;
     abas?: string | null;
     abas_last_sync?: Date | null;
+    total_abas?: number | null;
 }
 
 interface RosterFilters {
@@ -122,12 +123,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
                 )
             });
 
-            const abasMap = new Map(abasCache.map(a => [a.character_id, { abas: a.abas, last_sync: a.last_sync_timestamp }]));
+            const abasMap = new Map(abasCache.map(a => [a.character_id, { abas: a.abas, last_sync: a.last_sync_timestamp, total_abas: a.total_abas }]));
 
             members = members.map(member => ({
                 ...member,
                 abas: abasMap.get(member.character_id)?.abas,
                 abas_last_sync: abasMap.get(member.character_id)?.last_sync,
+                total_abas: abasMap.get(member.character_id)?.total_abas,
             }));
         }
 

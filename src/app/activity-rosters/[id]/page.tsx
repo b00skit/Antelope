@@ -25,6 +25,7 @@ interface Member {
     last_duty: string | null;
     abas?: string | null;
     abas_last_sync?: string | null;
+    total_abas?: number | null;
 }
 
 interface RosterData {
@@ -189,6 +190,7 @@ export default function RosterViewPage() {
                                                             <span className="cursor-help">{member.abas}</span>
                                                         </TooltipTrigger>
                                                         <TooltipContent>
+                                                            <p><strong>Total ABAS:</strong> {member.total_abas?.toFixed(2) ?? 'N/A'}</p>
                                                             <p>Last synced: {formatTimestamp(member.abas_last_sync)}</p>
                                                         </TooltipContent>
                                                     </Tooltip>

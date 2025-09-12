@@ -54,6 +54,7 @@ export const factionMembersAbasCache = sqliteTable('faction_members_abas_cache',
     character_id: integer('character_id').notNull(),
     faction_id: integer('faction_id').notNull(),
     abas: text('abas'),
+    total_abas: integer('total_abas'),
     last_sync_timestamp: integer('last_sync_timestamp', { mode: 'timestamp' }),
 }, (table) => {
     return {
