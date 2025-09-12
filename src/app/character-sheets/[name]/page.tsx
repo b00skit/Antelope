@@ -1,3 +1,4 @@
+
 import { PageHeader } from '@/components/dashboard/page-header';
 import { notFound } from 'next/navigation';
 import { cookies } from 'next/headers';
@@ -67,7 +68,7 @@ async function getCharacterData(name: string) {
     }
     
     // 2. Find character ID from name
-    const characterName = name.replace(/_/g, ' ');
+    const characterName = decodeURIComponent(name).replace(/_/g, ' ');
     const character = members.find((m: any) => m.character_name.toLowerCase() === characterName.toLowerCase());
     if (!character) {
         return { error: `Character "${characterName}" not found in faction.` };
@@ -109,6 +110,12 @@ async function getCharacterData(name: string) {
         }
     }
     
+    // De-duplicate alternative characters
+    if (charData.data.alternative_characters) {
+        const uniqueAlts = Array.from(new Map(charData.data.alternative_characters.map((item: any) => [item['character_id'], item])).values());
+        charData.data.alternative_characters = uniqueAlts;
+    }
+    
     return { character: charData.data };
 }
 
@@ -123,7 +130,7 @@ export default async function CharacterSheetPage({ params }: PageProps) {
     const { name } = params;
     if (!name) return notFound();
 
-    const data = await getCharacterData(decodeURIComponent(name));
+    const data = await getCharacterData(name);
 
     if (data.reauth) {
         return (
@@ -163,7 +170,7 @@ export default async function CharacterSheetPage({ params }: PageProps) {
             <Card>
                 <CardHeader>
                     <CardTitle>Personnel File</CardTitle>
-                    <CardDescription>Official information for {character.firstname} {character.lastname}.</CardDescription>
+                    <CardDescription>Official information for {character.firstname} ${character.lastname}.</CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-col md:flex-row gap-6">
                     <div className="flex-shrink-0">

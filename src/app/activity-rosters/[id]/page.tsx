@@ -85,6 +85,13 @@ export default function RosterViewPage() {
                 throw new Error(errorData.error || 'Failed to fetch roster details.');
             }
             const responseData = await res.json();
+            
+            // De-duplicate members based on character_id
+            if (responseData.members) {
+                const uniqueMembers = Array.from(new Map(responseData.members.map((item: Member) => [item['character_id'], item])).values());
+                responseData.members = uniqueMembers;
+            }
+
             setData(responseData);
 
             if (forceSync) {
@@ -166,11 +173,11 @@ export default function RosterViewPage() {
                                     <TableRow key={member.character_id}>
                                         <TableCell className="font-medium">
                                             {characterSheetsEnabled ? (
-                                                <Link href={`/character-sheets/${member.character_name}`} className="hover:underline text-primary">
-                                                    {member.character_name.replace('_', ' ')}
+                                                <Link href={`/character-sheets/${member.character_name.replace(/ /g, '_')}`} className="hover:underline text-primary">
+                                                    {member.character_name.replace(/_/g, ' ')}
                                                 </Link>
                                             ) : (
-                                                member.character_name.replace('_', ' ')
+                                                member.character_name.replace(/_/g, ' ')
                                             )}
                                         </TableCell>
                                         <TableCell>{member.rank_name}</TableCell>
