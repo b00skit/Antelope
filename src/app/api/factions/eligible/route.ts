@@ -1,3 +1,4 @@
+
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
@@ -39,8 +40,17 @@ export async function GET(request: NextRequest) {
                 return NextResponse.json({ error: 'Failed to fetch all factions list from GTA:World API.' }, { status: 502 });
             }
             const allFactionsData = await allFactionsResponse.json();
-            // Assuming the API returns an array of objects like { id: number, name: string }
-            gtawFactions = allFactionsData.data.map((f: any) => ({ id: f.ID, name: f.Name, rank: 99 })); // Assign a dummy high rank
+            // The API returns an object of objects, not an array. We need to process it.
+            const characterFactions = allFactionsData.data;
+            const highestRanks: { [key: string]: { id: number; name: string; rank: number } } = {};
+             for (const charId in characterFactions) {
+                const f = characterFactions[charId];
+                // For superadmin, we don't care about rank, but we still need to consolidate to unique factions
+                if (!highestRanks[f.faction_name]) {
+                    highestRanks[f.faction_name] = { id: f.faction, name: f.faction_name, rank: 99 }; // Use a dummy high rank
+                }
+            }
+            gtawFactions = Object.values(highestRanks);
         
         // Regular User Flow: Fetch user's factions
         } else {
