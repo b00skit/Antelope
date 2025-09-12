@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/tooltip';
 import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 interface PageProps {
     params: {
@@ -214,11 +215,11 @@ export default async function CharacterSheetPage({ params }: PageProps) {
             />
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
+                 <div className={cn(forumData ? 'lg:col-span-2' : 'lg:col-span-3')}>
                     <Card className="h-full">
                         <CardHeader>
                             <CardTitle>Personnel File</CardTitle>
-                            <CardDescription>Official information for {character.firstname} {character.lastname}.</CardDescription>
+                            <CardDescription>Official information for {character.firstname} ${character.lastname}.</CardDescription>
                         </CardHeader>
                         <CardContent className="flex flex-col md:flex-row gap-6">
                             <div className="flex-shrink-0">
@@ -283,8 +284,8 @@ export default async function CharacterSheetPage({ params }: PageProps) {
                         </CardContent>
                     </Card>
                 </div>
-                <div className="lg:col-span-1 space-y-6">
-                    {forumData && (
+                {forumData && (
+                    <div className="lg:col-span-1 space-y-6">
                          <Card className="h-full flex flex-col">
                              <CardHeader>
                                  <CardTitle className="flex items-center gap-2"><BookUser /> Forum Profile</CardTitle>
@@ -306,8 +307,8 @@ export default async function CharacterSheetPage({ params }: PageProps) {
                                  </ScrollArea>
                              </CardContent>
                          </Card>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
 
             <Card>
