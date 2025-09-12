@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/dashboard/page-header';
 import { Button } from '@/components/ui/button';
 import { Loader2, PlusCircle, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { RosterContent } from './roster-content'; // Assuming this component will be created
+import { RosterContent } from './roster-content';
 
 interface RosterViewPageProps {
     rosterId: number;
@@ -106,7 +106,7 @@ export function RosterViewPage({ rosterId }: RosterViewPageProps) {
                     </div>
                 }
             />
-            <RosterContent initialData={data} rosterId={rosterId} />
+            {data && <RosterContent initialData={data} rosterId={rosterId} />}
         </div>
     );
 }
