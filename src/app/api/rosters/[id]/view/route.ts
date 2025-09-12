@@ -29,6 +29,9 @@ interface RosterFilters {
     exclude_ranks?: number[];
     include_members?: string[];
     exclude_members?: string[];
+    forum_groups_included?: number[];
+    forum_groups_excluded?: number[];
+    alert_forum_users_missing?: boolean;
 }
 
 
@@ -133,11 +136,63 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             }));
         }
 
-
+        let missingForumUsers: string[] = [];
         // 4. Apply JSON filters if they exist
         if (roster.roster_setup_json) {
             try {
                 const filters: RosterFilters = JSON.parse(roster.roster_setup_json);
+                let forumUsernames = new Set<string>();
+                let isForumFilterActive = false;
+
+                // Forum Integration Logic
+                if (roster.faction.phpbb_api_url && roster.faction.phpbb_api_key && (filters.forum_groups_included || filters.forum_groups_excluded)) {
+                    isForumFilterActive = true;
+                    const groupIds = new Set([...(filters.forum_groups_included || []), ...(filters.forum_groups_excluded || [])]);
+                    
+                    const groupPromises = Array.from(groupIds).map(async (groupId) => {
+                        try {
+                            const baseUrl = roster.faction.phpbb_api_url!.endsWith('/') ? roster.faction.phpbb_api_url! : `${roster.faction.phpbb_api_url!}/`;
+                            const url = `${baseUrl}app.php/booskit/phpbbapi/group/${groupId}?key=${roster.faction.phpbb_api_key}`;
+                            const res = await fetch(url);
+                            if (!res.ok) {
+                                console.warn(`[API Roster View] Failed to fetch forum group ${groupId}. Status: ${res.status}`);
+                                return { groupId, members: [] };
+                            }
+                            const data = await res.json();
+                            return { groupId, members: data.group?.members.map((m: any) => m.username) || [] };
+                        } catch (e) {
+                            console.error(`[API Roster View] Error fetching forum group ${groupId}:`, e);
+                            return { groupId, members: [] };
+                        }
+                    });
+
+                    const groupResults = await Promise.all(groupPromises);
+                    const groupUserMap = new Map(groupResults.map(r => [r.groupId, r.members]));
+                    
+                    const includedUsernames = new Set<string>();
+                    const excludedUsernames = new Set<string>();
+
+                    (filters.forum_groups_included || []).forEach(gid => {
+                        groupUserMap.get(gid)?.forEach((username: string) => includedUsernames.add(username.replace('_', ' ')));
+                    });
+
+                    (filters.forum_groups_excluded || []).forEach(gid => {
+                        groupUserMap.get(gid)?.forEach((username: string) => excludedUsernames.add(username.replace('_', ' ')));
+                    });
+
+                    if (includedUsernames.size > 0) {
+                        forumUsernames = new Set([...includedUsernames].filter(u => !excludedUsernames.has(u)));
+                    } else {
+                        // This part is tricky - if only excluded is used, we'd need all forum members first.
+                        // For now, we assume if only excluded is present, it's against the GTAW roster.
+                        forumUsernames = excludedUsernames; // Will be used for exclusion
+                    }
+
+                     if (filters.alert_forum_users_missing) {
+                        const gtawUsernames = new Set(members.map(m => m.character_name.replace('_', ' ')));
+                        missingForumUsers = [...forumUsernames].filter(fu => !gtawUsernames.has(fu));
+                    }
+                }
                 
                 members = members.filter(member => {
                     const charName = member.character_name.replace('_', ' ');
@@ -154,6 +209,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
                     if (filters.exclude_members && filters.exclude_members.some(name => charName.includes(name))) {
                         return false;
                     }
+
+                    // Forum username filtering
+                    if (isForumFilterActive) {
+                        if (filters.forum_groups_included && filters.forum_groups_included.length > 0) {
+                            if (!forumUsernames.has(charName)) return false;
+                        } else if (filters.forum_groups_excluded && filters.forum_groups_excluded.length > 0) {
+                            if (forumUsernames.has(charName)) return false;
+                        }
+                    }
+
                     return true;
                 });
             } catch (e) {
@@ -175,6 +240,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
                 features: roster.faction.feature_flags,
             },
             members: members,
+            missingForumUsers: missingForumUsers
         });
 
     } catch (error) {
@@ -182,3 +248,5 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }
+
+    

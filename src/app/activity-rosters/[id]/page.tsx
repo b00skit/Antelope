@@ -6,7 +6,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
+import { AlertTriangle, Loader2, RefreshCw, UserX } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -37,6 +37,7 @@ interface RosterData {
         } | null
     };
     members: Member[];
+    missingForumUsers?: string[];
 }
 
 const MemberRowSkeleton = () => (
@@ -114,6 +115,7 @@ export default function RosterViewPage() {
     // Sort members by rank descending
     const sortedMembers = data?.members?.sort((a, b) => b.rank - a.rank) || [];
     const characterSheetsEnabled = data?.faction?.features?.character_sheets_enabled ?? false;
+    const missingForumUsers = data?.missingForumUsers || [];
 
     return (
         <div className="container mx-auto p-4 md:p-6 lg:p-8">
@@ -142,72 +144,94 @@ export default function RosterViewPage() {
                 </Alert>
             )}
             
-            <Card>
-                <CardHeader>
-                    <CardTitle>Faction Roster</CardTitle>
-                     <CardDescription>
-                        Displaying {isLoading ? '...' : sortedMembers.length} members.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Character Name</TableHead>
-                                <TableHead>Rank</TableHead>
-                                <TableHead>ABAS</TableHead>
-                                <TableHead>Last Online</TableHead>
-                                <TableHead>Last On-Duty</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                         <TableBody>
-                            {isLoading ? (
-                                Array.from({ length: 10 }).map((_, i) => <MemberRowSkeleton key={i} />)
-                            ) : sortedMembers.length === 0 ? (
+            <div className="space-y-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Faction Roster</CardTitle>
+                        <CardDescription>
+                            Displaying {isLoading ? '...' : sortedMembers.length} members.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
                                 <TableRow>
-                                    <TableCell colSpan={5} className="text-center h-24">
-                                        No members found for this roster's filters.
-                                    </TableCell>
+                                    <TableHead>Character Name</TableHead>
+                                    <TableHead>Rank</TableHead>
+                                    <TableHead>ABAS</TableHead>
+                                    <TableHead>Last Online</TableHead>
+                                    <TableHead>Last On-Duty</TableHead>
                                 </TableRow>
-                            ) : (
-                                sortedMembers.map(member => (
-                                    <TableRow key={member.character_id}>
-                                        <TableCell className="font-medium">
-                                            {characterSheetsEnabled ? (
-                                                <Link href={`/character-sheets/${member.character_name.replace(/ /g, '_')}`} className="hover:underline text-primary">
-                                                    {member.character_name.replace(/_/g, ' ')}
-                                                </Link>
-                                            ) : (
-                                                member.character_name.replace(/_/g, ' ')
-                                            )}
+                            </TableHeader>
+                            <TableBody>
+                                {isLoading ? (
+                                    Array.from({ length: 10 }).map((_, i) => <MemberRowSkeleton key={i} />)
+                                ) : sortedMembers.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={5} className="text-center h-24">
+                                            No members found for this roster's filters.
                                         </TableCell>
-                                        <TableCell>{member.rank_name}</TableCell>
-                                        <TableCell>
-                                            {member.abas ? (
-                                                <TooltipProvider>
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <span className="cursor-help">{member.abas}</span>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent>
-                                                            <p><strong>Total ABAS:</strong> {member.total_abas?.toFixed(2) ?? 'N/A'}</p>
-                                                            <p>Last synced: {formatTimestamp(member.abas_last_sync)}</p>
-                                                        </TooltipContent>
-                                                    </Tooltip>
-                                                </TooltipProvider>
-                                            ) : (
-                                                'N/A'
-                                            )}
-                                        </TableCell>
-                                        <TableCell>{formatTimestamp(member.last_online)}</TableCell>
-                                        <TableCell>{formatTimestamp(member.last_duty)}</TableCell>
                                     </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
+                                ) : (
+                                    sortedMembers.map(member => (
+                                        <TableRow key={member.character_id}>
+                                            <TableCell className="font-medium">
+                                                {characterSheetsEnabled ? (
+                                                    <Link href={`/character-sheets/${member.character_name.replace(/ /g, '_')}`} className="hover:underline text-primary">
+                                                        {member.character_name.replace(/_/g, ' ')}
+                                                    </Link>
+                                                ) : (
+                                                    member.character_name.replace(/_/g, ' ')
+                                                )}
+                                            </TableCell>
+                                            <TableCell>{member.rank_name}</TableCell>
+                                            <TableCell>
+                                                {member.abas ? (
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <span className="cursor-help">{member.abas}</span>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>
+                                                                <p><strong>Total ABAS:</strong> {member.total_abas?.toFixed(2) ?? 'N/A'}</p>
+                                                                <p>Last synced: {formatTimestamp(member.abas_last_sync)}</p>
+                                                            </TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+                                                ) : (
+                                                    'N/A'
+                                                )}
+                                            </TableCell>
+                                            <TableCell>{formatTimestamp(member.last_online)}</TableCell>
+                                            <TableCell>{formatTimestamp(member.last_duty)}</TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+
+                {missingForumUsers.length > 0 && (
+                     <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2"><UserX className="text-destructive"/> Missing Forum Users</CardTitle>
+                            <CardDescription>
+                                These forum users were found in the specified groups but do not have a corresponding character in the faction.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex flex-wrap gap-2">
+                                {missingForumUsers.map(username => (
+                                    <Badge key={username} variant="secondary">{username}</Badge>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+            </div>
         </div>
     );
 }
+
+    

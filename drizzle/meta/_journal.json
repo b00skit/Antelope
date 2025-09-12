@@ -50,6 +50,13 @@
       "when": 1757664737830,
       "tag": "0006_wakeful_starfox",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1757676016879,
+      "tag": "0007_warm_sersi",
+      "breakpoints": true
     }
   ]
 }
