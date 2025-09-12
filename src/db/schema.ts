@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, primaryKey } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, primaryKey, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { relations } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
 
@@ -47,6 +47,19 @@ export const factionMembersCache = sqliteTable('faction_members_cache', {
     members: text('members', { mode: 'json' }).$type<any[]>(),
     last_sync_timestamp: integer('last_sync_timestamp', { mode: 'timestamp' }),
 });
+
+export const factionMembersAbasCache = sqliteTable('faction_members_abas_cache', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    character_id: integer('character_id').notNull(),
+    faction_id: integer('faction_id').notNull(),
+    abas: text('abas'),
+    last_sync_timestamp: integer('last_sync_timestamp', { mode: 'timestamp' }),
+}, (table) => {
+    return {
+        unq: uniqueIndex('faction_members_abas_cache_character_id_faction_id_unique').on(table.character_id, table.faction_id),
+    }
+});
+
 
 export const usersRelations = relations(users, ({ many, one }) => ({
 	factionMembers: many(factionMembers),

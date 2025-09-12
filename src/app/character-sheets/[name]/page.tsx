@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { users, factionMembersCache } from '@/db/schema';
+import { users, factionMembersCache, factionMembersAbasCache } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle, User, Briefcase, Users, Hash, Calendar, Clock } from 'lucide-react';
@@ -83,6 +83,31 @@ async function getCharacterData(name: string) {
         return { error: 'Failed to fetch character data from GTA:World API.' };
     }
     const charData = await charApiResponse.json();
+
+    // 4. Update ABAS cache
+    const charactersToCache = [
+        { character_id: charData.data.character_id, abas: charData.data.abas },
+        ...charData.data.alternative_characters.map((alt: any) => ({ character_id: alt.character_id, abas: alt.abas }))
+    ];
+
+    for (const char of charactersToCache) {
+        if (char.character_id && char.abas !== undefined) {
+            await db.insert(factionMembersAbasCache)
+                .values({
+                    character_id: char.character_id,
+                    faction_id: factionId,
+                    abas: char.abas,
+                    last_sync_timestamp: now,
+                })
+                .onConflictDoUpdate({
+                    target: [factionMembersAbasCache.character_id, factionMembersAbasCache.faction_id],
+                    set: {
+                        abas: char.abas,
+                        last_sync_timestamp: now,
+                    }
+                });
+        }
+    }
     
     return { character: charData.data };
 }
