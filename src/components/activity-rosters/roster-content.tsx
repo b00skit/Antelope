@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '../ui/skeleton';
+import * as React from 'react';
 
 // Interfaces matching the API response
 interface Member {
@@ -106,7 +107,7 @@ const SectionDialog = ({
 
 // Main Roster Content Component
 export function RosterContent({ initialData, rosterId }: RosterContentProps) {
-    const [sections, setSections] = useState<Section[]>(initialData.sections.sort((a,b) => a.order - b.order));
+    const [sections, setSections] = useState<Section[]>((initialData.sections || []).sort((a,b) => a.order - b.order));
     const [members, setMembers] = useState<Member[]>(initialData.members);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingSection, setEditingSection] = useState<Section | null>(null);
@@ -267,5 +268,3 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
         </DndProvider>
     );
 }
-
-
