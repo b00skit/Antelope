@@ -167,18 +167,22 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
 
         // Optimistic UI update
         const originalSections = [...sections];
-        if (typeof destinationSectionId === 'number') {
-            const newSections = sections.map(s => {
-                if (s.id === sourceSectionId) {
-                    return { ...s, character_ids_json: s.character_ids_json.filter(id => id !== characterId) };
-                }
-                if (s.id === destinationSectionId) {
-                    return { ...s, character_ids_json: [...s.character_ids_json, characterId] };
-                }
-                return s;
-            });
-            setSections(newSections);
-        }
+        
+        const newSections = sections.map(s => {
+            // Remove from source
+            if (s.id === sourceSectionId) {
+                return { ...s, character_ids_json: s.character_ids_json.filter(id => id !== characterId) };
+            }
+            // Add to destination
+            if (s.id === destinationSectionId) {
+                // Ensure no duplicates before adding
+                const currentIds = new Set(s.character_ids_json || []);
+                currentIds.add(characterId);
+                return { ...s, character_ids_json: Array.from(currentIds) };
+            }
+            return s;
+        });
+        setSections(newSections);
 
         try {
             const res = await fetch(`/api/rosters/${rosterId}/sections/assign`, {
