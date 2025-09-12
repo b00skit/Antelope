@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, Loader2, PlusCircle, LogIn, Settings, Trash2, CheckCircle, Star } from 'lucide-react';
+import { AlertTriangle, Loader2, PlusCircle, LogIn, Settings, Trash2, CheckCircle, Star, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useSession } from '@/hooks/use-session';
 
 interface Faction {
     id: number;
@@ -60,6 +61,7 @@ const FactionCardSkeleton = () => (
 );
 
 export default function FactionsPage() {
+    const { session } = useSession();
     const [userFactions, setUserFactions] = useState<UserFaction[]>([]);
     const [selectedFactionId, setSelectedFactionId] = useState<number | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -152,12 +154,22 @@ export default function FactionsPage() {
                 title="Your Factions"
                 description="Your faction memberships synced from GTA:World."
                 actions={
-                    <Button asChild>
-                        <Link href="/factions/enroll">
-                            <PlusCircle />
-                            Enroll Faction
-                        </Link>
-                    </Button>
+                    <div className="flex gap-2">
+                         <Button asChild>
+                            <Link href="/factions/enroll">
+                                <PlusCircle />
+                                Enroll Faction
+                            </Link>
+                        </Button>
+                         {session?.role === 'superadmin' && (
+                            <Button asChild variant="secondary">
+                                <Link href="/factions/enroll?superadmin=true">
+                                    <ShieldCheck />
+                                    Enroll Faction (SA)
+                                </Link>
+                            </Button>
+                        )}
+                    </div>
                 }
             />
             

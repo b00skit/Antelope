@@ -67,6 +67,7 @@ export async function GET(request: Request) {
         username: gtawUsername,
         gtaw_user_id: gtawUserId,
         password: null, // No password for OAuth users
+        role: 'guest'
       };
       const result = await db.insert(users).values(newUser).returning();
       user = result[0];
@@ -77,6 +78,7 @@ export async function GET(request: Request) {
     session.userId = user.id;
     session.username = user.username;
     session.gtaw_access_token = accessToken;
+    session.role = user.role;
     await session.save();
 
     return redirect('/');

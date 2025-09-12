@@ -9,6 +9,7 @@ export const users = sqliteTable('users', {
   gtaw_user_id: integer('gtaw_user_id').unique(),
   last_sync_timestamp: integer('last_sync_timestamp', { mode: 'timestamp' }),
   selected_faction_id: integer('selected_faction_id').references(() => factions.id, { onDelete: 'set null' }),
+  role: text('role').default('guest').notNull(),
 });
 
 export const factions = sqliteTable('factions', {

@@ -37,6 +37,7 @@ export async function GET() {
   return new Response(JSON.stringify({
     isLoggedIn: true,
     username: session.username,
+    role: session.role,
     hasActiveFaction,
     activeFaction: user?.selectedFaction,
   }), { status: 200 });

@@ -34,6 +34,7 @@ export async function POST(request: Request) {
     session.isLoggedIn = true;
     session.userId = user.id;
     session.username = user.username;
+    session.role = user.role;
     await session.save();
 
     return new Response(JSON.stringify({ message: 'Login successful' }), { status: 200 });

@@ -10,6 +10,7 @@ export interface SessionData {
   username?: string;
   isLoggedIn: boolean;
   gtaw_access_token?: string;
+  role?: string;
 }
 
 const MAX_AGE = 60 * 60 * 24 * 7; // 7 days

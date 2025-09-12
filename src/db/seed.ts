@@ -21,6 +21,7 @@ async function seed() {
     await db.insert(users).values({
       username: 'admin',
       password: hashedPassword,
+      role: 'superadmin',
     });
 
     console.log('Database seeded successfully with admin user.');
