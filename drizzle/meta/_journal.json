@@ -43,6 +43,13 @@
       "when": 1757663184809,
       "tag": "0005_bent_domino",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1757664737830,
+      "tag": "0006_wakeful_starfox",
+      "breakpoints": true
     }
   ]
 }

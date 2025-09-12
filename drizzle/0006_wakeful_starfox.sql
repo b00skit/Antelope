@@ -1,0 +1,1 @@
+ALTER TABLE `faction_members_abas_cache` ADD `total_abas` integer;

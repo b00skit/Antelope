@@ -19,6 +19,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import Link from 'next/link';
 
 interface PageProps {
     params: {
@@ -42,8 +43,10 @@ async function getCharacterData(name: string) {
     }
     const factionId = user.selectedFaction.id;
 
+    const characterSheetsEnabled = user.selectedFaction.feature_flags?.character_sheets_enabled ?? false;
+
     // Check feature flag
-    if (!user.selectedFaction.feature_flags?.character_sheets_enabled) {
+    if (!characterSheetsEnabled) {
         return { error: 'Character sheets are not enabled for this faction.' };
     }
 
@@ -91,11 +94,19 @@ async function getCharacterData(name: string) {
     }
     const charData = await charApiResponse.json();
 
+    // De-duplicate alternative characters
+    if (charData.data.alternative_characters) {
+        const uniqueAlts = Array.from(new Map(charData.data.alternative_characters.map((item: any) => [item['character_id'], item])).values());
+        charData.data.alternative_characters = uniqueAlts;
+    }
+
     // 4. Update ABAS cache
     const charactersToCache = [
         { character_id: charData.data.character_id, abas: charData.data.abas },
         ...charData.data.alternative_characters.map((alt: any) => ({ character_id: alt.character_id, abas: alt.abas }))
     ];
+    
+    const totalAbas = charactersToCache.reduce((sum, char) => sum + parseFloat(char.abas || '0'), 0);
 
     for (const char of charactersToCache) {
         if (char.character_id && char.abas !== undefined) {
@@ -104,27 +115,21 @@ async function getCharacterData(name: string) {
                     character_id: char.character_id,
                     faction_id: factionId,
                     abas: char.abas,
+                    total_abas: totalAbas,
                     last_sync_timestamp: now,
                 })
                 .onConflictDoUpdate({
                     target: [factionMembersAbasCache.character_id, factionMembersAbasCache.faction_id],
                     set: {
                         abas: char.abas,
+                        total_abas: totalAbas,
                         last_sync_timestamp: now,
                     }
                 });
         }
     }
     
-    // De-duplicate alternative characters
-    if (charData.data.alternative_characters) {
-        const uniqueAlts = Array.from(new Map(charData.data.alternative_characters.map((item: any) => [item['character_id'], item])).values());
-        charData.data.alternative_characters = uniqueAlts;
-    }
-    
-    const totalAbas = charactersToCache.reduce((sum, char) => sum + parseFloat(char.abas || '0'), 0);
-
-    return { character: charData.data, totalAbas };
+    return { character: charData.data, totalAbas, characterSheetsEnabled };
 }
 
 const formatTimestamp = (timestamp: string | null) => {
@@ -165,7 +170,7 @@ export default async function CharacterSheetPage({ params }: PageProps) {
         )
     }
 
-    const { character, totalAbas } = data;
+    const { character, totalAbas, characterSheetsEnabled } = data;
     const characterImage = `https://mdc.gta.world/img/persons/${character.firstname}_${character.lastname}.png?${Date.now()}`;
 
     return (
@@ -263,7 +268,15 @@ export default async function CharacterSheetPage({ params }: PageProps) {
                             <TableBody>
                                 {character.alternative_characters.map((alt: any) => (
                                     <TableRow key={alt.character_id}>
-                                        <TableCell className="font-medium">{alt.character_name}</TableCell>
+                                        <TableCell className="font-medium">
+                                             {characterSheetsEnabled ? (
+                                                <Link href={`/character-sheets/${alt.character_name.replace(/ /g, '_')}`} className="hover:underline text-primary">
+                                                    {alt.character_name}
+                                                </Link>
+                                            ) : (
+                                                alt.character_name
+                                            )}
+                                        </TableCell>
                                         <TableCell>{alt.rank_name}</TableCell>
                                         <TableCell>{alt.abas}</TableCell>
                                         <TableCell>{formatTimestamp(alt.last_online)}</TableCell>
