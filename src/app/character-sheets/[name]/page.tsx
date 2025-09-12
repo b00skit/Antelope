@@ -6,10 +6,11 @@ import { db } from '@/db';
 import { users, factionMembersCache } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { AlertTriangle, User, Briefcase, Users, Hash, MapPin, Calendar, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
+import Image from 'next/image';
 
 interface PageProps {
     params: {
@@ -92,7 +93,6 @@ const formatTimestamp = (timestamp: string | null) => {
     return `${formatDistanceToNow(date)} ago`;
 };
 
-
 export default async function CharacterSheetPage({ params }: PageProps) {
     const { name } = params;
     if (!name) return notFound();
@@ -100,7 +100,6 @@ export default async function CharacterSheetPage({ params }: PageProps) {
     const data = await getCharacterData(decodeURIComponent(name));
 
     if (data.reauth) {
-        // This won't work in a server component, but we can display a message.
         return (
              <div className="container mx-auto p-4 md:p-6 lg:p-8">
                 <Alert variant="destructive">
@@ -126,48 +125,109 @@ export default async function CharacterSheetPage({ params }: PageProps) {
     }
 
     const { character } = data;
-    
+    const characterImage = `https://mdc.gta.world/img/persons/${character.firstname}_${character.lastname}.png?${Date.now()}`;
+
     return (
         <div className="container mx-auto p-4 md:p-6 lg:p-8">
             <PageHeader
-                title={`${character.firstname} ${character.lastname}`}
-                description={`Character Sheet - ${character.rank_name}`}
+                title="Character Record"
+                description={`Viewing file for ${character.firstname} ${character.lastname}`}
             />
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card className="md:col-span-2">
-                    <CardHeader>
-                        <CardTitle>Character Information</CardTitle>
-                        <CardDescription>Details for {character.firstname}.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-4">
-                        <div><strong className="text-muted-foreground">Character ID:</strong> {character.character_id}</div>
-                        <div><strong className="text-muted-foreground">User ID:</strong> {character.user_id}</div>
-                        <div><strong className="text-muted-foreground">Rank:</strong> {character.rank_name} (Level {character.rank})</div>
-                        <div><strong className="text-muted-foreground">ABAS:</strong> {character.abas}</div>
-                        <div><strong className="text-muted-foreground">Last Online:</strong> {formatTimestamp(character.last_online)}</div>
-                        <div><strong className="text-muted-foreground">Last On Duty:</strong> {formatTimestamp(character.last_duty)}</div>
-                    </CardContent>
-                </Card>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-1 space-y-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Mugshot</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="aspect-square relative rounded-md overflow-hidden border">
+                                 <Image
+                                    src={characterImage}
+                                    alt={`Mugshot of ${character.firstname} ${character.lastname}`}
+                                    fill
+                                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                    className="object-cover"
+                                    priority
+                                    unoptimized
+                                    onError={(e) => {
+                                        e.currentTarget.srcset = `https://picsum.photos/seed/${character.character_id}/400/400`;
+                                        e.currentTarget.src = `https://picsum.photos/seed/${character.character_id}/400/400`;
+                                    }}
+                                />
+                            </div>
+                        </CardContent>
+                    </Card>
 
-                <Card>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Alternative Characters</CardTitle>
+                            <CardDescription>Other characters on this account.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {character.alternative_characters && character.alternative_characters.length > 0 ? (
+                                <ul className="space-y-3">
+                                    {character.alternative_characters.map((alt: any) => (
+                                        <li key={alt.character_id} className="flex items-center gap-3 p-3 border rounded-md bg-muted/50">
+                                            <div className="flex-shrink-0 bg-background rounded-full p-2">
+                                                <User className="h-5 w-5 text-muted-foreground" />
+                                            </div>
+                                            <div>
+                                                <p className="font-semibold">{alt.character_name}</p>
+                                                <p className="text-sm text-muted-foreground">{alt.rank_name}</p>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="text-sm text-muted-foreground text-center py-4">No alternative characters found.</p>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <Card className="lg:col-span-2">
                     <CardHeader>
-                        <CardTitle>Alternative Characters</CardTitle>
-                        <CardDescription>Other characters on this account.</CardDescription>
+                        <CardTitle>Personnel File</CardTitle>
+                        <CardDescription>Official information for {character.firstname} {character.lastname}.</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                        {character.alternative_characters && character.alternative_characters.length > 0 ? (
-                             <ul className="space-y-4">
-                                {character.alternative_characters.map((alt: any) => (
-                                    <li key={alt.character_id} className="p-3 border rounded-md">
-                                        <p className="font-semibold">{alt.character_name}</p>
-                                        <p className="text-sm text-muted-foreground">{alt.rank_name} (Rank {alt.rank})</p>
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : (
-                            <p className="text-sm text-muted-foreground">No alternative characters found.</p>
-                        )}
+                    <CardContent className="space-y-6">
+                        <div>
+                             <h3 className="text-lg font-semibold mb-2">Identification</h3>
+                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border rounded-lg p-4">
+                                <div className="flex items-center gap-3">
+                                    <Hash className="h-5 w-5 text-primary" />
+                                    <div><strong className="text-muted-foreground block text-sm">Character ID</strong> {character.character_id}</div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <User className="h-5 w-5 text-primary" />
+                                    <div><strong className="text-muted-foreground block text-sm">User ID</strong> {character.user_id}</div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <Briefcase className="h-5 w-5 text-primary" />
+                                    <div><strong className="text-muted-foreground block text-sm">Rank</strong> {character.rank_name} (Level {character.rank})</div>
+                                </div>
+                                 <div className="flex items-center gap-3">
+                                    <Users className="h-5 w-5 text-primary" />
+                                    <div><strong className="text-muted-foreground block text-sm">ABAS</strong> {character.abas}</div>
+                                </div>
+                             </div>
+                        </div>
+
+                         <div>
+                             <h3 className="text-lg font-semibold mb-2">Status</h3>
+                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border rounded-lg p-4">
+                                <div className="flex items-center gap-3">
+                                    <Calendar className="h-5 w-5 text-primary" />
+                                    <div><strong className="text-muted-foreground block text-sm">Last Online</strong> {formatTimestamp(character.last_online)}</div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <Clock className="h-5 w-5 text-primary" />
+                                    <div><strong className="text-muted-foreground block text-sm">Last On Duty</strong> {formatTimestamp(character.last_duty)}</div>
+                                </div>
+                             </div>
+                        </div>
+
                     </CardContent>
                 </Card>
             </div>
