@@ -45,6 +45,15 @@ export const activityRosters = sqliteTable('activity_rosters', {
     updated_at: integer('updated_at', { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
 });
 
+export const activityRosterSections = sqliteTable('activity_roster_sections', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    activity_roster_id: integer('activity_roster_id').notNull().references(() => activityRosters.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    description: text('description'),
+    character_ids_json: text('character_ids_json', { mode: 'json' }).$type<number[]>().default([]),
+    order: integer('order').default(0),
+});
+
 export const factionMembersCache = sqliteTable('faction_members_cache', {
     faction_id: integer('faction_id').primaryKey(),
     members: text('members', { mode: 'json' }).$type<any[]>(),
@@ -96,7 +105,7 @@ export const factionMembersRelations = relations(factionMembers, ({ one }) => ({
 	}),
 }));
 
-export const activityRostersRelations = relations(activityRosters, ({ one }) => ({
+export const activityRostersRelations = relations(activityRosters, ({ one, many }) => ({
     faction: one(factions, {
         fields: [activityRosters.factionId],
         references: [factions.id],
@@ -108,6 +117,14 @@ export const activityRostersRelations = relations(activityRosters, ({ one }) => 
     forumCache: one(forumApiCache, {
         fields: [activityRosters.id],
         references: [forumApiCache.activity_roster_id],
+    }),
+    sections: many(activityRosterSections),
+}));
+
+export const activityRosterSectionsRelations = relations(activityRosterSections, ({ one }) => ({
+    roster: one(activityRosters, {
+        fields: [activityRosterSections.activity_roster_id],
+        references: [activityRosters.id],
     }),
 }));
 
