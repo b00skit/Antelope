@@ -3,8 +3,8 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { activityRosters, users, factionMembersCache } from '@/db/schema';
-import { and, eq, or } from 'drizzle-orm';
+import { activityRosters, users, factionMembersCache, factionMembersAbasCache } from '@/db/schema';
+import { and, eq, or, inArray } from 'drizzle-orm';
 
 interface RouteParams {
     params: {
@@ -19,6 +19,8 @@ interface Member {
     rank_name: string;
     last_online: string | null;
     last_duty: string | null;
+    abas?: string | null;
+    abas_last_sync?: Date | null;
 }
 
 interface RosterFilters {
@@ -110,8 +112,27 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             members = cachedFaction.members || [];
         }
 
+        // 3. Augment with ABAS data
+        const memberIds = members.map(m => m.character_id);
+        if (memberIds.length > 0) {
+            const abasCache = await db.query.factionMembersAbasCache.findMany({
+                where: and(
+                    eq(factionMembersAbasCache.faction_id, factionId),
+                    inArray(factionMembersAbasCache.character_id, memberIds)
+                )
+            });
 
-        // 3. Apply JSON filters if they exist
+            const abasMap = new Map(abasCache.map(a => [a.character_id, { abas: a.abas, last_sync: a.last_sync_timestamp }]));
+
+            members = members.map(member => ({
+                ...member,
+                abas: abasMap.get(member.character_id)?.abas,
+                abas_last_sync: abasMap.get(member.character_id)?.last_sync,
+            }));
+        }
+
+
+        // 4. Apply JSON filters if they exist
         if (roster.roster_setup_json) {
             try {
                 const filters: RosterFilters = JSON.parse(roster.roster_setup_json);
@@ -140,7 +161,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         }
 
 
-        // 4. Return combined and filtered data
+        // 5. Return combined and filtered data
         return NextResponse.json({
             roster: {
                 id: roster.id,
@@ -149,6 +170,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             faction: {
                 id: roster.faction.id,
                 name: roster.faction.name,
+                features: roster.faction.feature_flags,
             },
             members: members,
         });

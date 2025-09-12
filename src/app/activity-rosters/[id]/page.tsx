@@ -13,6 +13,8 @@ import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import Link from 'next/link';
 
 interface Member {
     character_id: number;
@@ -21,11 +23,18 @@ interface Member {
     rank_name: string;
     last_online: string | null;
     last_duty: string | null;
+    abas?: string | null;
+    abas_last_sync?: string | null;
 }
 
 interface RosterData {
     roster: { name: string; };
-    faction: { name: string; };
+    faction: { 
+        name: string;
+        features: {
+            character_sheets_enabled?: boolean;
+        } | null
+    };
     members: Member[];
 }
 
@@ -33,6 +42,7 @@ const MemberRowSkeleton = () => (
     <TableRow>
         <TableCell><Skeleton className="h-5 w-32" /></TableCell>
         <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+        <TableCell><Skeleton className="h-5 w-16" /></TableCell>
         <TableCell><Skeleton className="h-5 w-40" /></TableCell>
         <TableCell><Skeleton className="h-5 w-40" /></TableCell>
     </TableRow>
@@ -95,6 +105,7 @@ export default function RosterViewPage() {
     
     // Sort members by rank descending
     const sortedMembers = data?.members?.sort((a, b) => b.rank - a.rank) || [];
+    const characterSheetsEnabled = data?.faction?.features?.character_sheets_enabled ?? false;
 
     return (
         <div className="container mx-auto p-4 md:p-6 lg:p-8">
@@ -136,6 +147,7 @@ export default function RosterViewPage() {
                             <TableRow>
                                 <TableHead>Character Name</TableHead>
                                 <TableHead>Rank</TableHead>
+                                <TableHead>ABAS</TableHead>
                                 <TableHead>Last Online</TableHead>
                                 <TableHead>Last On-Duty</TableHead>
                             </TableRow>
@@ -145,15 +157,39 @@ export default function RosterViewPage() {
                                 Array.from({ length: 10 }).map((_, i) => <MemberRowSkeleton key={i} />)
                             ) : sortedMembers.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="text-center h-24">
+                                    <TableCell colSpan={5} className="text-center h-24">
                                         No members found for this roster's filters.
                                     </TableCell>
                                 </TableRow>
                             ) : (
                                 sortedMembers.map(member => (
                                     <TableRow key={member.character_id}>
-                                        <TableCell className="font-medium">{member.character_name.replace('_', ' ')}</TableCell>
+                                        <TableCell className="font-medium">
+                                            {characterSheetsEnabled ? (
+                                                <Link href={`/character-sheets/${member.character_name}`} className="hover:underline text-primary">
+                                                    {member.character_name.replace('_', ' ')}
+                                                </Link>
+                                            ) : (
+                                                member.character_name.replace('_', ' ')
+                                            )}
+                                        </TableCell>
                                         <TableCell>{member.rank_name}</TableCell>
+                                        <TableCell>
+                                            {member.abas ? (
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <span className="cursor-help">{member.abas}</span>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>Last synced: {formatTimestamp(member.abas_last_sync)}</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                            ) : (
+                                                'N/A'
+                                            )}
+                                        </TableCell>
                                         <TableCell>{formatTimestamp(member.last_online)}</TableCell>
                                         <TableCell>{formatTimestamp(member.last_duty)}</TableCell>
                                     </TableRow>
