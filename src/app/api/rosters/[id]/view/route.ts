@@ -159,7 +159,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
                                 return { groupId, members: [] };
                             }
                             const data = await res.json();
-                            return { groupId, members: data.group?.members.map((m: any) => m.username) || [] };
+                            const groupMembers = data.group?.members.map((m: any) => m.username) || [];
+                            const groupLeaders = data.group?.leaders.map((l: any) => l.username) || [];
+                            return { groupId, members: [...groupMembers, ...groupLeaders] };
                         } catch (e) {
                             console.error(`[API Roster View] Error fetching forum group ${groupId}:`, e);
                             return { groupId, members: [] };
@@ -239,7 +241,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
                 name: roster.faction.name,
                 features: roster.faction.feature_flags,
             },
-            members: members,
+            members: Array.from(new Map(members.map(item => [item['character_id'], item])).values()),
             missingForumUsers: missingForumUsers
         });
 
