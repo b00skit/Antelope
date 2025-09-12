@@ -45,7 +45,12 @@ const jsonExample = `{
   "include_ranks": [1, 2, 3],
   "exclude_ranks": [4],
   "include_members": ["First_Name"],
-  "exclude_members": ["Another_Name"]
+  "exclude_members": ["Another_Name"],
+  "forum_groups_included": [5, 8],
+  "forum_groups_excluded": [10],
+  "forum_users_included": [2, 123],
+  "forum_users_excluded": [45],
+  "alert_forum_users_missing": true
 }`;
 
 export default function CreateRosterPage() {
@@ -143,7 +148,7 @@ export default function CreateRosterPage() {
                                             />
                                         </FormControl>
                                         <FormDescription>
-                                            Use this to filter the roster. Only `include_ranks`, `exclude_ranks`, `include_members`, and `exclude_members` keys are supported.
+                                            Use this to filter the roster by rank, name, or forum groups/users.
                                         </FormDescription>
                                         <details className="text-sm">
                                             <summary className="cursor-pointer text-muted-foreground">View Example</summary>

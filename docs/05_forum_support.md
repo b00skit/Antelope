@@ -21,7 +21,7 @@ https://app.booskit.dev/phpbb/app.php/booskit/phpbbapi/groups?key=abcphptest
 - add the ability to also include / exclude specific forum users by id, to include you can simply make a app.php/booskit/phpbbapi/user/{id} call.
 
 ### Phase 4:
-- add a section for forum information on the character-sheets, you should make a call as such app.php/booskit/phpbbapi/user/username/{username} to retrieve the user information.
+- add a section for forum information on the character-sheets, you should make a call as such app.php/booskit/phpbbapi/user/username/{username} to retrieve the user information. If the user doesn't exist or the fetch returns no information, just don't display anything like the email and such, you can display all the user's groups as a good example. Assume a user has a lot of groups as well.
 
 ## Examples:
 Group call:
