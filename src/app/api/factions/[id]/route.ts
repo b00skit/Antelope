@@ -15,9 +15,9 @@ interface RouteParams {
 const updateSchema = z.object({
     name: z.string().min(3, "Faction name must be at least 3 characters long."),
     color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Color must be a valid hex code.").optional().nullable(),
-    access_rank: z.number().int().min(1).max(20),
-    moderation_rank: z.number().int().min(1).max(20),
-    supervisor_rank: z.coerce.number().min(1, "Rank must be at least 1").max(20, "Rank must be 20 or less"),
+    access_rank: z.number().int().min(1).max(15),
+    administration_rank: z.number().int().min(1).max(15),
+    supervisor_rank: z.coerce.number().min(1, "Rank must be at least 1").max(15, "Rank must be 15 or less"),
     minimum_abas: z.coerce.number().min(0, "ABAS cannot be negative.").step(0.01).optional(),
     minimum_supervisor_abas: z.coerce.number().min(0, "ABAS cannot be negative.").step(0.01).optional(),
     activity_rosters_enabled: z.boolean().default(true),
@@ -62,7 +62,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             return NextResponse.json({ error: 'You are not a member of this faction.' }, { status: 403 });
         }
         
-        if (membership.rank < membership.faction.moderation_rank) {
+        if (membership.rank < membership.faction.administration_rank) {
             return NextResponse.json({ error: 'You do not have the required rank to manage this faction.' }, { status: 403 });
         }
 
@@ -119,7 +119,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
             return NextResponse.json({ error: 'You are not a member of this faction.' }, { status: 403 });
         }
         
-        if (membership.rank < membership.faction.moderation_rank) {
+        if (membership.rank < membership.faction.administration_rank) {
             return NextResponse.json({ error: 'You do not have the required rank to manage this faction.' }, { status: 403 });
         }
 

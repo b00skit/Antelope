@@ -8,7 +8,7 @@ interface Faction {
   name: string;
   color: string | null;
   access_rank: number | null;
-  moderation_rank: number | null;
+  administration_rank: number | null;
   supervisor_rank: number | null;
   minimum_abas: number | null;
   minimum_supervisor_abas: number | null;

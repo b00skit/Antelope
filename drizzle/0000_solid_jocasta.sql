@@ -72,7 +72,7 @@ CREATE TABLE `factions` (
 	`name` text NOT NULL,
 	`color` text,
 	`access_rank` integer DEFAULT 15,
-	`moderation_rank` integer DEFAULT 15,
+	`administration_rank` integer DEFAULT 15,
 	`supervisor_rank` integer DEFAULT 10,
 	`minimum_abas` real DEFAULT 0,
 	`minimum_supervisor_abas` real DEFAULT 0,

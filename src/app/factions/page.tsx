@@ -31,7 +31,7 @@ interface Faction {
     name: string;
     color: string | null;
     access_rank: number;
-    moderation_rank: number;
+    administration_rank: number;
 }
 
 interface UserFaction {

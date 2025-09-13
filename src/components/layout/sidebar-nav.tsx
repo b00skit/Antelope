@@ -164,7 +164,7 @@ export function SidebarNav() {
   const showActivityRosters = session?.hasActiveFaction && session.activeFaction?.feature_flags?.activity_rosters_enabled;
   const showCharacterSheets = session?.hasActiveFaction && session.activeFaction?.feature_flags?.character_sheets_enabled;
   const showStatistics = session?.hasActiveFaction && session.activeFaction?.feature_flags?.statistics_enabled;
-  const canManageFaction = session?.hasActiveFaction && session?.factionRank && session?.activeFaction && session.factionRank >= (session.activeFaction.moderation_rank || 15);
+  const canManageFaction = session?.hasActiveFaction && session?.factionRank && session?.activeFaction && session.factionRank >= (session.activeFaction.administration_rank || 15);
 
 
   return (

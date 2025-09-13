@@ -17,7 +17,7 @@ export const factions = sqliteTable('factions', {
     name: text('name').notNull(),
     color: text('color'),
     access_rank: integer('access_rank').default(15),
-    moderation_rank: integer('moderation_rank').default(15),
+    administration_rank: integer('administration_rank').default(15),
     supervisor_rank: integer('supervisor_rank').default(10),
     minimum_abas: real('minimum_abas').default(0),
     minimum_supervisor_abas: real('minimum_supervisor_abas').default(0),

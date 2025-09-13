@@ -42,8 +42,8 @@ const formSchema = z.object({
     name: z.string().min(3, "Faction name must be at least 3 characters long."),
     color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color code, e.g., #FFFFFF").optional().nullable(),
     access_rank: z.coerce.number().min(1, "Rank must be at least 1").max(20, "Rank must be 20 or less"),
-    moderation_rank: z.coerce.number().min(1, "Rank must be at least 1").max(20, "Rank must be 20 or less"),
-    supervisor_rank: z.coerce.number().min(1, "Rank must be at least 1").max(20, "Rank must be 20 or less"),
+    administration_rank: z.coerce.number().min(1, "Rank must be at least 1").max(15, "Rank must be 15 or less"),
+    supervisor_rank: z.coerce.number().min(1, "Rank must be at least 1").max(15, "Rank must be 15 or less"),
     minimum_abas: z.coerce.number().min(0, "ABAS cannot be negative.").step(0.01).optional(),
     minimum_supervisor_abas: z.coerce.number().min(0, "ABAS cannot be negative.").step(0.01).optional(),
     activity_rosters_enabled: z.boolean().default(true),
@@ -70,7 +70,7 @@ export function EnrollClientPage() {
             name: '',
             color: '#FFFFFF',
             access_rank: 15,
-            moderation_rank: 15,
+            administration_rank: 15,
             supervisor_rank: 10,
             minimum_abas: 0,
             minimum_supervisor_abas: 0,
@@ -132,7 +132,7 @@ export function EnrollClientPage() {
                 name: faction.name,
                 color: '#FFFFFF',
                 access_rank: 15,
-                moderation_rank: 15,
+                administration_rank: 15,
                 supervisor_rank: 10,
                 minimum_abas: 0,
                 minimum_supervisor_abas: 0,
@@ -273,7 +273,7 @@ export function EnrollClientPage() {
                                                 <FormItem>
                                                     <FormLabel>Access Rank</FormLabel>
                                                     <FormControl>
-                                                        <Input type="number" min="1" max="20" {...field} />
+                                                        <Input type="number" min="1" max="15" {...field} />
                                                     </FormControl>
                                                     <FormDescription>Minimum rank to join the panel.</FormDescription>
                                                     <FormMessage />
@@ -282,14 +282,14 @@ export function EnrollClientPage() {
                                         />
                                         <FormField
                                             control={form.control}
-                                            name="moderation_rank"
+                                            name="administration_rank"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>Moderation Rank</FormLabel>
+                                                    <FormLabel>Administration Rank</FormLabel>
                                                     <FormControl>
-                                                        <Input type="number" min="1" max="20" {...field} />
+                                                        <Input type="number" min="1" max="15" {...field} />
                                                     </FormControl>
-                                                    <FormDescription>Minimum rank to manage the faction.</FormDescription>
+                                                    <FormDescription>Minimum rank to manage the faction on this panel.</FormDescription>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
@@ -301,9 +301,9 @@ export function EnrollClientPage() {
                                                 <FormItem>
                                                     <FormLabel>Supervisor Rank</FormLabel>
                                                     <FormControl>
-                                                        <Input type="number" min="1" max="20" {...field} />
+                                                        <Input type="number" min="1" max="15" {...field} />
                                                     </FormControl>
-                                                    <FormDescription>Minimum rank to be considered a supervisor.</FormDescription>
+                                                    <FormDescription>Minimum rank to be considered a supervisor, only comes into account for ABAS calculations.</FormDescription>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}

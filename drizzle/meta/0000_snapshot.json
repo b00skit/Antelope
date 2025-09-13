@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "9ff59b5a-68a4-4a5a-9cf7-658f726ec2da",
+  "id": "68a98e80-cf54-4a9e-a2e4-69a3318fbef6",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "activity_roster_access": {
@@ -516,8 +516,8 @@
           "autoincrement": false,
           "default": 15
         },
-        "moderation_rank": {
-          "name": "moderation_rank",
+        "administration_rank": {
+          "name": "administration_rank",
           "type": "integer",
           "primaryKey": false,
           "notNull": false,
