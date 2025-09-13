@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, primaryKey, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, primaryKey, uniqueIndex, real } from 'drizzle-orm/sqlite-core';
 import { relations } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
 
@@ -19,8 +19,8 @@ export const factions = sqliteTable('factions', {
     access_rank: integer('access_rank').default(15),
     moderation_rank: integer('moderation_rank').default(15),
     supervisor_rank: integer('supervisor_rank').default(10),
-    minimum_abas: integer('minimum_abas').default(0),
-    minimum_supervisor_abas: integer('minimum_supervisor_abas').default(0),
+    minimum_abas: real('minimum_abas').default(0),
+    minimum_supervisor_abas: real('minimum_supervisor_abas').default(0),
     feature_flags: text('feature_flags', { mode: 'json' }).$type<{ activity_rosters_enabled?: boolean; character_sheets_enabled?: boolean; }>().default({ activity_rosters_enabled: true, character_sheets_enabled: true }),
     phpbb_api_url: text('phpbb_api_url'),
     phpbb_api_key: text('phpbb_api_key'),

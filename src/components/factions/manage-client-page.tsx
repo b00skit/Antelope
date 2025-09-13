@@ -39,8 +39,8 @@ const formSchema = z.object({
     access_rank: z.coerce.number().min(1, "Rank must be at least 1").max(20, "Rank must be 20 or less"),
     moderation_rank: z.coerce.number().min(1, "Rank must be at least 1").max(20, "Rank must be 20 or less"),
     supervisor_rank: z.coerce.number().min(1, "Rank must be at least 1").max(20, "Rank must be 20 or less"),
-    minimum_abas: z.coerce.number().min(0, "ABAS cannot be negative."),
-    minimum_supervisor_abas: z.coerce.number().min(0, "ABAS cannot be negative."),
+    minimum_abas: z.coerce.number().min(0, "ABAS cannot be negative.").optional(),
+    minimum_supervisor_abas: z.coerce.number().min(0, "ABAS cannot be negative.").optional(),
     activity_rosters_enabled: z.boolean().default(true),
     character_sheets_enabled: z.boolean().default(true),
     phpbb_api_url: z.string().url("Must be a valid URL").or(z.literal('')).optional().nullable(),
@@ -202,7 +202,7 @@ export function ManageFactionClientPage({ faction }: ManageFactionClientPageProp
                                         <FormItem>
                                             <FormLabel>Minimum ABAS</FormLabel>
                                             <FormControl>
-                                                <Input type="number" min="0" {...field} />
+                                                <Input type="number" min="0" step="0.1" {...field} />
                                             </FormControl>
                                             <FormDescription>Minimum weekly ABAS for members.</FormDescription>
                                             <FormMessage />
@@ -216,7 +216,7 @@ export function ManageFactionClientPage({ faction }: ManageFactionClientPageProp
                                         <FormItem>
                                             <FormLabel>Supervisor Minimum ABAS</FormLabel>
                                             <FormControl>
-                                                <Input type="number" min="0" {...field} />
+                                                <Input type="number" min="0" step="0.1" {...field} />
                                             </FormControl>
                                             <FormDescription>Minimum weekly ABAS for supervisors.</FormDescription>
                                             <FormMessage />
