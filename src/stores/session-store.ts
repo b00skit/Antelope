@@ -1,3 +1,4 @@
+
 'use client';
 
 import { create } from 'zustand';
@@ -8,6 +9,9 @@ interface Faction {
   color: string | null;
   access_rank: number | null;
   moderation_rank: number | null;
+  supervisor_rank: number | null;
+  minimum_abas: number | null;
+  minimum_supervisor_abas: number | null;
   feature_flags: {
     activity_rosters_enabled?: boolean;
     character_sheets_enabled?: boolean;
@@ -20,6 +24,7 @@ interface Session {
   role?: string;
   hasActiveFaction?: boolean;
   activeFaction?: Faction | null;
+  factionRank?: number | null;
 }
 
 interface SessionState {
@@ -45,4 +50,3 @@ export const useSessionStore = create<SessionState>((set) => ({
     }
   },
 }));
-

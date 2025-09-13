@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { AlertTriangle, Loader2, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSession } from '@/hooks/use-session';
 import {
@@ -27,6 +27,17 @@ import type { factions } from '@/db/schema';
 import { Switch } from '../ui/switch';
 import Link from 'next/link';
 import { Label } from '../ui/label';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 type Faction = typeof factions.$inferSelect;
 
@@ -52,6 +63,7 @@ export function ManageFactionClientPage({ faction }: ManageFactionClientPageProp
     const router = useRouter();
     const { toast } = useToast();
     const { refreshSession } = useSession();
+    const [isDeleting, setIsDeleting] = React.useState(false);
     
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -112,6 +124,24 @@ export function ManageFactionClientPage({ faction }: ManageFactionClientPageProp
             form.setError("root", { message: err.message });
         }
     };
+    
+    const handleDelete = async () => {
+        setIsDeleting(true);
+        try {
+            const res = await fetch(`/api/factions/${faction.id}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+            toast({ title: 'Success', description: data.message });
+            await refreshSession();
+            router.push('/factions');
+            router.refresh();
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Error', description: err.message });
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
 
     return (
         <div className="container mx-auto p-4 md:p-6 lg:p-8">
@@ -325,11 +355,33 @@ export function ManageFactionClientPage({ faction }: ManageFactionClientPageProp
                                 </Alert>
                             )}
                         </CardContent>
-                        <CardFooter>
+                        <CardFooter className="flex justify-between">
                             <Button type="submit" disabled={form.formState.isSubmitting}>
                                 {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Save Changes
                             </Button>
+                             <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="destructive" disabled={isDeleting}>
+                                        {isDeleting ? <Loader2 className="animate-spin" /> : <Trash2 />}
+                                        Unenroll Faction
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            This will permanently unenroll the faction from the panel for everyone. This action cannot be undone.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={handleDelete}>
+                                            Yes, Unenroll Faction
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
                         </CardFooter>
                     </form>
                 </Form>

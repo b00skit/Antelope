@@ -1,3 +1,4 @@
+
 import { cookies } from 'next/headers';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
@@ -21,6 +22,8 @@ export async function GET() {
   });
   
   let hasActiveFaction = false;
+  let factionRank = null;
+
   if (user?.selected_faction_id) {
     const membership = await db.query.factionMembers.findFirst({
         where: and(
@@ -31,6 +34,7 @@ export async function GET() {
     });
     if (membership) {
         hasActiveFaction = true;
+        factionRank = membership.rank;
     }
   }
 
@@ -40,5 +44,6 @@ export async function GET() {
     role: session.role,
     hasActiveFaction,
     activeFaction: user?.selectedFaction,
+    factionRank,
   }), { status: 200 });
 }

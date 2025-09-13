@@ -158,6 +158,8 @@ export function SidebarNav() {
 
   const showActivityRosters = session?.hasActiveFaction && session.activeFaction?.feature_flags?.activity_rosters_enabled;
   const showCharacterSheets = session?.hasActiveFaction && session.activeFaction?.feature_flags?.character_sheets_enabled;
+  const canManageFaction = session?.hasActiveFaction && session?.factionRank && session?.activeFaction && session.factionRank >= (session.activeFaction.moderation_rank || 15);
+
 
   return (
     <>
@@ -219,18 +221,6 @@ export function SidebarNav() {
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
-           <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              isActive={isActive('/factions')}
-              tooltip="Factions"
-            >
-              <Link href="/factions">
-                <Users />
-                <span>Factions</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
           {showActivityRosters && (
             <SidebarMenuItem>
                 <SidebarMenuButton
@@ -249,6 +239,35 @@ export function SidebarNav() {
       </SidebarContent>
 
       <SidebarFooter className="p-2">
+        <Separator className="my-2" />
+        <SidebarMenu>
+            <SidebarMenuItem>
+                <SidebarMenuButton
+                asChild
+                isActive={isActive('/factions')}
+                tooltip="Factions"
+                >
+                <Link href="/factions">
+                    <Users />
+                    <span>Factions</span>
+                </Link>
+                </SidebarMenuButton>
+            </SidebarMenuItem>
+            {canManageFaction && (
+                 <SidebarMenuItem>
+                    <SidebarMenuButton
+                        asChild
+                        isActive={isActive('/factions/manage')}
+                        tooltip="Faction Administration"
+                    >
+                        <Link href={`/factions/manage/${session.activeFaction?.id}`}>
+                            <Settings />
+                            <span>Faction Administration</span>
+                        </Link>
+                    </SidebarMenuButton>
+                 </SidebarMenuItem>
+            )}
+        </SidebarMenu>
         <Separator className="my-2" />
         <SidebarMenu>
           <SidebarMenuItem>
