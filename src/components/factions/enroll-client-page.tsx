@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -198,7 +199,9 @@ export function EnrollClientPage() {
                     </CardHeader>
                     <CardContent>
                         <p>We could not find any factions on your GTA:World account where you hold a rank of 15 or higher that haven't already been enrolled.</p>
-                        <p className="text-sm text-muted-foreground mt-2">If this is a mistake, please ensure you are logged into the correct account and try again later.</p>
+                        <p className="text-sm text-muted-foreground mt-2">
+                           If this is a mistake, please ensure you are logged into the correct account and try again later.
+                        </p>
                     </CardContent>
                 </Card>
             ) : (
@@ -311,7 +314,7 @@ export function EnrollClientPage() {
                                                 <FormItem>
                                                     <FormLabel>Minimum ABAS</FormLabel>
                                                     <FormControl>
-                                                        <Input type="number" min="0" step="0.1" {...field} />
+                                                        <Input type="number" min="0" step="0.01" {...field} />
                                                     </FormControl>
                                                     <FormDescription>Minimum weekly ABAS for members.</FormDescription>
                                                     <FormMessage />
@@ -325,7 +328,7 @@ export function EnrollClientPage() {
                                                 <FormItem>
                                                     <FormLabel>Supervisor Minimum ABAS</FormLabel>
                                                     <FormControl>
-                                                        <Input type="number" min="0" step="0.1" {...field} />
+                                                        <Input type="number" min="0" step="0.01" {...field} />
                                                     </FormControl>
                                                     <FormDescription>Minimum weekly ABAS for supervisors.</FormDescription>
                                                     <FormMessage />

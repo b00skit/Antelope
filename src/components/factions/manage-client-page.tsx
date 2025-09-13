@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -202,7 +203,7 @@ export function ManageFactionClientPage({ faction }: ManageFactionClientPageProp
                                         <FormItem>
                                             <FormLabel>Minimum ABAS</FormLabel>
                                             <FormControl>
-                                                <Input type="number" min="0" step="0.1" {...field} />
+                                                <Input type="number" min="0" step="0.01" {...field} />
                                             </FormControl>
                                             <FormDescription>Minimum weekly ABAS for members.</FormDescription>
                                             <FormMessage />
@@ -216,7 +217,7 @@ export function ManageFactionClientPage({ faction }: ManageFactionClientPageProp
                                         <FormItem>
                                             <FormLabel>Supervisor Minimum ABAS</FormLabel>
                                             <FormControl>
-                                                <Input type="number" min="0" step="0.1" {...field} />
+                                                <Input type="number" min="0" step="0.01" {...field} />
                                             </FormControl>
                                             <FormDescription>Minimum weekly ABAS for supervisors.</FormDescription>
                                             <FormMessage />
