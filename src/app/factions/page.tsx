@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -87,7 +88,6 @@ export default function FactionsPage() {
             const data: FactionsData = await response.json();
             setUserFactions(data.factions);
             setSelectedFactionId(data.selectedFactionId);
-            await refreshSession();
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -107,6 +107,7 @@ export default function FactionsPage() {
             if (!res.ok) throw new Error(data.error);
             toast({ title: 'Success', description: data.message });
             await fetchAndSyncFactions(); // Refresh data
+            await refreshSession(); // Also refresh global session
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Error', description: err.message });
         } finally {
@@ -122,6 +123,7 @@ export default function FactionsPage() {
             if (!res.ok) throw new Error(data.error);
             toast({ title: 'Success', description: data.message });
             await fetchAndSyncFactions(); // Refresh data
+            await refreshSession(); // Also refresh global session
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Error', description: err.message });
         } finally {
@@ -140,8 +142,8 @@ export default function FactionsPage() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
             toast({ title: 'Success', description: 'Active faction updated.' });
-            setSelectedFactionId(factionId);
-            await refreshSession();
+            setSelectedFactionId(factionId); // Update local state immediately
+            await refreshSession(); // Trigger a global session refetch for all components
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Error', description: err.message });
         } finally {
