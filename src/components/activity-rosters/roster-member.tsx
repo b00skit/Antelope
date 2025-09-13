@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useDrag } from 'react-dnd';
@@ -25,6 +26,7 @@ interface Member {
 interface RosterMemberProps {
     member: Member;
     sourceSectionId: number | 'unassigned';
+    abasClass?: string;
 }
 
 const formatTimestamp = (timestamp: string | null) => {
@@ -34,7 +36,7 @@ const formatTimestamp = (timestamp: string | null) => {
     return `${formatDistanceToNow(date)} ago`;
 };
 
-export function RosterMember({ member, sourceSectionId }: RosterMemberProps) {
+export function RosterMember({ member, sourceSectionId, abasClass }: RosterMemberProps) {
     const [{ isDragging }, drag] = useDrag({
         type: ItemTypes.MEMBER,
         item: { characterId: member.character_id, sourceSectionId },
@@ -52,8 +54,7 @@ export function RosterMember({ member, sourceSectionId }: RosterMemberProps) {
             </TableCell>
             <TableCell>{member.rank_name}</TableCell>
             <TableCell>{formatTimestamp(member.last_duty)}</TableCell>
-            <TableCell>{member.abas ?? 'N/A'}</TableCell>
+            <TableCell className={abasClass}>{member.abas ?? 'N/A'}</TableCell>
         </TableRow>
     );
 }
-

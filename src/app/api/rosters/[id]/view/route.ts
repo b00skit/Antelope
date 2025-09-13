@@ -40,6 +40,10 @@ interface RosterFilters {
     forum_users_included?: number[];
     forum_users_excluded?: number[];
     alert_forum_users_missing?: boolean;
+    abas_standards?: {
+        by_rank?: Record<string, number>;
+        by_name?: Record<string, number>;
+    };
 }
 
 async function fetchForumData(roster: any, filters: RosterFilters) {
@@ -262,10 +266,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         let missingForumUsers: string[] = [];
         let includedUsernames = new Set<string>();
         let excludedUsernames = new Set<string>();
+        let rosterAbasStandards = {};
 
         if (roster.roster_setup_json) {
             try {
                 const filters: RosterFilters = JSON.parse(roster.roster_setup_json);
+                rosterAbasStandards = filters.abas_standards || {};
                 const isForumFilterActive = filters.forum_groups_included?.length || filters.forum_groups_excluded?.length || filters.forum_users_included?.length || filters.forum_users_excluded?.length;
 
                 if (isForumFilterActive) {
@@ -319,7 +325,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
         return NextResponse.json({
             roster: { id: roster.id, name: roster.name },
-            faction: { id: roster.faction.id, name: roster.faction.name, features: roster.faction.feature_flags },
+            faction: { id: roster.faction.id, name: roster.faction.name, features: roster.faction.feature_flags, supervisor_rank: roster.faction.supervisor_rank, minimum_abas: roster.faction.minimum_abas, minimum_supervisor_abas: roster.faction.minimum_supervisor_abas },
             members: Array.from(new Map(members.map(item => [item['character_id'], item])).values()),
             missingForumUsers: missingForumUsers,
             sections: (roster.sections || []).map(s => ({
@@ -329,6 +335,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
                 character_ids_json: s.character_ids_json || [],
                 order: s.order ?? 0,
             })).sort((a, b) => a.order - b.order),
+            rosterAbasStandards,
         });
 
     } catch (error) {

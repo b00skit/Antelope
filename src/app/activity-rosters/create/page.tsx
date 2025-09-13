@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -50,7 +51,16 @@ const jsonExample = `{
   "forum_groups_excluded": [10],
   "forum_users_included": [2, 123],
   "forum_users_excluded": [45],
-  "alert_forum_users_missing": true
+  "alert_forum_users_missing": true,
+  "abas_standards": {
+    "by_rank": {
+      "10": 5.0,
+      "12": 7.5
+    },
+    "by_name": {
+      "John_Doe": 10.0
+    }
+  }
 }`;
 
 export default function CreateRosterPage() {

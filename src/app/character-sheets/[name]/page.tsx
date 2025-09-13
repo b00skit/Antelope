@@ -37,6 +37,12 @@ interface ForumData {
     groups: { id: number; name: string; leader: boolean }[];
 }
 
+interface FactionAbasSettings {
+    supervisor_rank: number;
+    minimum_abas: number;
+    minimum_supervisor_abas: number;
+}
+
 async function getCharacterData(name: string) {
     const cookieStore = cookies();
     const session = await getSession(cookieStore);
@@ -53,6 +59,12 @@ async function getCharacterData(name: string) {
     }
     const factionId = user.selectedFaction.id;
     const { selectedFaction } = user;
+
+    const abasSettings: FactionAbasSettings = {
+        supervisor_rank: selectedFaction.supervisor_rank ?? 10,
+        minimum_abas: selectedFaction.minimum_abas ?? 0,
+        minimum_supervisor_abas: selectedFaction.minimum_supervisor_abas ?? 0,
+    };
 
     const characterSheetsEnabled = selectedFaction.feature_flags?.character_sheets_enabled ?? false;
 
@@ -163,7 +175,7 @@ async function getCharacterData(name: string) {
         }
     }
     
-    return { character: charData.data, totalAbas, characterSheetsEnabled, forumData };
+    return { character: charData.data, totalAbas, characterSheetsEnabled, forumData, abasSettings };
 }
 
 const formatTimestamp = (timestamp: string | null) => {
@@ -171,6 +183,16 @@ const formatTimestamp = (timestamp: string | null) => {
     const date = new Date(timestamp);
     if (isNaN(date.getTime())) return <Badge variant="destructive">Invalid Date</Badge>;
     return `${formatDistanceToNow(date)} ago`;
+};
+
+const getAbasClass = (abas: string | null | undefined, rank: number, settings: FactionAbasSettings) => {
+    const abasValue = parseFloat(abas || '0');
+    const isSupervisor = rank >= settings.supervisor_rank;
+    const requiredAbas = isSupervisor ? settings.minimum_supervisor_abas : settings.minimum_abas;
+    if (requiredAbas > 0 && abasValue < requiredAbas) {
+        return "text-red-500 font-bold";
+    }
+    return "";
 };
 
 export default async function CharacterSheetPage({ params }: PageProps) {
@@ -204,7 +226,7 @@ export default async function CharacterSheetPage({ params }: PageProps) {
         )
     }
 
-    const { character, totalAbas, characterSheetsEnabled, forumData } = data;
+    const { character, totalAbas, characterSheetsEnabled, forumData, abasSettings } = data;
     const characterImage = `https://mdc.gta.world/img/persons/${character.firstname}_${character.lastname}.png?${Date.now()}`;
 
     return (
@@ -246,7 +268,7 @@ export default async function CharacterSheetPage({ params }: PageProps) {
                                         </div>
                                         <div className="flex items-center gap-3">
                                             <Users className="h-5 w-5 text-primary" />
-                                            <div><strong className="text-muted-foreground block text-sm">ABAS</strong> {character.abas}</div>
+                                            <div><strong className="text-muted-foreground block text-sm">ABAS</strong> <span className={cn(getAbasClass(character.abas, character.rank, abasSettings))}>{character.abas}</span></div>
                                         </div>
                                         <div className="flex items-center gap-3 sm:col-span-2">
                                             <Sigma className="h-5 w-5 text-primary" />
@@ -341,7 +363,7 @@ export default async function CharacterSheetPage({ params }: PageProps) {
                                             )}
                                         </TableCell>
                                         <TableCell>{alt.rank_name}</TableCell>
-                                        <TableCell>{alt.abas}</TableCell>
+                                        <TableCell className={cn(getAbasClass(alt.abas, alt.rank, abasSettings))}>{alt.abas}</TableCell>
                                         <TableCell>{formatTimestamp(alt.last_online)}</TableCell>
                                         <TableCell>{formatTimestamp(alt.last_duty)}</TableCell>
                                     </TableRow>
@@ -357,3 +379,4 @@ export default async function CharacterSheetPage({ params }: PageProps) {
         </div>
     );
 }
+

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useRef } from 'react';
@@ -47,6 +48,7 @@ interface RosterSectionProps {
     onEdit?: () => void;
     onDelete?: () => void;
     onReorder?: (dragIndex: number, hoverIndex: number) => void;
+    getAbasClass: (member: Member) => string;
     isUnassigned?: boolean;
     index?: number;
 }
@@ -59,6 +61,7 @@ export function RosterSection({
     onEdit,
     onDelete,
     onReorder,
+    getAbasClass,
     isUnassigned = false,
     index,
 }: RosterSectionProps) {
@@ -138,6 +141,7 @@ export function RosterSection({
                                     key={member.character_id}
                                     member={member}
                                     sourceSectionId={section.id}
+                                    abasClass={getAbasClass(member)}
                                 />
                             ))}
                         </TableBody>

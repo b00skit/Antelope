@@ -35,10 +35,11 @@ interface Section {
 
 interface RosterData {
     roster: { id: number; name: string };
-    faction: { id: number; name: string };
+    faction: { id: number; name: string; supervisor_rank: number; minimum_abas: number; minimum_supervisor_abas: number; };
     members: Member[];
     missingForumUsers: string[];
     sections: Section[];
+    rosterAbasStandards: any;
 }
 
 export function RosterViewPage({ rosterId }: RosterViewPageProps) {

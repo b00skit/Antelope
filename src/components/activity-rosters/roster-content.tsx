@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState } from 'react';
@@ -45,10 +46,11 @@ interface Section {
 
 interface RosterData {
     roster: { id: number; name: string };
-    faction: { id: number; name: string };
+    faction: { id: number; name: string; supervisor_rank: number; minimum_abas: number; minimum_supervisor_abas: number; };
     members: Member[];
     missingForumUsers: string[];
     sections: Section[];
+    rosterAbasStandards: any;
 }
 
 interface RosterContentProps {
@@ -116,6 +118,26 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
     const assignedMemberIds = new Set(sections.flatMap(s => s.character_ids_json));
     const unassignedMembers = members.filter(m => !assignedMemberIds.has(m.character_id));
 
+    const getAbasClass = (member: Member): string => {
+        const abasValue = parseFloat(member.abas || '0');
+        const rosterStandards = initialData.rosterAbasStandards || {};
+
+        // Roster-specific overrides by name or rank
+        if (rosterStandards.by_name && rosterStandards.by_name[member.character_name] !== undefined) {
+            if (abasValue < rosterStandards.by_name[member.character_name]) return "text-red-500 font-bold";
+        } else if (rosterStandards.by_rank && rosterStandards.by_rank[member.rank] !== undefined) {
+            if (abasValue < rosterStandards.by_rank[member.rank]) return "text-red-500 font-bold";
+        } else {
+            // Faction-level standards
+            const isSupervisor = member.rank >= initialData.faction.supervisor_rank;
+            const requiredAbas = isSupervisor ? initialData.faction.minimum_supervisor_abas : initialData.faction.minimum_abas;
+            if (requiredAbas > 0 && abasValue < requiredAbas) {
+                return "text-red-500 font-bold";
+            }
+        }
+        return "";
+    };
+
     // API Handlers
     const handleAddOrUpdateSection = async (name: string, description: string) => {
         const url = editingSection
@@ -170,18 +192,18 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
         const originalSections = [...sections];
         
         const newSections = sections.map(s => {
+            let sectionCopy = { ...s, character_ids_json: [...s.character_ids_json] };
             // Remove from source
             if (s.id === sourceSectionId) {
-                return { ...s, character_ids_json: s.character_ids_json.filter(id => id !== characterId) };
+                sectionCopy.character_ids_json = sectionCopy.character_ids_json.filter(id => id !== characterId);
             }
             // Add to destination
             if (s.id === destinationSectionId) {
-                // Ensure no duplicates before adding
-                const currentIds = new Set(s.character_ids_json || []);
-                currentIds.add(characterId);
-                return { ...s, character_ids_json: Array.from(currentIds) };
+                if (!sectionCopy.character_ids_json.includes(characterId)) {
+                    sectionCopy.character_ids_json.push(characterId);
+                }
             }
-            return s;
+            return sectionCopy;
         });
         setSections(newSections);
 
@@ -248,6 +270,7 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
                             onEdit={() => { setEditingSection(section); setIsDialogOpen(true); }}
                             onDelete={() => handleDeleteSection(section.id)}
                             onReorder={handleReorderSections}
+                            getAbasClass={getAbasClass}
                         />
                     );
                 })}
@@ -257,6 +280,7 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
                     members={unassignedMembers}
                     onMoveMember={handleMoveMember}
                     isUnassigned
+                    getAbasClass={getAbasClass}
                 />
 
                 <Button variant="outline" onClick={() => { setEditingSection(null); setIsDialogOpen(true); }}>
