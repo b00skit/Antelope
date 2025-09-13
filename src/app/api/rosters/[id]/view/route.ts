@@ -1,10 +1,9 @@
 
-
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { activityRosters, users, factionMembersCache, factionMembersAbasCache, forumApiCache } from '@/db/schema';
+import { activityRosters, users, factionMembersCache, factionMembersAbasCache, forumApiCache, activityRosterAccess } from '@/db/schema';
 import { and, eq, or, inArray } from 'drizzle-orm';
 
 interface RouteParams {
@@ -158,11 +157,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         const roster = await db.query.activityRosters.findFirst({
             where: and(
                 eq(activityRosters.id, rosterId),
-                eq(activityRosters.factionId, user.selected_faction_id),
-                or(
-                    eq(activityRosters.is_public, true),
-                    eq(activityRosters.created_by, session.userId)
-                )
+                eq(activityRosters.factionId, user.selected_faction_id)
             ),
             with: {
                 faction: true,
@@ -172,8 +167,33 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         });
 
         if (!roster) {
-            return NextResponse.json({ error: 'Roster not found or you do not have permission to view it.' }, { status: 404 });
+            return NextResponse.json({ error: 'Roster not found.' }, { status: 404 });
         }
+
+        // --- ACCESS CONTROL ---
+        let hasAccess = false;
+        if (roster.visibility === 'public' || roster.visibility === 'unlisted' || roster.created_by === session.userId) {
+            hasAccess = true;
+        }
+
+        if (roster.visibility === 'private') {
+            const accessRecord = await db.query.activityRosterAccess.findFirst({
+                where: and(
+                    eq(activityRosterAccess.activity_roster_id, rosterId),
+                    eq(activityRosterAccess.user_id, session.userId)
+                )
+            });
+            if (accessRecord) {
+                hasAccess = true;
+            } else {
+                return NextResponse.json({ error: 'Password required', requiresPassword: true }, { status: 403 });
+            }
+        }
+
+        if (!hasAccess) {
+             return NextResponse.json({ error: 'You do not have permission to view this roster.' }, { status: 403 });
+        }
+
 
         const factionId = roster.factionId;
         const now = new Date();
@@ -324,7 +344,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 
         return NextResponse.json({
-            roster: { id: roster.id, name: roster.name },
+            roster: { id: roster.id, name: roster.name, isPrivate: roster.visibility === 'private' },
             faction: { id: roster.faction.id, name: roster.faction.name, features: roster.faction.feature_flags, supervisor_rank: roster.faction.supervisor_rank, minimum_abas: roster.faction.minimum_abas, minimum_supervisor_abas: roster.faction.minimum_supervisor_abas },
             members: Array.from(new Map(members.map(item => [item['character_id'], item])).values()),
             missingForumUsers: missingForumUsers,

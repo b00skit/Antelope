@@ -1,13 +1,22 @@
 
-
 'use client';
 
 import { useState, useEffect } from 'react';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Button } from '@/components/ui/button';
-import { Loader2, PlusCircle, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { RosterContent } from './roster-content';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface RosterViewPageProps {
     rosterId: number;
@@ -34,7 +43,7 @@ interface Section {
 }
 
 interface RosterData {
-    roster: { id: number; name: string };
+    roster: { id: number; name: string, isPrivate?: boolean };
     faction: { id: number; name: string; supervisor_rank: number; minimum_abas: number; minimum_supervisor_abas: number; };
     members: Member[];
     missingForumUsers: string[];
@@ -42,10 +51,52 @@ interface RosterData {
     rosterAbasStandards: any;
 }
 
+const PasswordDialog = ({
+    isOpen,
+    onClose,
+    onSubmit,
+    isVerifying
+}: {
+    isOpen: boolean,
+    onClose: () => void,
+    onSubmit: (password: string) => void,
+    isVerifying: boolean
+}) => {
+    const [password, setPassword] = useState('');
+
+    const handleSubmit = () => {
+        onSubmit(password);
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Password Required</DialogTitle>
+                    <DialogDescription>This roster is private. Please enter the password to view it.</DialogDescription>
+                </DialogHeader>
+                <div className="py-2">
+                    <Label htmlFor="roster-password">Password</Label>
+                    <Input id="roster-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={onClose}>Cancel</Button>
+                    <Button onClick={handleSubmit} disabled={isVerifying}>
+                        {isVerifying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Submit
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
 export function RosterViewPage({ rosterId }: RosterViewPageProps) {
     const [data, setData] = useState<RosterData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isSyncing, setIsSyncing] = useState(false);
+    const [requiresPassword, setRequiresPassword] = useState(false);
+    const [isVerifying, setIsVerifying] = useState(false);
     const [lastSyncTime, setLastSyncTime] = useState<number | null>(null);
     const { toast } = useToast();
     
@@ -62,10 +113,19 @@ export function RosterViewPage({ rosterId }: RosterViewPageProps) {
             const url = `/api/rosters/${rosterId}/view${forceSync ? '?forceSync=true' : ''}`;
             const res = await fetch(url);
             const result = await res.json();
+            
             if (!res.ok) {
-                throw new Error(result.error || 'Failed to fetch roster data.');
+                if (result.requiresPassword) {
+                    setRequiresPassword(true);
+                    setData({ roster: { id: rosterId, name: 'Private Roster', isPrivate: true } } as RosterData); // Set dummy data
+                } else {
+                    throw new Error(result.error || 'Failed to fetch roster data.');
+                }
+            } else {
+                setData(result);
+                setRequiresPassword(false);
             }
-            setData(result);
+            
             if (forceSync) {
                 const now = Date.now();
                 setLastSyncTime(now);
@@ -92,6 +152,27 @@ export function RosterViewPage({ rosterId }: RosterViewPageProps) {
         fetchData(true);
     };
 
+    const handlePasswordSubmit = async (password: string) => {
+        setIsVerifying(true);
+        try {
+            const res = await fetch(`/api/rosters/${rosterId}/verify`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password }),
+            });
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error);
+            
+            toast({ title: 'Success', description: 'Access granted.' });
+            setRequiresPassword(false);
+            await fetchData(); // Refetch data now that we have access
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Error', description: err.message });
+        } finally {
+            setIsVerifying(false);
+        }
+    };
+
     if (isLoading) {
         return (
             <div className="container mx-auto p-4 md:p-6 lg:p-8 flex justify-center items-center h-full">
@@ -110,19 +191,25 @@ export function RosterViewPage({ rosterId }: RosterViewPageProps) {
 
     return (
         <div className="container mx-auto p-4 md:p-6 lg:p-8">
+            <PasswordDialog
+                isOpen={requiresPassword}
+                onClose={() => setRequiresPassword(false)}
+                onSubmit={handlePasswordSubmit}
+                isVerifying={isVerifying}
+            />
             <PageHeader
                 title={data.roster.name}
-                description={`Viewing roster for ${data.faction.name}`}
+                description={data.faction ? `Viewing roster for ${data.faction.name}` : ''}
                 actions={
                     <div className="flex gap-2">
-                         <Button onClick={handleForceSync} disabled={isSyncing || !canSync}>
+                         <Button onClick={handleForceSync} disabled={isSyncing || !canSync || requiresPassword}>
                             {isSyncing ? <Loader2 className="animate-spin" /> : <RefreshCw />}
                             Force Sync
                         </Button>
                     </div>
                 }
             />
-            {data && <RosterContent initialData={data} rosterId={rosterId} />}
+            {data.members && <RosterContent initialData={data} rosterId={rosterId} />}
         </div>
     );
 }
