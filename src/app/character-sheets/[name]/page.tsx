@@ -185,8 +185,8 @@ const formatTimestamp = (timestamp: string | null) => {
     return `${formatDistanceToNow(date)} ago`;
 };
 
-const getAbasClass = (abas: string | null | undefined, rank: number, settings: FactionAbasSettings) => {
-    const abasValue = parseFloat(abas || '0');
+const getAbasClass = (abas: number | null | undefined, rank: number, settings: FactionAbasSettings) => {
+    const abasValue = abas || 0;
     const isSupervisor = rank >= settings.supervisor_rank;
     const requiredAbas = isSupervisor ? settings.minimum_supervisor_abas : settings.minimum_abas;
     if (requiredAbas > 0 && abasValue < requiredAbas) {
@@ -194,6 +194,12 @@ const getAbasClass = (abas: string | null | undefined, rank: number, settings: F
     }
     return "";
 };
+
+const formatAbas = (abas: string | number | null | undefined) => {
+    const num = typeof abas === 'string' ? parseFloat(abas) : abas;
+    if (num === null || num === undefined || isNaN(num)) return 'N/A';
+    return num.toFixed(2);
+}
 
 export default async function CharacterSheetPage({ params }: PageProps) {
     const { name } = params;
@@ -268,7 +274,7 @@ export default async function CharacterSheetPage({ params }: PageProps) {
                                         </div>
                                         <div className="flex items-center gap-3">
                                             <Users className="h-5 w-5 text-primary" />
-                                            <div><strong className="text-muted-foreground block text-sm">ABAS</strong> <span className={cn(getAbasClass(character.abas, character.rank, abasSettings))}>{character.abas}</span></div>
+                                            <div><strong className="text-muted-foreground block text-sm">ABAS</strong> <span className={cn(getAbasClass(parseFloat(character.abas), character.rank, abasSettings))}>{formatAbas(character.abas)}</span></div>
                                         </div>
                                         <div className="flex items-center gap-3 sm:col-span-2">
                                             <Sigma className="h-5 w-5 text-primary" />
@@ -277,7 +283,7 @@ export default async function CharacterSheetPage({ params }: PageProps) {
                                                 <TooltipProvider>
                                                     <Tooltip>
                                                         <TooltipTrigger asChild>
-                                                            <span className="cursor-help">{totalAbas?.toFixed(2) ?? 'N/A'}</span>
+                                                            <span className={cn('cursor-help', getAbasClass(totalAbas, character.rank, abasSettings))}>{formatAbas(totalAbas)}</span>
                                                         </TooltipTrigger>
                                                         <TooltipContent>
                                                             <p>Sum of ABAS across all characters on this account.</p>
@@ -363,7 +369,7 @@ export default async function CharacterSheetPage({ params }: PageProps) {
                                             )}
                                         </TableCell>
                                         <TableCell>{alt.rank_name}</TableCell>
-                                        <TableCell className={cn(getAbasClass(alt.abas, alt.rank, abasSettings))}>{alt.abas}</TableCell>
+                                        <TableCell className={cn(getAbasClass(parseFloat(alt.abas), alt.rank, abasSettings))}>{formatAbas(alt.abas)}</TableCell>
                                         <TableCell>{formatTimestamp(alt.last_online)}</TableCell>
                                         <TableCell>{formatTimestamp(alt.last_duty)}</TableCell>
                                     </TableRow>
@@ -379,4 +385,3 @@ export default async function CharacterSheetPage({ params }: PageProps) {
         </div>
     );
 }
-
