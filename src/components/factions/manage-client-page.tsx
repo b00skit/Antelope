@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useSession } from '@/hooks/use-session';
 import {
   Form,
   FormControl,
@@ -49,6 +50,7 @@ const formSchema = z.object({
 export function ManageFactionClientPage({ faction }: ManageFactionClientPageProps) {
     const router = useRouter();
     const { toast } = useToast();
+    const { refreshSession } = useSession();
     
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -101,6 +103,7 @@ export function ManageFactionClientPage({ faction }: ManageFactionClientPageProp
                 title: 'Success!',
                 description: `Faction "${values.name}" has been updated.`,
             });
+            await refreshSession();
             router.push('/factions');
             router.refresh();
 

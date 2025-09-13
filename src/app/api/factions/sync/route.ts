@@ -4,15 +4,26 @@ import { SessionData, getSession } from '@/lib/session';
 import { db } from '@/db';
 import { users, factionMembers, factions } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
+import type { IronSession } from 'iron-session';
 
-async function syncFactions(session: SessionData) {
+async function syncFactions(session: IronSession<SessionData>) {
     if (!session.isLoggedIn || !session.gtaw_access_token) {
         return { success: false, error: 'Not authenticated or no access token available.' };
     }
 
-    const user = await db.query.users.findFirst({
+    let user = await db.query.users.findFirst({
         where: eq(users.id, session.userId!),
     });
+
+    if (!user && session.username) {
+        user = await db.query.users.findFirst({
+            where: eq(users.username, session.username),
+        });
+        if (user) {
+            session.userId = user.id;
+            await session.save();
+        }
+    }
 
     if (!user) {
         return { success: false, error: 'User not found.' };

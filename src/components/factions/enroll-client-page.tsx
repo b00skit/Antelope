@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useSession } from '@/hooks/use-session';
 import {
   Form,
   FormControl,
@@ -59,6 +60,7 @@ export function EnrollClientPage() {
     const searchParams = useSearchParams();
     const isSuperAdminMode = searchParams.get('superadmin') === 'true';
     const { toast } = useToast();
+    const { refreshSession } = useSession();
     
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -156,6 +158,7 @@ export function EnrollClientPage() {
                 title: 'Success!',
                 description: `Faction "${values.name}" has been enrolled.`,
             });
+            await refreshSession();
             router.push('/factions');
             router.refresh();
 

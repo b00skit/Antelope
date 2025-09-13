@@ -58,19 +58,26 @@ export async function GET(request: Request) {
 
     // 3. Find or create user in our database
     let user = await db.query.users.findFirst({
-        where: eq(users.gtaw_user_id, gtawUserId),
+      where: eq(users.gtaw_user_id, gtawUserId),
     });
 
     if (!user) {
       // User doesn't exist, create a new one
-      const newUser = {
+      await db.insert(users).values({
         username: gtawUsername,
         gtaw_user_id: gtawUserId,
         password: null, // No password for OAuth users
-        role: 'guest'
-      };
-      const result = await db.insert(users).values(newUser).returning();
-      user = result[0];
+        role: 'guest',
+      });
+
+      // Retrieve the newly created user
+      user = await db.query.users.findFirst({
+        where: eq(users.gtaw_user_id, gtawUserId),
+      });
+    }
+
+    if (!user) {
+      throw new Error('Failed to create or retrieve user');
     }
 
     // 4. Set session

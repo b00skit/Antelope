@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 
 interface Faction {
@@ -27,22 +27,23 @@ export function useSession() {
   const [isLoading, setIsLoading] = useState(true);
   const pathname = usePathname();
 
-  useEffect(() => {
-    async function fetchSession() {
-      setIsLoading(true);
-      try {
-        const response = await fetch('/api/auth/session');
-        const data = await response.json();
-        setSession(data);
-      } catch (error) {
-        console.error('Failed to fetch session', error);
-        setSession({ isLoggedIn: false, hasActiveFaction: false });
-      } finally {
-        setIsLoading(false);
-      }
+  const fetchSession = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/auth/session');
+      const data = await response.json();
+      setSession(data);
+    } catch (error) {
+      console.error('Failed to fetch session', error);
+      setSession({ isLoggedIn: false, hasActiveFaction: false });
+    } finally {
+      setIsLoading(false);
     }
-    fetchSession();
-  }, [pathname]);
+  }, []);
 
-  return { session, isLoading };
+  useEffect(() => {
+    fetchSession();
+  }, [pathname, fetchSession]);
+
+  return { session, isLoading, refreshSession: fetchSession };
 }

@@ -3,8 +3,8 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { factions, factionMembers } from '@/db/schema';
-import { and, eq } from 'drizzle-orm';
+import { factions, factionMembers, users } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 
 const enrollSchema = z.object({
@@ -77,6 +77,12 @@ export async function POST(request: NextRequest) {
                 rank: user_rank,
                 joined: true, // Auto-join the faction upon enrollment
             }).run();
+
+            // 3. Make the new faction the user's active faction
+            tx.update(users)
+                .set({ selected_faction_id: id })
+                .where(eq(users.id, session.userId!))
+                .run();
         });
 
         return NextResponse.json({ success: true, message: 'Faction enrolled successfully.' }, { status: 201 });

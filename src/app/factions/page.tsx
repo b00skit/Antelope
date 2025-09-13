@@ -61,7 +61,7 @@ const FactionCardSkeleton = () => (
 );
 
 export default function FactionsPage() {
-    const { session } = useSession();
+    const { session, refreshSession } = useSession();
     const [userFactions, setUserFactions] = useState<UserFaction[]>([]);
     const [selectedFactionId, setSelectedFactionId] = useState<number | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -87,6 +87,7 @@ export default function FactionsPage() {
             const data: FactionsData = await response.json();
             setUserFactions(data.factions);
             setSelectedFactionId(data.selectedFactionId);
+            await refreshSession();
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -105,7 +106,7 @@ export default function FactionsPage() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
             toast({ title: 'Success', description: data.message });
-            fetchAndSyncFactions(); // Refresh data
+            await fetchAndSyncFactions(); // Refresh data
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Error', description: err.message });
         } finally {
@@ -120,7 +121,7 @@ export default function FactionsPage() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
             toast({ title: 'Success', description: data.message });
-            fetchAndSyncFactions(); // Refresh data
+            await fetchAndSyncFactions(); // Refresh data
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Error', description: err.message });
         } finally {
@@ -140,6 +141,7 @@ export default function FactionsPage() {
             if (!res.ok) throw new Error(data.error);
             toast({ title: 'Success', description: 'Active faction updated.' });
             setSelectedFactionId(factionId);
+            await refreshSession();
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Error', description: err.message });
         } finally {

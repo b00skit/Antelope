@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { factions, factionMembers } from '@/db/schema';
+import { factions, factionMembers, users } from '@/db/schema';
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -125,8 +125,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
             return NextResponse.json({ error: 'You must join the faction panel before managing it.' }, { status: 403 });
         }
         
-        // Use a transaction to delete all members first, then the faction itself.
+        // Use a transaction to clean up related data and delete the faction.
         db.transaction((tx) => {
+            tx.update(users).set({ selected_faction_id: null }).where(eq(users.selected_faction_id, factionId)).run();
             tx.delete(factionMembers).where(eq(factionMembers.factionId, factionId)).run();
             tx.delete(factions).where(eq(factions.id, factionId)).run();
         });
