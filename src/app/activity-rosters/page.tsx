@@ -6,12 +6,11 @@ import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, Loader2, PlusCircle, Pencil, Trash2, Eye, Star } from 'lucide-react';
+import { AlertTriangle, Loader2, PlusCircle, Pencil, Trash2, Eye, Star, Lock, EyeOff, User as UserIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -27,11 +26,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useFavorites } from '@/hooks/use-favorites';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface Roster {
   id: number;
   name: string;
-  is_public: boolean;
+  visibility: 'personal' | 'private' | 'unlisted' | 'public';
   author: {
     username: string;
   };
@@ -48,6 +53,14 @@ const RosterRowSkeleton = () => (
         <TableCell className="flex gap-2"><Skeleton className="h-8 w-8" /><Skeleton className="h-8 w-8" /></TableCell>
     </TableRow>
 );
+
+const visibilityDetails = {
+    public: { label: 'Public', icon: Eye, color: 'bg-green-500/10 text-green-500 border-green-500/50', description: 'Visible to all faction members.' },
+    private: { label: 'Private', icon: Lock, color: 'bg-red-500/10 text-red-500 border-red-500/50', description: 'Requires a password to view.' },
+    unlisted: { label: 'Unlisted', icon: EyeOff, color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/50', description: 'Only accessible via direct link.' },
+    personal: { label: 'Personal', icon: UserIcon, color: 'bg-blue-500/10 text-blue-500 border-blue-500/50', description: 'Only visible to you.' },
+};
+
 
 export default function ActivityRostersPage() {
     const [rosters, setRosters] = useState<Roster[]>([]);
@@ -123,89 +136,100 @@ export default function ActivityRostersPage() {
                     <CardDescription>A list of all available rosters for your current faction.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead></TableHead>
-                                <TableHead>Name</TableHead>
-                                <TableHead>Created By</TableHead>
-                                <TableHead>Visibility</TableHead>
-                                <TableHead>Created At</TableHead>
-                                <TableHead>Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {isLoading ? (
-                                Array.from({ length: 3 }).map((_, i) => <RosterRowSkeleton key={i} />)
-                            ) : rosters.length === 0 ? (
+                     <TooltipProvider>
+                        <Table>
+                            <TableHeader>
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center h-24">
-                                        No rosters found.
-                                    </TableCell>
+                                    <TableHead></TableHead>
+                                    <TableHead>Name</TableHead>
+                                    <TableHead>Created By</TableHead>
+                                    <TableHead>Visibility</TableHead>
+                                    <TableHead>Created At</TableHead>
+                                    <TableHead>Actions</TableHead>
                                 </TableRow>
-                            ) : (
-                                rosters.map(roster => {
-                                    const isFavorited = favoriteIds.has(roster.id);
-                                    return (
-                                        <TableRow key={roster.id}>
-                                            <TableCell>
-                                                <Button variant="ghost" size="icon" onClick={() => toggleFavorite(roster.id)}>
-                                                    <Star className={cn("h-4 w-4", isFavorited ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground")} />
-                                                </Button>
-                                            </TableCell>
-                                            <TableCell className="font-medium">{roster.name}</TableCell>
-                                            <TableCell>{roster.author.username}</TableCell>
-                                            <TableCell>
-                                                <Badge variant={roster.is_public ? 'default' : 'secondary'}>
-                                                    {roster.is_public ? 'Public' : 'Private'}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell>{format(new Date(roster.created_at), 'PPP')}</TableCell>
-                                            <TableCell>
-                                                <div className="flex gap-2">
-                                                    <Button variant="outline" size="icon" asChild>
-                                                        <Link href={`/activity-rosters/${roster.id}`}>
-                                                            <Eye className="h-4 w-4" />
-                                                        </Link>
+                            </TableHeader>
+                            <TableBody>
+                                {isLoading ? (
+                                    Array.from({ length: 3 }).map((_, i) => <RosterRowSkeleton key={i} />)
+                                ) : rosters.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={6} className="text-center h-24">
+                                            No rosters found.
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    rosters.map(roster => {
+                                        const isFavorited = favoriteIds.has(roster.id);
+                                        const visibility = visibilityDetails[roster.visibility] || { label: 'Unknown', icon: Eye, color: 'bg-gray-500/10 text-gray-500 border-gray-500/50', description: '' };
+                                        return (
+                                            <TableRow key={roster.id}>
+                                                <TableCell>
+                                                    <Button variant="ghost" size="icon" onClick={() => toggleFavorite(roster.id)}>
+                                                        <Star className={cn("h-4 w-4", isFavorited ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground")} />
                                                     </Button>
-                                                    {roster.isOwner && (
-                                                        <>
-                                                            <Button variant="outline" size="icon" asChild>
-                                                                <Link href={`/activity-rosters/edit/${roster.id}`}>
-                                                                    <Pencil className="h-4 w-4" />
-                                                                </Link>
-                                                            </Button>
-                                                            <AlertDialog>
-                                                                <AlertDialogTrigger asChild>
-                                                                    <Button variant="destructive" size="icon">
-                                                                        <Trash2 className="h-4 w-4" />
-                                                                    </Button>
-                                                                </AlertDialogTrigger>
-                                                                <AlertDialogContent>
-                                                                    <AlertDialogHeader>
-                                                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                                        <AlertDialogDescription>
-                                                                            This will permanently delete the roster "{roster.name}". This action cannot be undone.
-                                                                        </AlertDialogDescription>
-                                                                    </AlertDialogHeader>
-                                                                    <AlertDialogFooter>
-                                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                        <AlertDialogAction onClick={() => handleDelete(roster.id)}>
-                                                                            Yes, Delete Roster
-                                                                        </AlertDialogAction>
-                                                                    </AlertDialogFooter>
-                                                                </AlertDialogContent>
-                                                            </AlertDialog>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })
-                            )}
-                        </TableBody>
-                    </Table>
+                                                </TableCell>
+                                                <TableCell className="font-medium">{roster.name}</TableCell>
+                                                <TableCell>{roster.author.username}</TableCell>
+                                                <TableCell>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                             <Badge variant="outline" className={cn('capitalize', visibility.color)}>
+                                                                <visibility.icon className="mr-1 h-3 w-3" />
+                                                                {visibility.label}
+                                                            </Badge>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>{visibility.description}</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TableCell>
+                                                <TableCell>{new Date(roster.created_at).toLocaleDateString()}</TableCell>
+                                                <TableCell>
+                                                    <div className="flex gap-2">
+                                                        <Button variant="outline" size="icon" asChild>
+                                                            <Link href={`/activity-rosters/${roster.id}`}>
+                                                                <Eye className="h-4 w-4" />
+                                                            </Link>
+                                                        </Button>
+                                                        {roster.isOwner && (
+                                                            <>
+                                                                <Button variant="outline" size="icon" asChild>
+                                                                    <Link href={`/activity-rosters/edit/${roster.id}`}>
+                                                                        <Pencil className="h-4 w-4" />
+                                                                    </Link>
+                                                                </Button>
+                                                                <AlertDialog>
+                                                                    <AlertDialogTrigger asChild>
+                                                                        <Button variant="destructive" size="icon">
+                                                                            <Trash2 className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </AlertDialogTrigger>
+                                                                    <AlertDialogContent>
+                                                                        <AlertDialogHeader>
+                                                                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                                            <AlertDialogDescription>
+                                                                                This will permanently delete the roster "{roster.name}". This action cannot be undone.
+                                                                            </AlertDialogDescription>
+                                                                        </AlertDialogHeader>
+                                                                        <AlertDialogFooter>
+                                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                            <AlertDialogAction onClick={() => handleDelete(roster.id)}>
+                                                                                Yes, Delete Roster
+                                                                            </AlertDialogAction>
+                                                                        </AlertDialogFooter>
+                                                                    </AlertDialogContent>
+                                                                </AlertDialog>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })
+                                )}
+                            </TableBody>
+                        </Table>
+                    </TooltipProvider>
                 </CardContent>
             </Card>
         </div>
