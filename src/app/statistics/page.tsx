@@ -6,15 +6,17 @@ import { useSession } from '@/hooks/use-session';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { AlertTriangle, Loader2, Users, Clock, Activity, Crown, AlertCircle } from 'lucide-react';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { AlertTriangle, Loader2, Users, Clock, Activity, Crown, AlertCircle, UserCheck } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
+import { ChartConfig, ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 
 interface StatsData {
     totalMembers: number;
+    totalUniqueMembers: number;
     activeLast7Days: number;
     averageAbas: number;
     rankDistribution: { name: string, count: number }[];
@@ -49,12 +51,20 @@ const StatCardSkeleton = () => (
     </Card>
 );
 
+const CHART_COLORS = ["#8884d8", "#82ca9d", "#ffc658", "#ff8042", "#0088fe", "#00c49f", "#ffbb28", "#ff8042"];
+
 
 export default function StatisticsPage() {
     const { session } = useSession();
     const [stats, setStats] = useState<StatsData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+
+    const chartConfig = {
+        members: {
+            label: "Members",
+        },
+    } satisfies ChartConfig;
 
     useEffect(() => {
         if (session?.hasActiveFaction) {
@@ -80,7 +90,8 @@ export default function StatisticsPage() {
         return (
             <div className="container mx-auto p-4 md:p-6 lg:p-8 space-y-6">
                  <PageHeader title="Faction Statistics" description="Loading data..." />
-                 <div className="grid gap-4 md:grid-cols-3">
+                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                     <StatCardSkeleton />
                      <StatCardSkeleton />
                      <StatCardSkeleton />
                      <StatCardSkeleton />
@@ -116,10 +127,11 @@ export default function StatisticsPage() {
                 Last synced with GTA:World: {stats.lastSync ? formatDistanceToNow(new Date(stats.lastSync)) : 'N/A'} ago.
             </p>
 
-            <div className="grid gap-4 md:grid-cols-3">
-                <StatCard title="Total Members" value={stats.totalMembers} icon={<Users className="h-4 w-4 text-muted-foreground" />} description="Total count of all faction members." />
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <StatCard title="Total Characters" value={stats.totalMembers} icon={<Users className="h-4 w-4 text-muted-foreground" />} description="Total count of all faction characters." />
+                <StatCard title="Unique Members" value={stats.totalUniqueMembers} icon={<UserCheck className="h-4 w-4 text-muted-foreground" />} description="Total members, excluding alts." />
                 <StatCard title="Active Members" value={stats.activeLast7Days} icon={<Clock className="h-4 w-4 text-muted-foreground" />} description="Members on duty in the last 7 days." />
-                <StatCard title="Average ABAS" value={stats.averageAbas.toFixed(2)} icon={<Activity className="h-4 w-4 text-muted-foreground" />} description="Average weekly ABAS per member." />
+                <StatCard title="Average ABAS" value={stats.averageAbas.toFixed(2)} icon={<Activity className="h-4 w-4 text-muted-foreground" />} description="Average weekly ABAS per character." />
             </div>
 
             <Card>
@@ -128,16 +140,38 @@ export default function StatisticsPage() {
                     <CardDescription>Number of members per rank.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={stats.rankDistribution} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} interval={0} />
-                            <YAxis allowDecimals={false} />
-                            <Tooltip />
-                            <Legend />
-                            <Bar dataKey="count" fill="hsl(var(--primary))" name="Members" />
-                        </BarChart>
-                    </ResponsiveContainer>
+                    <ChartContainer config={chartConfig} className="h-[300px] w-full">
+                        <PieChart>
+                            <Tooltip
+                                content={<ChartTooltipContent nameKey="name" hideLabel />}
+                            />
+                            <Pie
+                                data={stats.rankDistribution}
+                                dataKey="count"
+                                nameKey="name"
+                                cx="50%"
+                                cy="50%"
+                                outerRadius={120}
+                                fill="#8884d8"
+                            >
+                                {stats.rankDistribution.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                                ))}
+                            </Pie>
+                             <Legend
+                                content={({ payload }) => (
+                                    <div className="flex flex-wrap gap-x-4 gap-y-2 justify-center">
+                                    {payload?.map((entry, index) => (
+                                        <div key={`item-${index}`} className="flex items-center text-sm">
+                                            <div className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: entry.color }} />
+                                            <span>{entry.value} ({entry.payload.count})</span>
+                                        </div>
+                                    ))}
+                                    </div>
+                                )}
+                            />
+                        </PieChart>
+                    </ChartContainer>
                 </CardContent>
             </Card>
 

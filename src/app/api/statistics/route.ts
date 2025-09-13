@@ -7,6 +7,7 @@ import { and, eq, inArray } from 'drizzle-orm';
 import { subDays } from 'date-fns';
 
 interface Member {
+    user_id: number;
     character_id: number;
     character_name: string;
     rank: number;
@@ -46,8 +47,10 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Faction member cache is not available. Please sync the roster first.' }, { status: 404 });
         }
 
-        const members: Member[] = cachedMembers.members;
-        const memberIds = members.map(m => m.character_id);
+        // De-duplicate members by character_id first
+        const uniqueMembers: Member[] = Array.from(new Map(cachedMembers.members.map((m: Member) => [m.character_id, m])).values());
+        
+        const memberIds = uniqueMembers.map(m => m.character_id);
 
         const abasData = memberIds.length > 0 ? await db.query.factionMembersAbasCache.findMany({
             where: and(
@@ -59,11 +62,14 @@ export async function GET(request: NextRequest) {
         const abasMap = new Map(abasData.map(a => [a.character_id, parseFloat(a.abas || '0')]));
         
         // --- Process Statistics ---
-        const totalMembers = members.length;
-        const sevenDaysAgo = subDays(new Date(), 7);
-        const activeLast7Days = members.filter(m => m.last_duty && new Date(m.last_duty) > sevenDaysAgo).length;
+        const totalMembers = uniqueMembers.length;
+        const uniqueUserIds = new Set(uniqueMembers.map(m => m.user_id));
+        const totalUniqueMembers = uniqueUserIds.size;
 
-        const rankDistribution = members.reduce((acc, member) => {
+        const sevenDaysAgo = subDays(new Date(), 7);
+        const activeLast7Days = uniqueMembers.filter(m => m.last_duty && new Date(m.last_duty) > sevenDaysAgo).length;
+
+        const rankDistribution = uniqueMembers.reduce((acc, member) => {
             acc[member.rank_name] = (acc[member.rank_name] || 0) + 1;
             return acc;
         }, {} as Record<string, number>);
@@ -75,7 +81,7 @@ export async function GET(request: NextRequest) {
         const totalAbas = Array.from(abasMap.values()).reduce((sum, abas) => sum + abas, 0);
         const averageAbas = totalMembers > 0 ? totalAbas / totalMembers : 0;
         
-        const membersWithAbas = members.map(m => {
+        const membersWithAbas = uniqueMembers.map(m => {
             const abas = abasMap.get(m.character_id) ?? 0;
             const isSupervisor = m.rank >= (faction.supervisor_rank ?? 10);
             const requiredAbas = isSupervisor ? (faction.minimum_supervisor_abas ?? 0) : (faction.minimum_abas ?? 0);
@@ -93,6 +99,7 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({
             totalMembers,
+            totalUniqueMembers,
             activeLast7Days,
             averageAbas,
             rankDistribution: sortedRankDistribution,
