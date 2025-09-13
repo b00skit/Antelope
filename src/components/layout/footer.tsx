@@ -14,8 +14,8 @@ export async function Footer() {
         <div className="container mx-auto flex flex-col items-center justify-center gap-2">
             <Image 
                 src={config.SITE_IMAGE}
-                width={60}
-                height={30}
+                width={120}
+                height={80}
                 alt="MDC Panel Logo"
             />
           <p className="text-center text-sm text-muted-foreground">

@@ -1,30 +1,30 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Gavel, FileText, BookOpen, Landmark, ArrowRight, CheckCircle } from 'lucide-react';
+import { BarChart, ClipboardList, Users, ArrowRight, CheckCircle, Settings } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 const features = [
     {
-        icon: Gavel,
-        title: "Arrest Calculator",
-        description: "Accurately calculate sentencing, fines, and points based on the latest penal code.",
+        icon: BarChart,
+        title: "Statistics",
+        description: "Provides a general overview of your faction, it's membership and ranks.",
     },
     {
-        icon: FileText,
-        title: "Paperwork Generators",
-        description: "Quickly generate standardized reports, citations, and warrants with pre-filled information.",
+        icon: ClipboardList,
+        title: "Activity Rosters",
+        description: "Setup rosters specific to your need to track member activity.",
     },
     {
-        icon: BookOpen,
-        title: "Simplified Penal Code",
-        description: "Search and browse a user-friendly version of the San Andreas penal code.",
+        icon: Users,
+        title: "Character Sheets",
+        description: "Search for a specific character and provide an activity breakdown.",
     },
     {
-        icon: Landmark,
-        title: "Caselaw Database",
-        description: "Access a comprehensive library of caselaw with an AI-powered search assistant.",
-    },
+        icon: Settings,
+        title: "Faction Administration",
+        description: "An intigrated permission-based / user system.",
+    }
 ];
 
 export default function LandingPage() {
@@ -38,7 +38,7 @@ export default function LandingPage() {
                         Streamline Your Faction's Workflow
                     </h1>
                     <p className="mt-6 text-lg md:text-xl max-w-3xl mx-auto text-muted-foreground">
-                        Faction Panel+ is an all-in-one toolkit designed for law enforcement in the GTA:World community, providing essential tools to make your duties more efficient.
+                        Antelope is an all-in-one toolkit designed for factions in the GTA:World community, providing essential tools to make your duties more efficient.
                     </p>
                     <div className="mt-8 flex justify-center gap-4">
                         <Button asChild size="lg">
@@ -53,7 +53,7 @@ export default function LandingPage() {
                 <div className="container">
                     <div className="text-center">
                         <h2 className="text-3xl font-bold tracking-tight">Everything You Need, All in One Place</h2>
-                        <p className="mt-4 text-lg text-muted-foreground">From the initial charge to the final report, we've got you covered.</p>
+                        <p className="mt-4 text-lg text-muted-foreground">Manage your faction exactly however you need, the panel provides a lot of customization options.</p>
                     </div>
                     <div className="mt-12 grid gap-8 md:grid-cols-2 lg:grid-cols-4">
                         {features.map((feature) => (
@@ -104,10 +104,10 @@ export default function LandingPage() {
                     </div>
                     <div>
                         <Image
-                            src="https://via.placeholder.com/600x400.png/000000/FFFFFF?text=Integration+Diagram"
-                            alt="Integration diagram"
+                            src="/img/statistics.png"
+                            alt="Faction Statistics"
                             width={600}
-                            height={400}
+                            height={500}
                             className="rounded-lg shadow-xl"
                             data-ai-hint="data integration"
                         />
