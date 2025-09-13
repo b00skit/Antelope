@@ -1,0 +1,48 @@
+'use client';
+
+import { create } from 'zustand';
+
+interface Faction {
+  id: number;
+  name: string;
+  color: string | null;
+  access_rank: number | null;
+  moderation_rank: number | null;
+  feature_flags: {
+    activity_rosters_enabled?: boolean;
+    character_sheets_enabled?: boolean;
+  } | null;
+}
+
+interface Session {
+  isLoggedIn: boolean;
+  username?: string;
+  role?: string;
+  hasActiveFaction?: boolean;
+  activeFaction?: Faction | null;
+}
+
+interface SessionState {
+  session: Session | null;
+  isLoading: boolean;
+  fetchSession: () => Promise<void>;
+}
+
+export const useSessionStore = create<SessionState>((set) => ({
+  session: null,
+  isLoading: true,
+  fetchSession: async () => {
+    set({ isLoading: true });
+    try {
+      const response = await fetch('/api/auth/session', { cache: 'no-store' });
+      const data = await response.json();
+      set({ session: data });
+    } catch (error) {
+      console.error('Failed to fetch session', error);
+      set({ session: { isLoggedIn: false, hasActiveFaction: false } });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+}));
+
