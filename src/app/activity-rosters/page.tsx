@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, Loader2, PlusCircle, Pencil, Trash2, Eye } from 'lucide-react';
+import { AlertTriangle, Loader2, PlusCircle, Pencil, Trash2, Eye, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 interface Roster {
   id: number;
@@ -35,6 +36,7 @@ interface Roster {
   };
   created_at: string;
   isOwner: boolean;
+  isFavorited: boolean;
 }
 
 const RosterRowSkeleton = () => (
@@ -88,6 +90,25 @@ export default function ActivityRostersPage() {
             toast({ variant: 'destructive', title: 'Error', description: err.message });
         }
     };
+    
+    const handleToggleFavorite = async (rosterId: number) => {
+        const originalRosters = [...rosters];
+        // Optimistic update
+        setRosters(prev => prev.map(r => r.id === rosterId ? { ...r, isFavorited: !r.isFavorited } : r));
+
+        try {
+            const res = await fetch(`/api/rosters/${rosterId}/favorite`, { method: 'POST' });
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error);
+            }
+            const data = await res.json();
+            toast({ title: 'Success', description: data.message });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Error', description: err.message });
+            setRosters(originalRosters); // Revert on failure
+        }
+    };
 
     return (
         <div className="container mx-auto p-4 md:p-6 lg:p-8">
@@ -121,6 +142,7 @@ export default function ActivityRostersPage() {
                     <Table>
                         <TableHeader>
                             <TableRow>
+                                <TableHead></TableHead>
                                 <TableHead>Name</TableHead>
                                 <TableHead>Created By</TableHead>
                                 <TableHead>Visibility</TableHead>
@@ -133,13 +155,18 @@ export default function ActivityRostersPage() {
                                 Array.from({ length: 3 }).map((_, i) => <RosterRowSkeleton key={i} />)
                             ) : rosters.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="text-center h-24">
+                                    <TableCell colSpan={6} className="text-center h-24">
                                         No rosters found.
                                     </TableCell>
                                 </TableRow>
                             ) : (
                                 rosters.map(roster => (
                                     <TableRow key={roster.id}>
+                                         <TableCell>
+                                            <Button variant="ghost" size="icon" onClick={() => handleToggleFavorite(roster.id)}>
+                                                <Star className={cn("h-4 w-4", roster.isFavorited ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground")} />
+                                            </Button>
+                                        </TableCell>
                                         <TableCell className="font-medium">{roster.name}</TableCell>
                                         <TableCell>{roster.author.username}</TableCell>
                                         <TableCell>

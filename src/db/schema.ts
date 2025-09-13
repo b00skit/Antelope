@@ -48,6 +48,14 @@ export const activityRosters = sqliteTable('activity_rosters', {
     updated_at: integer('updated_at', { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
 });
 
+export const activityRosterFavorites = sqliteTable('activity_roster_favorites', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    user_id: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    faction_id: integer('faction_id').notNull().references(() => factions.id, { onDelete: 'cascade' }),
+    activity_roster_id: integer('activity_roster_id').notNull().references(() => activityRosters.id, { onDelete: 'cascade' }),
+    activity_roster_name: text('activity_roster_name').notNull(),
+});
+
 export const activityRosterSections = sqliteTable('activity_roster_sections', {
     id: integer('id').primaryKey({ autoIncrement: true }),
     activity_roster_id: integer('activity_roster_id').notNull().references(() => activityRosters.id, { onDelete: 'cascade' }),
@@ -90,6 +98,7 @@ export const usersRelations = relations(users, ({ many, one }) => ({
         references: [factions.id],
     }),
     activityRosters: many(activityRosters),
+    favoriteRosters: many(activityRosterFavorites),
 }));
 
 export const factionsRelations = relations(factions, ({ many }) => ({
@@ -122,6 +131,21 @@ export const activityRostersRelations = relations(activityRosters, ({ one, many 
         references: [forumApiCache.activity_roster_id],
     }),
     sections: many(activityRosterSections),
+}));
+
+export const activityRosterFavoritesRelations = relations(activityRosterFavorites, ({ one }) => ({
+    user: one(users, {
+        fields: [activityRosterFavorites.user_id],
+        references: [users.id],
+    }),
+    faction: one(factions, {
+        fields: [activityRosterFavorites.faction_id],
+        references: [factions.id],
+    }),
+    activityRoster: one(activityRosters, {
+        fields: [activityRosterFavorites.activity_roster_id],
+        references: [activityRosters.id],
+    }),
 }));
 
 export const activityRosterSectionsRelations = relations(activityRosterSections, ({ one }) => ({

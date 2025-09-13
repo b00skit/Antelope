@@ -25,6 +25,7 @@ import {
   ClipboardList,
   Search,
   BarChart,
+  Star,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useState, useEffect } from 'react';
@@ -62,6 +63,12 @@ type SiteConfig = {
   URL_GITHUB: string;
 };
 
+interface FavoriteRoster {
+  id: number;
+  activity_roster_id: number;
+  activity_roster_name: string;
+}
+
 export function SidebarNav() {
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
@@ -72,6 +79,7 @@ export function SidebarNav() {
   const { session, isLoading } = useSession();
   const router = useRouter();
   const [characterSearch, setCharacterSearch] = useState('');
+  const [favoriteRosters, setFavoriteRosters] = useState<FavoriteRoster[]>([]);
 
 
   useEffect(() => {
@@ -82,6 +90,16 @@ export function SidebarNav() {
       URL_GITHUB: 'https://github.com/b00skit/MDC-Panel-plus',
     });
   }, []);
+
+   useEffect(() => {
+        if (session?.hasActiveFaction) {
+            fetch('/api/rosters/favorites')
+                .then(res => res.json())
+                .then(data => setFavoriteRosters(data.favorites || []));
+        } else {
+            setFavoriteRosters([]);
+        }
+    }, [session, pathname]);
 
   useEffect(() => {
     const handleStorageChange = () => {
@@ -228,7 +246,7 @@ export function SidebarNav() {
             <SidebarMenuItem>
                 <SidebarMenuButton
                 asChild
-                isActive={isActive('/activity-rosters')}
+                isActive={isActive('/activity-rosters', true)}
                 tooltip="Activity Rosters"
                 >
                 <Link href="/activity-rosters">
@@ -253,10 +271,31 @@ export function SidebarNav() {
             </SidebarMenuItem>
           )}
         </SidebarMenu>
+        {favoriteRosters.length > 0 && (
+            <>
+                <Separator className="my-2" />
+                <SidebarMenu>
+                    {favoriteRosters.map(fav => (
+                         <SidebarMenuItem key={fav.id}>
+                            <SidebarMenuButton
+                                asChild
+                                isActive={isActive(`/activity-rosters/${fav.activity_roster_id}`)}
+                                tooltip={fav.activity_roster_name}
+                            >
+                                <Link href={`/activity-rosters/${fav.activity_roster_id}`}>
+                                    <Star className="text-yellow-400 fill-yellow-400" />
+                                    <span>{fav.activity_roster_name}</span>
+                                </Link>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                    ))}
+                </SidebarMenu>
+            </>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="p-2">
-        <Separator className="my-2" />
+         <Separator className="my-2" />
         <SidebarMenu>
             <SidebarMenuItem>
                 <SidebarMenuButton

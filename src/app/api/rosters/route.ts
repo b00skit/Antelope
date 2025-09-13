@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { users, factionMembers, activityRosters } from '@/db/schema';
+import { users, factionMembers, activityRosters, activityRosterFavorites } from '@/db/schema';
 import { and, eq, or, desc } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -40,30 +40,44 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'No active faction selected.' }, { status: 400 });
         }
 
-        const rosters = await db.query.activityRosters.findMany({
-            where: and(
-                eq(activityRosters.factionId, user.selected_faction_id),
-                or(
-                    eq(activityRosters.is_public, true),
-                    eq(activityRosters.created_by, session.userId)
-                )
-            ),
-            with: {
-                author: {
-                    columns: {
-                        username: true,
+        const [rosters, favorites] = await Promise.all([
+             db.query.activityRosters.findMany({
+                where: and(
+                    eq(activityRosters.factionId, user.selected_faction_id),
+                    or(
+                        eq(activityRosters.is_public, true),
+                        eq(activityRosters.created_by, session.userId)
+                    )
+                ),
+                with: {
+                    author: {
+                        columns: {
+                            username: true,
+                        }
                     }
+                },
+                orderBy: [desc(activityRosters.created_at)],
+            }),
+            db.query.activityRosterFavorites.findMany({
+                where: and(
+                    eq(activityRosterFavorites.user_id, session.userId),
+                    eq(activityRosterFavorites.faction_id, user.selected_faction_id),
+                ),
+                columns: {
+                    activity_roster_id: true,
                 }
-            },
-            orderBy: [desc(activityRosters.created_at)],
-        });
+            })
+        ]);
+        
+        const favoriteIds = new Set(favorites.map(f => f.activity_roster_id));
 
-        const rostersWithOwnership = rosters.map(r => ({
+        const rostersWithDetails = rosters.map(r => ({
             ...r,
             isOwner: r.created_by === session.userId,
+            isFavorited: favoriteIds.has(r.id),
         }));
 
-        return NextResponse.json({ rosters: rostersWithOwnership });
+        return NextResponse.json({ rosters: rostersWithDetails });
 
     } catch (error) {
         console.error('[API Rosters GET] Error:', error);
