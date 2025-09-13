@@ -1,4 +1,5 @@
 
+
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
@@ -10,6 +11,11 @@ interface RouteParams {
     params: {
         id: string;
     }
+}
+
+interface AbasData {
+    character_id: number;
+    abas: string;
 }
 
 interface Member {
@@ -175,12 +181,20 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         });
 
         if (forceSync || !cachedFaction || !cachedFaction.last_sync_timestamp || new Date(cachedFaction.last_sync_timestamp) < oneDayAgo) {
-             const factionApiResponse = await fetch(`https://ucp.gta.world/api/faction/${factionId}`, {
-                headers: {
-                    Authorization: `Bearer ${session.gtaw_access_token}`,
-                    'Accept': 'application/json',
-                },
-            });
+            const [factionApiResponse, abasApiResponse] = await Promise.all([
+                 fetch(`https://ucp.gta.world/api/faction/${factionId}`, {
+                    headers: {
+                        Authorization: `Bearer ${session.gtaw_access_token}`,
+                        'Accept': 'application/json',
+                    },
+                }),
+                fetch(`https://ucp.gta.world/api/faction/${factionId}/abas`, {
+                     headers: {
+                        Authorization: `Bearer ${session.gtaw_access_token}`,
+                        'Accept': 'application/json',
+                    },
+                })
+            ]);
             
             if (!factionApiResponse.ok) {
                 const errorBody = await factionApiResponse.text();
@@ -197,6 +211,31 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             await db.insert(factionMembersCache)
                 .values({ faction_id: factionId, members: members, last_sync_timestamp: now })
                 .onConflictDoUpdate({ target: factionMembersCache.faction_id, set: { members: members, last_sync_timestamp: now } });
+            
+            if (abasApiResponse.ok) {
+                const abasData = await abasApiResponse.json();
+                const abasValues: AbasData[] = abasData.data;
+
+                for (const abasEntry of abasValues) {
+                    await db.insert(factionMembersAbasCache)
+                        .values({
+                            character_id: abasEntry.character_id,
+                            faction_id: factionId,
+                            abas: abasEntry.abas,
+                            last_sync_timestamp: now,
+                        })
+                        .onConflictDoUpdate({
+                            target: [factionMembersAbasCache.character_id, factionMembersAbasCache.faction_id],
+                            set: {
+                                abas: abasEntry.abas,
+                                last_sync_timestamp: now,
+                            }
+                        });
+                }
+            } else {
+                 console.warn(`[API Roster View] Failed to fetch ABAS data for faction ${factionId}. Status: ${abasApiResponse.status}`);
+            }
+
         } else {
             members = cachedFaction.members || [];
         }
