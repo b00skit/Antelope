@@ -6,20 +6,22 @@ import { useSession } from '@/hooks/use-session';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, Sector } from 'recharts';
 import { AlertTriangle, Loader2, Users, Clock, Activity, Crown, AlertCircle, UserCheck } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
 import { ChartConfig, ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
+import { ScrollArea } from '../ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 interface StatsData {
     totalMembers: number;
     totalUniqueMembers: number;
     activeLast7Days: number;
     averageAbas: number;
-    rankDistribution: { name: string, count: number }[];
+    rankDistribution: { name: string, count: number, fill: string }[];
     topPerformers: any[];
     belowMinimum: any[];
     lastSync: string;
@@ -51,7 +53,7 @@ const StatCardSkeleton = () => (
     </Card>
 );
 
-const CHART_COLORS = ["#8884d8", "#82ca9d", "#ffc658", "#ff8042", "#0088fe", "#00c49f", "#ffbb28", "#ff8042"];
+const CHART_COLORS = ["#8884d8", "#82ca9d", "#ffc658", "#ff8042", "#0088fe", "#00c49f", "#ffbb28", "#ff8042", "#a4de6c", "#d0ed57", "#ffc658", "#fd7f6f", "#7eb0d5", "#b2e061", "#bd7ebe", "#ffb55a", "#ffee65", "#beb9db", "#fdcce5", "#8bd3c7"];
 
 
 export default function StatisticsPage() {
@@ -59,12 +61,20 @@ export default function StatisticsPage() {
     const [stats, setStats] = useState<StatsData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [inactiveRanks, setInactiveRanks] = useState<string[]>([]);
 
-    const chartConfig = {
-        members: {
-            label: "Members",
-        },
-    } satisfies ChartConfig;
+    const chartConfig = React.useMemo(() => {
+        if (!stats) return {};
+        const config: ChartConfig = {};
+        stats.rankDistribution.forEach(rank => {
+            config[rank.name] = {
+                label: rank.name,
+                color: rank.fill,
+            };
+        });
+        return config;
+    }, [stats]);
+
 
     useEffect(() => {
         if (session?.hasActiveFaction) {
@@ -75,7 +85,13 @@ export default function StatisticsPage() {
                     const res = await fetch('/api/statistics');
                     const data = await res.json();
                     if (!res.ok) throw new Error(data.error || 'Failed to fetch stats');
-                    setStats(data);
+                    
+                    const rankDistributionWithColors = data.rankDistribution.map((rank: any, index: number) => ({
+                        ...rank,
+                        fill: CHART_COLORS[index % CHART_COLORS.length]
+                    }));
+
+                    setStats({ ...data, rankDistribution: rankDistributionWithColors });
                 } catch (err: any) {
                     setError(err.message);
                 } finally {
@@ -96,7 +112,7 @@ export default function StatisticsPage() {
                      <StatCardSkeleton />
                      <StatCardSkeleton />
                  </div>
-                 <Skeleton className="h-[300px] w-full" />
+                 <Skeleton className="h-[400px] w-full" />
                  <Skeleton className="h-[200px] w-full" />
             </div>
         )
@@ -115,6 +131,8 @@ export default function StatisticsPage() {
     }
 
     if (!stats) return null;
+    
+    const filteredRankDistribution = stats.rankDistribution.filter(rank => !inactiveRanks.includes(rank.name));
 
     return (
         <div className="container mx-auto p-4 md:p-6 lg:p-8 space-y-6">
@@ -137,41 +155,53 @@ export default function StatisticsPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Rank Distribution</CardTitle>
-                    <CardDescription>Number of members per rank.</CardDescription>
+                    <CardDescription>Number of members per rank. Click a rank to toggle its visibility.</CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <ChartContainer config={chartConfig} className="h-[300px] w-full">
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                    <ChartContainer config={chartConfig} className="h-[350px] w-full">
                         <PieChart>
-                            <Tooltip
-                                content={<ChartTooltipContent nameKey="name" hideLabel />}
-                            />
+                            <Tooltip content={<ChartTooltipContent nameKey="name" hideLabel />} />
                             <Pie
-                                data={stats.rankDistribution}
+                                data={filteredRankDistribution}
                                 dataKey="count"
                                 nameKey="name"
                                 cx="50%"
                                 cy="50%"
                                 outerRadius={120}
-                                fill="#8884d8"
+                                innerRadius={60}
                             >
-                                {stats.rankDistribution.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                                {filteredRankDistribution.map((entry) => (
+                                    <Cell key={`cell-${entry.name}`} fill={entry.fill} />
                                 ))}
                             </Pie>
-                             <Legend
-                                content={({ payload }) => (
-                                    <div className="flex flex-wrap gap-x-4 gap-y-2 justify-center">
-                                    {payload?.map((entry, index) => (
-                                        <div key={`item-${index}`} className="flex items-center text-sm">
-                                            <div className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: entry.color }} />
-                                            <span>{entry.value} ({entry.payload.count})</span>
-                                        </div>
-                                    ))}
-                                    </div>
-                                )}
-                            />
                         </PieChart>
                     </ChartContainer>
+                    <ScrollArea className="h-[300px] pr-4">
+                         <div className="space-y-2">
+                             {stats.rankDistribution.map(rank => (
+                                <div 
+                                    key={rank.name}
+                                    onClick={() => {
+                                        setInactiveRanks(prev => 
+                                            prev.includes(rank.name)
+                                                ? prev.filter(r => r !== rank.name)
+                                                : [...prev, rank.name]
+                                        )
+                                    }}
+                                    className={cn(
+                                        "flex items-center justify-between p-2 rounded-md cursor-pointer transition-colors",
+                                        inactiveRanks.includes(rank.name) ? "opacity-50 bg-muted/50" : "hover:bg-muted/50"
+                                    )}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: rank.fill }} />
+                                        <span className="text-sm font-medium">{rank.name}</span>
+                                    </div>
+                                    <span className="text-sm text-muted-foreground font-semibold">{rank.count}</span>
+                                </div>
+                             ))}
+                         </div>
+                    </ScrollArea>
                 </CardContent>
             </Card>
 
