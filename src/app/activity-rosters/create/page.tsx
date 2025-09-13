@@ -24,6 +24,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const jsonString = z.string().refine((value) => {
     if (!value) return true; // Allow empty string
@@ -38,8 +39,12 @@ const jsonString = z.string().refine((value) => {
 
 const formSchema = z.object({
     name: z.string().min(3, "Roster name must be at least 3 characters long."),
-    is_public: z.boolean().default(false),
+    visibility: z.enum(['personal', 'private', 'unlisted', 'public']).default('personal'),
+    password: z.string().optional().nullable(),
     roster_setup_json: jsonString.optional().nullable(),
+}).refine(data => data.visibility !== 'private' || (data.password && data.password.length > 0), {
+    message: "Password is required for private rosters.",
+    path: ["password"],
 });
 
 const jsonExample = `{
@@ -63,6 +68,13 @@ const jsonExample = `{
   }
 }`;
 
+const visibilityOptions = [
+    { value: 'personal', label: 'Personal', description: 'Only you can see this roster.' },
+    { value: 'private', label: 'Private', description: 'Only people with the password can see this roster.' },
+    { value: 'unlisted', label: 'Unlisted', description: 'Anyone with the link can see it, but it\'s hidden from the main list.' },
+    { value: 'public', label: 'Public', description: 'Everyone in the faction can see this roster.' },
+];
+
 export default function CreateRosterPage() {
     const router = useRouter();
     const { toast } = useToast();
@@ -71,10 +83,13 @@ export default function CreateRosterPage() {
         resolver: zodResolver(formSchema),
         defaultValues: {
             name: '',
-            is_public: false,
+            visibility: 'personal',
+            password: '',
             roster_setup_json: '',
         },
     });
+
+    const watchVisibility = form.watch('visibility');
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         try {
@@ -123,26 +138,46 @@ export default function CreateRosterPage() {
                                     </FormItem>
                                 )}
                             />
-                             <FormField
+                            <FormField
                                 control={form.control}
-                                name="is_public"
+                                name="visibility"
                                 render={({ field }) => (
-                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                        <div className="space-y-0.5">
-                                            <FormLabel>Public Roster</FormLabel>
-                                            <FormDescription>
-                                                If enabled, any member of the faction can view this roster.
-                                            </FormDescription>
-                                        </div>
-                                        <FormControl>
-                                            <Switch
-                                                checked={field.value}
-                                                onCheckedChange={field.onChange}
-                                            />
-                                        </FormControl>
+                                    <FormItem>
+                                        <FormLabel>Visibility</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select visibility..." />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                {visibilityOptions.map(option => (
+                                                    <SelectItem key={option.value} value={option.value}>
+                                                        {option.label} - <span className="text-muted-foreground text-xs">{option.description}</span>
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
                                     </FormItem>
                                 )}
                             />
+                            {watchVisibility === 'private' && (
+                                <FormField
+                                    control={form.control}
+                                    name="password"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Password</FormLabel>
+                                            <FormControl>
+                                                <Input type="password" placeholder="Set a password" {...field} value={field.value ?? ''} />
+                                            </FormControl>
+                                            <FormDescription>Users will need this password to access the roster.</FormDescription>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            )}
                              <FormField
                                 control={form.control}
                                 name="roster_setup_json"

@@ -5,6 +5,7 @@ import { db } from '@/db';
 import { users, factionMembers, activityRosters, activityRosterFavorites } from '@/db/schema';
 import { and, eq, or, desc } from 'drizzle-orm';
 import { z } from 'zod';
+import bcrypt from 'bcryptjs';
 
 const jsonString = z.string().refine((value) => {
     if (!value) return true; // Allow empty string
@@ -18,8 +19,12 @@ const jsonString = z.string().refine((value) => {
 
 const createRosterSchema = z.object({
     name: z.string().min(3, "Roster name must be at least 3 characters long."),
-    is_public: z.boolean().default(false),
+    visibility: z.enum(['personal', 'private', 'unlisted', 'public']).default('personal'),
+    password: z.string().optional().nullable(),
     roster_setup_json: jsonString.optional().nullable(),
+}).refine(data => data.visibility !== 'private' || (data.password && data.password.length > 0), {
+    message: "Password is required for private rosters.",
+    path: ["password"],
 });
 
 // GET /api/rosters - Fetches rosters for the user's active faction
@@ -45,7 +50,8 @@ export async function GET(request: NextRequest) {
                 where: and(
                     eq(activityRosters.factionId, user.selected_faction_id),
                     or(
-                        eq(activityRosters.is_public, true),
+                        eq(activityRosters.visibility, 'public'),
+                        eq(activityRosters.visibility, 'private'),
                         eq(activityRosters.created_by, session.userId)
                     )
                 ),
@@ -110,8 +116,16 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'No active faction selected.' }, { status: 400 });
         }
 
+        let hashedPassword = null;
+        if (parsed.data.visibility === 'private' && parsed.data.password) {
+            hashedPassword = await bcrypt.hash(parsed.data.password, 10);
+        }
+
         const newRoster = await db.insert(activityRosters).values({
-            ...parsed.data,
+            name: parsed.data.name,
+            visibility: parsed.data.visibility,
+            password: hashedPassword,
+            roster_setup_json: parsed.data.roster_setup_json,
             factionId: user.selected_faction_id,
             created_by: session.userId,
         }).returning();

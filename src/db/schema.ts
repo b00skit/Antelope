@@ -42,10 +42,17 @@ export const activityRosters = sqliteTable('activity_rosters', {
     factionId: integer('faction_id').notNull().references(() => factions.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     roster_setup_json: text('roster_setup_json'),
-    is_public: integer('is_public', { mode: 'boolean' }).default(false),
+    visibility: text('visibility', { enum: ['personal', 'private', 'unlisted', 'public'] }).default('personal').notNull(),
+    password: text('password'),
     created_by: integer('created_by').notNull().references(() => users.id),
     created_at: integer('created_at', { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
     updated_at: integer('updated_at', { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
+});
+
+export const activityRosterAccess = sqliteTable('activity_roster_access', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    user_id: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    activity_roster_id: integer('activity_roster_id').notNull().references(() => activityRosters.id, { onDelete: 'cascade' }),
 });
 
 export const activityRosterFavorites = sqliteTable('activity_roster_favorites', {
@@ -131,6 +138,18 @@ export const activityRostersRelations = relations(activityRosters, ({ one, many 
         references: [forumApiCache.activity_roster_id],
     }),
     sections: many(activityRosterSections),
+    accessGrants: many(activityRosterAccess),
+}));
+
+export const activityRosterAccessRelations = relations(activityRosterAccess, ({ one }) => ({
+    user: one(users, {
+        fields: [activityRosterAccess.user_id],
+        references: [users.id],
+    }),
+    roster: one(activityRosters, {
+        fields: [activityRosterAccess.activity_roster_id],
+        references: [activityRosters.id],
+    }),
 }));
 
 export const activityRosterFavoritesRelations = relations(activityRosterFavorites, ({ one }) => ({

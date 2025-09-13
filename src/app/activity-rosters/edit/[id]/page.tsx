@@ -25,6 +25,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const jsonString = z.string().refine((value) => {
     if (!value) return true;
@@ -38,9 +39,21 @@ const jsonString = z.string().refine((value) => {
 
 const formSchema = z.object({
     name: z.string().min(3, "Roster name must be at least 3 characters long."),
-    is_public: z.boolean().default(false),
+    visibility: z.enum(['personal', 'private', 'unlisted', 'public']).default('personal'),
+    password: z.string().optional().nullable(),
     roster_setup_json: jsonString.optional().nullable(),
+}).refine(data => {
+    // If visibility is changing TO private, a new password is required.
+    // An empty string is a valid new password. null/undefined is not.
+    if (data.visibility === 'private' && data.password === null) {
+        return false;
+    }
+    return true;
+}, {
+    message: "A new password is required to make this roster private.",
+    path: ["password"],
 });
+
 
 const jsonExample = `{
   "include_ranks": [1, 2, 3],
@@ -63,16 +76,26 @@ const jsonExample = `{
   }
 }`;
 
+const visibilityOptions = [
+    { value: 'personal', label: 'Personal', description: 'Only you can see this roster.' },
+    { value: 'private', label: 'Private', description: 'Only people with the password can see this roster.' },
+    { value: 'unlisted', label: 'Unlisted', description: 'Anyone with the link can see it, but it\'s hidden from the main list.' },
+    { value: 'public', label: 'Public', description: 'Everyone in the faction can see this roster.' },
+];
+
 export default function EditRosterPage() {
     const router = useRouter();
     const params = useParams();
     const rosterId = params.id as string;
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(true);
+    const [initialVisibility, setInitialVisibility] = useState<string | null>(null);
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
     });
+    
+    const watchVisibility = form.watch('visibility');
 
     useEffect(() => {
         if (!rosterId) return;
@@ -88,9 +111,12 @@ export default function EditRosterPage() {
                 const data = await res.json();
                 form.reset({
                     name: data.roster.name,
-                    is_public: data.roster.is_public,
+                    visibility: data.roster.visibility,
+                    // Password field is intentionally left blank for security. It's only for setting a *new* password.
+                    password: null, 
                     roster_setup_json: data.roster.roster_setup_json ? JSON.stringify(JSON.parse(data.roster.roster_setup_json), null, 2) : '',
                 });
+                setInitialVisibility(data.roster.visibility);
             } catch (err: any) {
                 toast({ variant: 'destructive', title: 'Error', description: err.message });
                 router.push('/activity-rosters');
@@ -162,24 +188,48 @@ export default function EditRosterPage() {
                             />
                              <FormField
                                 control={form.control}
-                                name="is_public"
+                                name="visibility"
                                 render={({ field }) => (
-                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                        <div className="space-y-0.5">
-                                            <FormLabel>Public Roster</FormLabel>
-                                            <FormDescription>
-                                                If enabled, any member of the faction can view this roster.
-                                            </FormDescription>
-                                        </div>
-                                        <FormControl>
-                                            <Switch
-                                                checked={field.value}
-                                                onCheckedChange={field.onChange}
-                                            />
-                                        </FormControl>
+                                    <FormItem>
+                                        <FormLabel>Visibility</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select visibility..." />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                {visibilityOptions.map(option => (
+                                                    <SelectItem key={option.value} value={option.value}>
+                                                        {option.label} - <span className="text-muted-foreground text-xs">{option.description}</span>
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
                                     </FormItem>
                                 )}
                             />
+                            {watchVisibility === 'private' && (
+                                <FormField
+                                    control={form.control}
+                                    name="password"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>New Password</FormLabel>
+                                            <FormControl>
+                                                <Input type="password" placeholder="Leave blank to keep current password" {...field} value={field.value ?? ''} />
+                                            </FormControl>
+                                            <FormDescription>
+                                                 {initialVisibility === 'private'
+                                                    ? 'Only enter a value here if you want to change the password.'
+                                                    : 'A new password is required to make this roster private.'}
+                                            </FormDescription>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            )}
                              <FormField
                                 control={form.control}
                                 name="roster_setup_json"
