@@ -18,10 +18,11 @@ const updateSchema = z.object({
     access_rank: z.number().int().min(1).max(20),
     moderation_rank: z.number().int().min(1).max(20),
     supervisor_rank: z.coerce.number().min(1, "Rank must be at least 1").max(20, "Rank must be 20 or less"),
-    minimum_abas: z.coerce.number().min(0, "ABAS cannot be negative.").optional(),
-    minimum_supervisor_abas: z.coerce.number().min(0, "ABAS cannot be negative.").optional(),
+    minimum_abas: z.coerce.number().min(0, "ABAS cannot be negative.").step(0.01).optional(),
+    minimum_supervisor_abas: z.coerce.number().min(0, "ABAS cannot be negative.").step(0.01).optional(),
     activity_rosters_enabled: z.boolean().default(true),
     character_sheets_enabled: z.boolean().default(true),
+    statistics_enabled: z.boolean().default(true),
     phpbb_api_url: z.string().url("Must be a valid URL").or(z.literal('')).optional().nullable(),
     phpbb_api_key: z.string().optional().nullable(),
 });
@@ -69,7 +70,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             return NextResponse.json({ error: 'You must join the faction panel before managing it.' }, { status: 403 });
         }
         
-        const { activity_rosters_enabled, character_sheets_enabled, ...factionData } = parsed.data;
+        const { activity_rosters_enabled, character_sheets_enabled, statistics_enabled, ...factionData } = parsed.data;
 
         await db.update(factions)
             .set({
@@ -77,6 +78,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
                 feature_flags: {
                     activity_rosters_enabled,
                     character_sheets_enabled,
+                    statistics_enabled,
                 }
             })
             .where(eq(factions.id, factionId));

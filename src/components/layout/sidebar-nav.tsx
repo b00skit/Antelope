@@ -23,7 +23,8 @@ import {
   User,
   Users,
   ClipboardList,
-  Search
+  Search,
+  BarChart,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useState, useEffect } from 'react';
@@ -159,6 +160,7 @@ export function SidebarNav() {
 
   const showActivityRosters = session?.hasActiveFaction && session.activeFaction?.feature_flags?.activity_rosters_enabled;
   const showCharacterSheets = session?.hasActiveFaction && session.activeFaction?.feature_flags?.character_sheets_enabled;
+  const showStatistics = session?.hasActiveFaction && session.activeFaction?.feature_flags?.statistics_enabled;
   const canManageFaction = session?.hasActiveFaction && session?.factionRank && session?.activeFaction && session.factionRank >= (session.activeFaction.moderation_rank || 15);
 
 
@@ -232,6 +234,20 @@ export function SidebarNav() {
                 <Link href="/activity-rosters">
                     <ClipboardList />
                     <span>Activity Rosters</span>
+                </Link>
+                </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
+           {showStatistics && (
+            <SidebarMenuItem>
+                <SidebarMenuButton
+                asChild
+                isActive={isActive('/statistics')}
+                tooltip="Statistics"
+                >
+                <Link href="/statistics">
+                    <BarChart />
+                    <span>Statistics</span>
                 </Link>
                 </SidebarMenuButton>
             </SidebarMenuItem>

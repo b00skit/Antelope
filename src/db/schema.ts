@@ -21,7 +21,7 @@ export const factions = sqliteTable('factions', {
     supervisor_rank: integer('supervisor_rank').default(10),
     minimum_abas: real('minimum_abas').default(0),
     minimum_supervisor_abas: real('minimum_supervisor_abas').default(0),
-    feature_flags: text('feature_flags', { mode: 'json' }).$type<{ activity_rosters_enabled?: boolean; character_sheets_enabled?: boolean; }>().default({ activity_rosters_enabled: true, character_sheets_enabled: true }),
+    feature_flags: text('feature_flags', { mode: 'json' }).$type<{ activity_rosters_enabled?: boolean; character_sheets_enabled?: boolean; statistics_enabled?: boolean; }>().default({ activity_rosters_enabled: true, character_sheets_enabled: true, statistics_enabled: true }),
     phpbb_api_url: text('phpbb_api_url'),
     phpbb_api_key: text('phpbb_api_key'),
 });

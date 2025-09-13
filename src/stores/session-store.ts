@@ -15,6 +15,7 @@ interface Faction {
   feature_flags: {
     activity_rosters_enabled?: boolean;
     character_sheets_enabled?: boolean;
+    statistics_enabled?: boolean;
   } | null;
 }
 

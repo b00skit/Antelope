@@ -44,10 +44,11 @@ const formSchema = z.object({
     access_rank: z.coerce.number().min(1, "Rank must be at least 1").max(20, "Rank must be 20 or less"),
     moderation_rank: z.coerce.number().min(1, "Rank must be at least 1").max(20, "Rank must be 20 or less"),
     supervisor_rank: z.coerce.number().min(1, "Rank must be at least 1").max(20, "Rank must be 20 or less"),
-    minimum_abas: z.coerce.number().min(0, "ABAS cannot be negative.").optional(),
-    minimum_supervisor_abas: z.coerce.number().min(0, "ABAS cannot be negative.").optional(),
+    minimum_abas: z.coerce.number().min(0, "ABAS cannot be negative.").step(0.01).optional(),
+    minimum_supervisor_abas: z.coerce.number().min(0, "ABAS cannot be negative.").step(0.01).optional(),
     activity_rosters_enabled: z.boolean().default(true),
     character_sheets_enabled: z.boolean().default(true),
+    statistics_enabled: z.boolean().default(true),
     phpbb_api_url: z.string().url("Must be a valid URL").or(z.literal('')).optional().nullable(),
     phpbb_api_key: z.string().optional().nullable(),
 });
@@ -75,6 +76,7 @@ export function EnrollClientPage() {
             minimum_supervisor_abas: 0,
             activity_rosters_enabled: true,
             character_sheets_enabled: true,
+            statistics_enabled: true,
             phpbb_api_url: '',
             phpbb_api_key: '',
         },
@@ -136,6 +138,7 @@ export function EnrollClientPage() {
                 minimum_supervisor_abas: 0,
                 activity_rosters_enabled: true,
                 character_sheets_enabled: true,
+                statistics_enabled: true,
                 phpbb_api_url: '',
                 phpbb_api_key: '',
             });
@@ -372,6 +375,26 @@ export function EnrollClientPage() {
                                                             <FormLabel>Character Sheets</FormLabel>
                                                             <FormDescription>
                                                                 Allow members to view detailed character sheets.
+                                                            </FormDescription>
+                                                        </div>
+                                                        <FormControl>
+                                                            <Switch
+                                                                checked={field.value}
+                                                                onCheckedChange={field.onChange}
+                                                            />
+                                                        </FormControl>
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name="statistics_enabled"
+                                                render={({ field }) => (
+                                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                                        <div className="space-y-0.5">
+                                                            <FormLabel>Statistics Page</FormLabel>
+                                                            <FormDescription>
+                                                                Allow members to view faction statistics.
                                                             </FormDescription>
                                                         </div>
                                                         <FormControl>

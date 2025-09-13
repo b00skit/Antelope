@@ -14,11 +14,12 @@ const enrollSchema = z.object({
     access_rank: z.number().int().min(1).max(20),
     moderation_rank: z.number().int().min(1).max(20),
     supervisor_rank: z.coerce.number().min(1, "Rank must be at least 1").max(20, "Rank must be 20 or less"),
-    minimum_abas: z.coerce.number().min(0, "ABAS cannot be negative.").optional(),
-    minimum_supervisor_abas: z.coerce.number().min(0, "ABAS cannot be negative.").optional(),
+    minimum_abas: z.coerce.number().min(0, "ABAS cannot be negative.").step(0.01).optional(),
+    minimum_supervisor_abas: z.coerce.number().min(0, "ABAS cannot be negative.").step(0.01).optional(),
     user_rank: z.number().int(),
     activity_rosters_enabled: z.boolean().default(true),
     character_sheets_enabled: z.boolean().default(true),
+    statistics_enabled: z.boolean().default(true),
     phpbb_api_url: z.string().url("Must be a valid URL").or(z.literal('')).optional().nullable(),
     phpbb_api_key: z.string().optional().nullable(),
 });
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Invalid input.', details: parsed.error.flatten() }, { status: 400 });
     }
 
-    const { id, name, color, access_rank, moderation_rank, supervisor_rank, minimum_abas, minimum_supervisor_abas, user_rank, activity_rosters_enabled, character_sheets_enabled, phpbb_api_url, phpbb_api_key } = parsed.data;
+    const { id, name, color, access_rank, moderation_rank, supervisor_rank, minimum_abas, minimum_supervisor_abas, user_rank, activity_rosters_enabled, character_sheets_enabled, statistics_enabled, phpbb_api_url, phpbb_api_key } = parsed.data;
 
     try {
         // Check if faction already exists
@@ -65,6 +66,7 @@ export async function POST(request: NextRequest) {
                 feature_flags: {
                     activity_rosters_enabled,
                     character_sheets_enabled,
+                    statistics_enabled,
                 },
                 phpbb_api_url,
                 phpbb_api_key
