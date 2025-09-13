@@ -1,60 +1,19 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import * as React from 'react';
 import { PageHeader } from './page-header';
-import { ModuleCard, type ModuleCardProps } from './module-card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Gavel, FileText, BookOpen, Landmark, Settings, Archive, X, Info, AlertTriangle, CheckCircle, ArrowRight } from 'lucide-react';
+import { X, Info, AlertTriangle, CheckCircle, ArrowRight, Users, User, BarChart, FileText, Star, Trophy } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '../ui/button';
 import Link from 'next/link';
 import { FeedbackDialog } from './feedback-dialog';
-
-const modules: ModuleCardProps[] = [
-  {
-    title: "Arrest Calculator",
-    description: "Calculate arrest sentences based on charges.",
-    icon: <Gavel className="w-8 h-8 text-primary" />,
-    href: "/arrest-calculator",
-    dataAiHint: "calculator gavel"
-  },
-  {
-    title: "Arrest Report",
-    description: "Create and manage arrest reports.",
-    icon: <FileText className="w-8 h-8 text-primary" />,
-    href: "/arrest-report",
-    dataAiHint: "report document"
-  },
-   {
-    title: "Paperwork Generators",
-    description: "Generate different types of paperwork.",
-    icon: <Archive className="w-8 h-8 text-primary" />,
-    href: "/paperwork-generators",
-    dataAiHint: "document generator"
-  },
-  {
-    title: "Simplified Penal Code",
-    description: "Browse a simplified version of the penal code.",
-    icon: <BookOpen className="w-8 h-8 text-primary" />,
-    href: "/simplified-penal-code",
-    dataAiHint: "law book"
-  },
-  {
-    title: "Caselaw & Legal Resources",
-    description: "Access caselaw and other legal resources.",
-    icon: <Landmark className="w-8 h-8 text-primary" />,
-    href: "/caselaw",
-    dataAiHint: "court building"
-  },
-  {
-    title: "Settings",
-    description: "Manage your application settings and data.",
-    icon: <Settings className="w-8 h-8 text-primary" />,
-    href: "/settings",
-    dataAiHint: "settings gear"
-  },
-];
+import { useSession } from '@/hooks/use-session';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
+import { Progress } from '../ui/progress';
+import { formatDistanceToNow } from 'date-fns';
 
 const ICONS: { [key: string]: React.ReactNode } = {
     Info: <Info className="h-4 w-4" />,
@@ -81,29 +40,184 @@ interface DashboardPageProps {
     notice: Notice;
 }
 
-const ModuleCardSkeleton = () => (
-  <div className="p-6 flex flex-col justify-between rounded-lg border bg-card h-[190px]">
-    <div className="flex items-start justify-between">
-      <Skeleton className="h-10 w-10 rounded-lg" />
-    </div>
-    <div className="space-y-3 mt-4">
-      <Skeleton className="h-5 w-3/4" />
-      <Skeleton className="h-4 w-1/2" />
-      <Skeleton className="h-4 w-full" />
-    </div>
-  </div>
+interface DashboardData {
+    userCharacters: {
+        character_id: number;
+        character_name: string;
+        abas: number | null;
+    }[];
+    userTotalAbas: number;
+    requiredAbas: number;
+    factionAverageAbas: number;
+    topPerformers: {
+        character_name: string;
+        abas: number | null;
+    }[];
+    recentRosters: {
+        id: number;
+        name: string;
+        created_at: string;
+    }[];
+}
+
+const WelcomeCard = () => (
+    <Card>
+        <CardHeader>
+            <CardTitle>Welcome to the Panel!</CardTitle>
+            <CardDescription>To get started, you need to select or enroll a faction.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+                This panel is designed to work with your GTA:World factions. Once you've joined a faction's panel, you'll get access to all the tools and features it has to offer.
+            </p>
+             <Alert>
+                <Users className="h-4 w-4" />
+                <AlertTitle>For Members</AlertTitle>
+                <AlertDescription>
+                    If your faction is already using this panel, head over to the factions page to join it.
+                </AlertDescription>
+            </Alert>
+             <Alert variant="secondary">
+                <Star className="h-4 w-4" />
+                <AlertTitle>For Faction Leaders</AlertTitle>
+                <AlertDescription>
+                    If you hold a high rank (typically rank 15) in a GTA:World faction, you can enroll it here to make it available for all your members.
+                </AlertDescription>
+            </Alert>
+        </CardContent>
+        <CardFooter className="gap-4">
+            <Button asChild>
+                <Link href="/factions">View Factions</Link>
+            </Button>
+            <Button asChild variant="outline">
+                <Link href="/factions/enroll">Enroll New Faction</Link>
+            </Button>
+        </CardFooter>
+    </Card>
 );
 
+
+const DashboardSkeleton = () => (
+     <div className="space-y-6">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <Card className="lg:col-span-1">
+                <CardHeader><Skeleton className="h-6 w-3/4" /></CardHeader>
+                <CardContent className="space-y-4">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-4 w-1/2" />
+                </CardContent>
+            </Card>
+             <Card className="lg:col-span-2">
+                <CardHeader><Skeleton className="h-6 w-3/4" /></CardHeader>
+                <CardContent><Skeleton className="h-24 w-full" /></CardContent>
+            </Card>
+        </div>
+        <Card>
+            <CardHeader><Skeleton className="h-6 w-1/2" /></CardHeader>
+            <CardContent><Skeleton className="h-32 w-full" /></CardContent>
+        </Card>
+     </div>
+);
+
+const ActiveDashboard = ({ data, session }: { data: DashboardData, session: any }) => {
+    const abasProgress = data.requiredAbas > 0 ? (data.userTotalAbas / data.requiredAbas) * 100 : 100;
+
+    return (
+         <div className="space-y-6">
+            {/* User & Faction Stats */}
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                 <Card className="lg:col-span-1">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><User /> Your Weekly Status</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div>
+                            <div className="flex justify-between items-baseline mb-1">
+                                <span className="text-sm font-medium">Your Total ABAS</span>
+                                <span className="text-sm text-muted-foreground">Required: {data.requiredAbas.toFixed(2)}</span>
+                            </div>
+                            <Progress value={abasProgress} />
+                            <p className="text-right text-lg font-bold mt-1">{data.userTotalAbas.toFixed(2)}</p>
+                        </div>
+                         <div>
+                            <h4 className="text-sm font-medium mb-2">Your Characters</h4>
+                            <div className="space-y-2">
+                                {data.userCharacters.map(char => (
+                                    <div key={char.character_id} className="flex justify-between items-center text-sm p-2 rounded-md bg-muted/50">
+                                        <span>{char.character_name}</span>
+                                        <span className="font-mono">{char.abas?.toFixed(2) ?? '0.00'}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                 <Card className="lg:col-span-2">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><Trophy /> Faction Top Performers</CardTitle>
+                        <CardDescription>Top 5 members by weekly ABAS.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                         <Table>
+                             <TableHeader>
+                                 <TableRow>
+                                     <TableHead>#</TableHead>
+                                     <TableHead>Member</TableHead>
+                                     <TableHead className="text-right">ABAS</TableHead>
+                                 </TableRow>
+                             </TableHeader>
+                             <TableBody>
+                                 {data.topPerformers.map((p, i) => (
+                                     <TableRow key={i}>
+                                         <TableCell className="font-medium">{i + 1}</TableCell>
+                                         <TableCell>{p.character_name}</TableCell>
+                                         <TableCell className="text-right font-mono">{p.abas?.toFixed(2) ?? '0.00'}</TableCell>
+                                     </TableRow>
+                                 ))}
+                             </TableBody>
+                         </Table>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Recent Rosters */}
+            {data.recentRosters.length > 0 && (
+                 <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><FileText /> Your Recent Rosters</CardTitle>
+                        <CardDescription>Quick access to the last 5 rosters you created.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                            {data.recentRosters.map(roster => (
+                                <Link key={roster.id} href={`/activity-rosters/${roster.id}`}>
+                                    <div className="p-4 border rounded-lg hover:bg-muted/50 transition-colors h-full flex flex-col justify-between">
+                                        <h4 className="font-semibold truncate">{roster.name}</h4>
+                                        <p className="text-xs text-muted-foreground mt-2">
+                                            Created {formatDistanceToNow(new Date(roster.created_at))} ago
+                                        </p>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
+         </div>
+    );
+};
+
+
 export function DashboardPage({ notice }: DashboardPageProps) {
-  const [loading, setLoading] = useState(true);
-  const [isNoticeVisible, setIsNoticeVisible] = useState(false);
-  const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
+  const { session, isLoading: isSessionLoading } = useSession();
+  const [isNoticeVisible, setIsNoticeVisible] = React.useState(false);
+  const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = React.useState(false);
+  const [dashboardData, setDashboardData] = React.useState<DashboardData | null>(null);
+  const [isDataLoading, setIsDataLoading] = React.useState(true);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 1500);
-
+  React.useEffect(() => {
     if (notice?.enabled) {
         if(notice.dismissible) {
             const noticeDismissed = sessionStorage.getItem('notice_dismissed');
@@ -114,9 +228,29 @@ export function DashboardPage({ notice }: DashboardPageProps) {
             setIsNoticeVisible(true);
         }
     }
-
-    return () => clearTimeout(timer);
   }, [notice]);
+  
+  React.useEffect(() => {
+    const fetchDashboardData = async () => {
+        if (session?.hasActiveFaction) {
+            setIsDataLoading(true);
+            try {
+                const res = await fetch('/api/dashboard');
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error);
+                setDashboardData(data);
+            } catch (error) {
+                console.error("Failed to fetch dashboard data:", error);
+            } finally {
+                setIsDataLoading(false);
+            }
+        } else if (!isSessionLoading) {
+            setIsDataLoading(false);
+        }
+    };
+    
+    fetchDashboardData();
+  }, [session, isSessionLoading]);
 
   const handleDismissNotice = () => {
     setIsNoticeVisible(false);
@@ -170,16 +304,18 @@ export function DashboardPage({ notice }: DashboardPageProps) {
        )}
 
       <PageHeader
-        title="Dashboard"
-        description="Welcome to MDC Panel+. Here are your available tools."
+        title={session?.hasActiveFaction ? `Welcome, ${session.username}` : "Dashboard"}
+        description={session?.hasActiveFaction ? `Viewing dashboard for ${session.activeFaction?.name}` : "Welcome to Faction Panel+."}
       />
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-        {loading
-          ? Array.from({ length: 6 }).map((_, index) => (
-              <ModuleCardSkeleton key={index} />
-            ))
-          : modules.map((module) => <ModuleCard key={module.title} {...module} />)}
-      </div>
+      
+      {isSessionLoading || isDataLoading ? (
+         <DashboardSkeleton />
+      ) : session?.hasActiveFaction && dashboardData ? (
+        <ActiveDashboard data={dashboardData} session={session} />
+      ) : (
+        <WelcomeCard />
+      )}
+
     </div>
   );
 }
