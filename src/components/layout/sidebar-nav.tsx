@@ -80,9 +80,9 @@ export function SidebarNav() {
   useEffect(() => {
     setMounted(true);
     setConfig({
-      SITE_NAME: 'Faction Panel+',
-      SITE_FAVICON: '/img/logos/MDC-Panel-Favicon.svg',
-      URL_GITHUB: 'https://github.com/b00skit/MDC-Panel-plus',
+      SITE_NAME: 'Antelope',
+      SITE_FAVICON: '/img/logos/Antelope-logo.png',
+      URL_GITHUB: 'https://github.com/b00skit/faction-panel-plus',
     });
   }, []);
 
@@ -176,7 +176,7 @@ export function SidebarNav() {
             <Link href="/dashboard" className="flex items-center gap-2">
               <Image
                 src={
-                  config?.SITE_FAVICON || '/img/logos/MDC-Panel-Favicon.svg'
+                  config?.SITE_FAVICON || '/img/logos/Antelope-logo.png'
                 }
                 width={40}
                 height={40}
@@ -187,9 +187,6 @@ export function SidebarNav() {
               <div className="flex items-baseline gap-1">
                 <span className="text-xl font-semibold font-headline">
                   {siteName}
-                </span>
-                <span className="text-2xl font-bold text-primary drop-shadow-[0_0_3px_hsl(var(--primary)/0.5)]">
-                  +
                 </span>
               </div>
             )}

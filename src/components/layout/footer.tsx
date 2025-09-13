@@ -13,7 +13,7 @@ export async function Footer() {
       <footer className="relative z-10 py-4 mt-auto">
         <div className="container mx-auto flex flex-col items-center justify-center gap-2">
             <Image 
-                src={config.SITE_LOGO}
+                src={config.SITE_IMAGE}
                 width={60}
                 height={30}
                 alt="MDC Panel Logo"
