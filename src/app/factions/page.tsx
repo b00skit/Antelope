@@ -115,22 +115,6 @@ export default function FactionsPage() {
         }
     };
 
-    const handleDelete = async (factionId: number) => {
-        setActionLoading(factionId);
-        try {
-            const res = await fetch(`/api/factions/${factionId}`, { method: 'DELETE' });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error);
-            toast({ title: 'Success', description: data.message });
-            await fetchAndSyncFactions(); // Refresh data
-            await refreshSession(); // Also refresh global session
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Error', description: err.message });
-        } finally {
-            setActionLoading(null);
-        }
-    };
-
     const handleSelectFaction = async (factionId: number) => {
         setActionLoading(factionId);
         try {
@@ -207,7 +191,6 @@ export default function FactionsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {userFactions.map(({ faction, rank, joined }) => {
                         const canJoin = !joined && rank >= faction.access_rank;
-                        const canManage = joined && rank >= faction.moderation_rank;
                         const isSelected = selectedFactionId === faction.id;
 
                         return (
@@ -238,37 +221,6 @@ export default function FactionsPage() {
                                             {actionLoading === faction.id ? <Loader2 className="animate-spin" /> : <CheckCircle />}
                                             Set Active
                                         </Button>
-                                    )}
-                                    {canManage && (
-                                        <>
-                                        <Button variant="secondary" asChild>
-                                            <Link href={`/factions/manage/${faction.id}`}>
-                                                <Settings />
-                                                Manage
-                                            </Link>
-                                        </Button>
-                                         <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <Button variant="destructive" size="icon" disabled={actionLoading === faction.id}>
-                                                    {actionLoading === faction.id ? <Loader2 className="animate-spin" /> : <Trash2 />}
-                                                </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        This will permanently unenroll the faction from the panel for everyone. This action cannot be undone.
-                                                    </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => handleDelete(faction.id)}>
-                                                        Yes, Unenroll Faction
-                                                    </AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                        </>
                                     )}
                                 </CardFooter>
                             </Card>

@@ -101,7 +101,8 @@ export function SidebarNav() {
   }, [pathname]);
 
 
-  const isActive = (path: string) => {
+  const isActive = (path: string, exact: boolean = false) => {
+    if (exact) return pathname === path;
     if (path === '/dashboard') return pathname === '/dashboard';
     return pathname.startsWith(path);
   };
@@ -244,7 +245,7 @@ export function SidebarNav() {
             <SidebarMenuItem>
                 <SidebarMenuButton
                 asChild
-                isActive={isActive('/factions')}
+                isActive={isActive('/factions', true)}
                 tooltip="Factions"
                 >
                 <Link href="/factions">
