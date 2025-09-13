@@ -10,7 +10,7 @@ import { Button } from '../ui/button';
 import Link from 'next/link';
 import { FeedbackDialog } from './feedback-dialog';
 import { useSession } from '@/hooks/use-session';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Progress } from '../ui/progress';
 import { formatDistanceToNow } from 'date-fns';
