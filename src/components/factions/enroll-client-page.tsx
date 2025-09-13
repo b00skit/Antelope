@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/form";
 import { Switch } from '@/components/ui/switch';
 import Link from 'next/link';
+import React from 'react';
 
 
 interface EligibleFaction {
@@ -40,6 +41,9 @@ const formSchema = z.object({
     color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color code, e.g., #FFFFFF").optional().nullable(),
     access_rank: z.coerce.number().min(1, "Rank must be at least 1").max(20, "Rank must be 20 or less"),
     moderation_rank: z.coerce.number().min(1, "Rank must be at least 1").max(20, "Rank must be 20 or less"),
+    supervisor_rank: z.coerce.number().min(1, "Rank must be at least 1").max(20, "Rank must be 20 or less"),
+    minimum_abas: z.coerce.number().min(0, "ABAS cannot be negative."),
+    minimum_supervisor_abas: z.coerce.number().min(0, "ABAS cannot be negative."),
     activity_rosters_enabled: z.boolean().default(true),
     character_sheets_enabled: z.boolean().default(true),
     phpbb_api_url: z.string().url("Must be a valid URL").or(z.literal('')).optional().nullable(),
@@ -63,6 +67,9 @@ export function EnrollClientPage() {
             color: '#FFFFFF',
             access_rank: 15,
             moderation_rank: 15,
+            supervisor_rank: 10,
+            minimum_abas: 0,
+            minimum_supervisor_abas: 0,
             activity_rosters_enabled: true,
             character_sheets_enabled: true,
             phpbb_api_url: '',
@@ -121,6 +128,9 @@ export function EnrollClientPage() {
                 color: '#FFFFFF',
                 access_rank: 15,
                 moderation_rank: 15,
+                supervisor_rank: 10,
+                minimum_abas: 0,
+                minimum_supervisor_abas: 0,
                 activity_rosters_enabled: true,
                 character_sheets_enabled: true,
                 phpbb_api_url: '',
@@ -246,7 +256,7 @@ export function EnrollClientPage() {
                                             </FormItem>
                                         )}
                                     />
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                         <FormField
                                             control={form.control}
                                             name="access_rank"
@@ -256,7 +266,7 @@ export function EnrollClientPage() {
                                                     <FormControl>
                                                         <Input type="number" min="1" max="20" {...field} />
                                                     </FormControl>
-                                                    <FormDescription>Minimum rank required to join this faction's panel.</FormDescription>
+                                                    <FormDescription>Minimum rank to join the panel.</FormDescription>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
@@ -270,7 +280,51 @@ export function EnrollClientPage() {
                                                     <FormControl>
                                                         <Input type="number" min="1" max="20" {...field} />
                                                     </FormControl>
-                                                    <FormDescription>Minimum rank required to manage this faction's panel.</FormDescription>
+                                                    <FormDescription>Minimum rank to manage the faction.</FormDescription>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="supervisor_rank"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Supervisor Rank</FormLabel>
+                                                    <FormControl>
+                                                        <Input type="number" min="1" max="20" {...field} />
+                                                    </FormControl>
+                                                    <FormDescription>Minimum rank to be considered a supervisor.</FormDescription>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <FormField
+                                            control={form.control}
+                                            name="minimum_abas"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Minimum ABAS</FormLabel>
+                                                    <FormControl>
+                                                        <Input type="number" min="0" {...field} />
+                                                    </FormControl>
+                                                    <FormDescription>Minimum weekly ABAS for members.</FormDescription>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="minimum_supervisor_abas"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Supervisor Minimum ABAS</FormLabel>
+                                                    <FormControl>
+                                                        <Input type="number" min="0" {...field} />
+                                                    </FormControl>
+                                                    <FormDescription>Minimum weekly ABAS for supervisors.</FormDescription>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
