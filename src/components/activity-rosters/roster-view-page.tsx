@@ -2,9 +2,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Button } from '@/components/ui/button';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw, Star } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { RosterContent } from './roster-content';
 import {
@@ -17,6 +18,9 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useFavorites } from '@/hooks/use-favorites';
+import { cn } from '@/lib/utils';
+
 
 interface RosterViewPageProps {
     rosterId: number;
@@ -98,7 +102,11 @@ export function RosterViewPage({ rosterId }: RosterViewPageProps) {
     const [requiresPassword, setRequiresPassword] = useState(false);
     const [isVerifying, setIsVerifying] = useState(false);
     const [lastSyncTime, setLastSyncTime] = useState<number | null>(null);
+    const router = useRouter();
     const { toast } = useToast();
+    const { favorites, toggleFavorite } = useFavorites();
+
+    const isFavorited = favorites.some(f => f.activity_roster_id === rosterId);
     
     const canSync = !lastSyncTime || (Date.now() - lastSyncTime > COOLDOWN_HOURS * 60 * 60 * 1000);
 
@@ -133,6 +141,7 @@ export function RosterViewPage({ rosterId }: RosterViewPageProps) {
             }
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Error', description: err.message });
+            router.push('/activity-rosters');
         } finally {
             setIsLoading(false);
             setIsSyncing(false);
@@ -173,6 +182,11 @@ export function RosterViewPage({ rosterId }: RosterViewPageProps) {
         }
     };
 
+    const handlePasswordDialogClose = () => {
+        setRequiresPassword(false);
+        router.push('/activity-rosters');
+    };
+
     if (isLoading) {
         return (
             <div className="container mx-auto p-4 md:p-6 lg:p-8 flex justify-center items-center h-full">
@@ -193,7 +207,7 @@ export function RosterViewPage({ rosterId }: RosterViewPageProps) {
         <div className="container mx-auto p-4 md:p-6 lg:p-8">
             <PasswordDialog
                 isOpen={requiresPassword}
-                onClose={() => setRequiresPassword(false)}
+                onClose={handlePasswordDialogClose}
                 onSubmit={handlePasswordSubmit}
                 isVerifying={isVerifying}
             />
@@ -202,6 +216,15 @@ export function RosterViewPage({ rosterId }: RosterViewPageProps) {
                 description={data.faction ? `Viewing roster for ${data.faction.name}` : ''}
                 actions={
                     <div className="flex gap-2">
+                         <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => toggleFavorite(rosterId)}
+                            disabled={requiresPassword}
+                        >
+                            <Star className={cn("h-4 w-4", isFavorited ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground")} />
+                            <span className="sr-only">{isFavorited ? 'Unfavorite' : 'Favorite'}</span>
+                        </Button>
                          <Button onClick={handleForceSync} disabled={isSyncing || !canSync || requiresPassword}>
                             {isSyncing ? <Loader2 className="animate-spin" /> : <RefreshCw />}
                             Force Sync
