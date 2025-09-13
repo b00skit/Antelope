@@ -26,6 +26,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useFavorites } from '@/hooks/use-favorites';
 
 interface Roster {
   id: number;
@@ -36,7 +37,6 @@ interface Roster {
   };
   created_at: string;
   isOwner: boolean;
-  isFavorited: boolean;
 }
 
 const RosterRowSkeleton = () => (
@@ -55,6 +55,9 @@ export default function ActivityRostersPage() {
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
     const { toast } = useToast();
+    const { favorites, toggleFavorite } = useFavorites();
+
+    const favoriteIds = new Set(favorites.map(f => f.activity_roster_id));
 
     useEffect(() => {
         const fetchRosters = async () => {
@@ -91,25 +94,6 @@ export default function ActivityRostersPage() {
         }
     };
     
-    const handleToggleFavorite = async (rosterId: number) => {
-        const originalRosters = [...rosters];
-        // Optimistic update
-        setRosters(prev => prev.map(r => r.id === rosterId ? { ...r, isFavorited: !r.isFavorited } : r));
-
-        try {
-            const res = await fetch(`/api/rosters/${rosterId}/favorite`, { method: 'POST' });
-            if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.error);
-            }
-            const data = await res.json();
-            toast({ title: 'Success', description: data.message });
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Error', description: err.message });
-            setRosters(originalRosters); // Revert on failure
-        }
-    };
-
     return (
         <div className="container mx-auto p-4 md:p-6 lg:p-8">
             <PageHeader
@@ -160,62 +144,65 @@ export default function ActivityRostersPage() {
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                rosters.map(roster => (
-                                    <TableRow key={roster.id}>
-                                         <TableCell>
-                                            <Button variant="ghost" size="icon" onClick={() => handleToggleFavorite(roster.id)}>
-                                                <Star className={cn("h-4 w-4", roster.isFavorited ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground")} />
-                                            </Button>
-                                        </TableCell>
-                                        <TableCell className="font-medium">{roster.name}</TableCell>
-                                        <TableCell>{roster.author.username}</TableCell>
-                                        <TableCell>
-                                            <Badge variant={roster.is_public ? 'default' : 'secondary'}>
-                                                {roster.is_public ? 'Public' : 'Private'}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell>{format(new Date(roster.created_at), 'PPP')}</TableCell>
-                                        <TableCell>
-                                            <div className="flex gap-2">
-                                                <Button variant="outline" size="icon" asChild>
-                                                    <Link href={`/activity-rosters/${roster.id}`}>
-                                                        <Eye className="h-4 w-4" />
-                                                    </Link>
+                                rosters.map(roster => {
+                                    const isFavorited = favoriteIds.has(roster.id);
+                                    return (
+                                        <TableRow key={roster.id}>
+                                            <TableCell>
+                                                <Button variant="ghost" size="icon" onClick={() => toggleFavorite(roster.id)}>
+                                                    <Star className={cn("h-4 w-4", isFavorited ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground")} />
                                                 </Button>
-                                                {roster.isOwner && (
-                                                    <>
-                                                        <Button variant="outline" size="icon" asChild>
-                                                            <Link href={`/activity-rosters/edit/${roster.id}`}>
-                                                                <Pencil className="h-4 w-4" />
-                                                            </Link>
-                                                        </Button>
-                                                        <AlertDialog>
-                                                            <AlertDialogTrigger asChild>
-                                                                <Button variant="destructive" size="icon">
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                </Button>
-                                                            </AlertDialogTrigger>
-                                                            <AlertDialogContent>
-                                                                <AlertDialogHeader>
-                                                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                                    <AlertDialogDescription>
-                                                                        This will permanently delete the roster "{roster.name}". This action cannot be undone.
-                                                                    </AlertDialogDescription>
-                                                                </AlertDialogHeader>
-                                                                <AlertDialogFooter>
-                                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                    <AlertDialogAction onClick={() => handleDelete(roster.id)}>
-                                                                        Yes, Delete Roster
-                                                                    </AlertDialogAction>
-                                                                </AlertDialogFooter>
-                                                            </AlertDialogContent>
-                                                        </AlertDialog>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
+                                            </TableCell>
+                                            <TableCell className="font-medium">{roster.name}</TableCell>
+                                            <TableCell>{roster.author.username}</TableCell>
+                                            <TableCell>
+                                                <Badge variant={roster.is_public ? 'default' : 'secondary'}>
+                                                    {roster.is_public ? 'Public' : 'Private'}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell>{format(new Date(roster.created_at), 'PPP')}</TableCell>
+                                            <TableCell>
+                                                <div className="flex gap-2">
+                                                    <Button variant="outline" size="icon" asChild>
+                                                        <Link href={`/activity-rosters/${roster.id}`}>
+                                                            <Eye className="h-4 w-4" />
+                                                        </Link>
+                                                    </Button>
+                                                    {roster.isOwner && (
+                                                        <>
+                                                            <Button variant="outline" size="icon" asChild>
+                                                                <Link href={`/activity-rosters/edit/${roster.id}`}>
+                                                                    <Pencil className="h-4 w-4" />
+                                                                </Link>
+                                                            </Button>
+                                                            <AlertDialog>
+                                                                <AlertDialogTrigger asChild>
+                                                                    <Button variant="destructive" size="icon">
+                                                                        <Trash2 className="h-4 w-4" />
+                                                                    </Button>
+                                                                </AlertDialogTrigger>
+                                                                <AlertDialogContent>
+                                                                    <AlertDialogHeader>
+                                                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                                        <AlertDialogDescription>
+                                                                            This will permanently delete the roster "{roster.name}". This action cannot be undone.
+                                                                        </AlertDialogDescription>
+                                                                    </AlertDialogHeader>
+                                                                    <AlertDialogFooter>
+                                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                        <AlertDialogAction onClick={() => handleDelete(roster.id)}>
+                                                                            Yes, Delete Roster
+                                                                        </AlertDialogAction>
+                                                                    </AlertDialogFooter>
+                                                                </AlertDialogContent>
+                                                            </AlertDialog>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })
                             )}
                         </TableBody>
                     </Table>

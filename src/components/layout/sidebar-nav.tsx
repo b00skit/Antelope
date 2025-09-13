@@ -55,6 +55,7 @@ import {
   } from "@/components/ui/dropdown-menu"
 import { useSession } from '@/hooks/use-session';
 import { Input } from '../ui/input';
+import { useFavorites } from '@/hooks/use-favorites';
   
 
 type SiteConfig = {
@@ -62,12 +63,6 @@ type SiteConfig = {
   SITE_FAVICON: string;
   URL_GITHUB: string;
 };
-
-interface FavoriteRoster {
-  id: number;
-  activity_roster_id: number;
-  activity_roster_name: string;
-}
 
 export function SidebarNav() {
   const pathname = usePathname();
@@ -79,7 +74,7 @@ export function SidebarNav() {
   const { session, isLoading } = useSession();
   const router = useRouter();
   const [characterSearch, setCharacterSearch] = useState('');
-  const [favoriteRosters, setFavoriteRosters] = useState<FavoriteRoster[]>([]);
+  const { favorites } = useFavorites();
 
 
   useEffect(() => {
@@ -90,16 +85,6 @@ export function SidebarNav() {
       URL_GITHUB: 'https://github.com/b00skit/MDC-Panel-plus',
     });
   }, []);
-
-   useEffect(() => {
-        if (session?.hasActiveFaction) {
-            fetch('/api/rosters/favorites')
-                .then(res => res.json())
-                .then(data => setFavoriteRosters(data.favorites || []));
-        } else {
-            setFavoriteRosters([]);
-        }
-    }, [session, pathname]);
 
   useEffect(() => {
     const handleStorageChange = () => {
@@ -271,11 +256,11 @@ export function SidebarNav() {
             </SidebarMenuItem>
           )}
         </SidebarMenu>
-        {favoriteRosters.length > 0 && (
+        {favorites.length > 0 && (
             <>
                 <Separator className="my-2" />
                 <SidebarMenu>
-                    {favoriteRosters.map(fav => (
+                    {favorites.map(fav => (
                          <SidebarMenuItem key={fav.id}>
                             <SidebarMenuButton
                                 asChild

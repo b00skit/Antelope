@@ -85,6 +85,13 @@
       "when": 1757759668522,
       "tag": "0011_fair_bug",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1757764620427,
+      "tag": "0012_opposite_thing",
+      "breakpoints": true
     }
   ]
 }
