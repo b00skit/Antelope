@@ -80,41 +80,47 @@ const SectionDialog = ({
 }) => {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
-    const [config, setConfig] = useState<SectionConfig>({});
+    
+    // State to hold the raw string input from the user
+    const [rawConfig, setRawConfig] = useState({
+        include_names: '',
+        include_ranks: '',
+        include_forum_groups: '',
+        exclude_names: '',
+    });
 
     React.useEffect(() => {
         if (isOpen) {
             setName(section?.name || '');
             setDescription(section?.description || '');
-            setConfig(section?.configuration_json || {});
+            const config = section?.configuration_json || {};
+            // Populate raw string state for editing
+            setRawConfig({
+                include_names: (config.include_names || []).map(n => n.replace(/_/g, ' ')).join(', '),
+                include_ranks: (config.include_ranks || []).join(', '),
+                include_forum_groups: (config.include_forum_groups || []).join(', '),
+                exclude_names: (config.exclude_names || []).map(n => n.replace(/_/g, ' ')).join(', '),
+            });
         }
     }, [section, isOpen]);
 
-    const handleConfigChange = (key: keyof SectionConfig, value: string) => {
-        const isNameField = key === 'include_names' || key === 'exclude_names';
-        const isNumeric = ['include_ranks', 'include_forum_groups'].includes(key);
-
-        const arrayValue = value.split(/[\s,]+/).map(item => item.trim()).filter(Boolean);
-
-        setConfig(prev => ({
-            ...prev,
-            [key]: isNumeric
-                ? arrayValue.map(Number).filter(n => !isNaN(n))
-                : arrayValue.map(name => isNameField ? name.replace(/ /g, '_') : name)
-        }));
+    const handleRawConfigChange = (key: keyof typeof rawConfig, value: string) => {
+        setRawConfig(prev => ({ ...prev, [key]: value }));
     };
+    
+    const handleSave = () => {
+        // Parse the raw strings into the final config object ONLY on save
+        const finalConfig: SectionConfig = {};
 
-    const getConfigValue = (key: keyof SectionConfig) => {
-        const isNameField = key === 'include_names' || key === 'exclude_names';
-        const value = config[key];
+        const parseNumericArray = (str: string) => str.split(/[\s,]+/).map(item => parseInt(item.trim(), 10)).filter(n => !isNaN(n));
+        const parseNameArray = (str: string) => str.split(/[\s,]+/).map(item => item.trim().replace(/ /g, '_')).filter(Boolean);
 
-        if (Array.isArray(value)) {
-            if (isNameField) {
-                return value.map(name => name.replace(/_/g, ' ')).join(', ');
-            }
-            return value.join(', ');
-        }
-        return '';
+        if (rawConfig.include_names) finalConfig.include_names = parseNameArray(rawConfig.include_names);
+        if (rawConfig.include_ranks) finalConfig.include_ranks = parseNumericArray(rawConfig.include_ranks);
+        if (rawConfig.include_forum_groups) finalConfig.include_forum_groups = parseNumericArray(rawConfig.include_forum_groups);
+        if (rawConfig.exclude_names) finalConfig.exclude_names = parseNameArray(rawConfig.exclude_names);
+
+        onSave(name, description, finalConfig);
     };
     
     return (
@@ -140,19 +146,19 @@ const SectionDialog = ({
                         <CardContent className="space-y-4">
                              <div className="space-y-2">
                                 <Label>Include Names</Label>
-                                <Input value={getConfigValue('include_names')} onChange={e => handleConfigChange('include_names', e.target.value)} placeholder="E.g. John Doe, Jane Smith" />
+                                <Input value={rawConfig.include_names} onChange={e => handleRawConfigChange('include_names', e.target.value)} placeholder="E.g. John Doe, Jane Smith" />
                             </div>
                             <div className="space-y-2">
                                 <Label>Include Ranks</Label>
-                                <Input value={getConfigValue('include_ranks')} onChange={e => handleConfigChange('include_ranks', e.target.value)} placeholder="E.g. 1, 5, 10" />
+                                <Input value={rawConfig.include_ranks} onChange={e => handleRawConfigChange('include_ranks', e.target.value)} placeholder="E.g. 1, 5, 10" />
                             </div>
                             <div className="space-y-2">
                                 <Label>Include Forum Groups</Label>
-                                <Input value={getConfigValue('include_forum_groups')} onChange={e => handleConfigChange('include_forum_groups', e.target.value)} placeholder="E.g. 25, 30" />
+                                <Input value={rawConfig.include_forum_groups} onChange={e => handleRawConfigChange('include_forum_groups', e.target.value)} placeholder="E.g. 25, 30" />
                             </div>
                              <div className="space-y-2">
                                 <Label>Exclude Names</Label>
-                                <Input value={getConfigValue('exclude_names')} onChange={e => handleConfigChange('exclude_names', e.target.value)} placeholder="E.g. Peter Jones" />
+                                <Input value={rawConfig.exclude_names} onChange={e => handleRawConfigChange('exclude_names', e.target.value)} placeholder="E.g. Peter Jones" />
                                 <p className="text-xs text-muted-foreground">Only applies if ranks or forum groups are included.</p>
                             </div>
                         </CardContent>
@@ -160,7 +166,7 @@ const SectionDialog = ({
                 </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={onClose}>Cancel</Button>
-                    <Button onClick={() => onSave(name, description, config)}>Save</Button>
+                    <Button onClick={handleSave}>Save</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
