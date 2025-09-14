@@ -75,51 +75,34 @@ const SectionDialog = ({
 }: {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (name: string, description: string, config: SectionConfig) => void;
+    onSave: (name: string, description: string, config: SectionConfig | null) => void;
     section?: Section | null;
 }) => {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
-    
-    // State to hold the raw string input from the user
-    const [rawConfig, setRawConfig] = useState({
-        include_names: '',
-        include_ranks: '',
-        include_forum_groups: '',
-        exclude_names: '',
-    });
+    const [configJson, setConfigJson] = useState('');
+    const [jsonError, setJsonError] = useState<string | null>(null);
 
     React.useEffect(() => {
         if (isOpen) {
             setName(section?.name || '');
             setDescription(section?.description || '');
-            const config = section?.configuration_json || {};
-            // Populate raw string state for editing
-            setRawConfig({
-                include_names: (config.include_names || []).map(n => n.replace(/_/g, ' ')).join('\n'),
-                include_ranks: (config.include_ranks || []).join('\n'),
-                include_forum_groups: (config.include_forum_groups || []).join('\n'),
-                exclude_names: (config.exclude_names || []).map(n => n.replace(/_/g, ' ')).join('\n'),
-            });
+            setConfigJson(section?.configuration_json ? JSON.stringify(section.configuration_json, null, 2) : '');
+            setJsonError(null);
         }
     }, [section, isOpen]);
 
-    const handleRawConfigChange = (key: keyof typeof rawConfig, value: string) => {
-        setRawConfig(prev => ({ ...prev, [key]: value }));
-    };
-    
     const handleSave = () => {
-        // Parse the raw strings into the final config object ONLY on save
-        const finalConfig: SectionConfig = {};
-
-        const parseNumericArray = (str: string) => str.split(/[\s,]+/).map(item => parseInt(item.trim(), 10)).filter(n => !isNaN(n));
-        const parseNameArray = (str: string) => str.split(/[\s,]+/).map(item => item.trim().replace(/ /g, '_')).filter(Boolean);
-
-        if (rawConfig.include_names) finalConfig.include_names = parseNameArray(rawConfig.include_names);
-        if (rawConfig.include_ranks) finalConfig.include_ranks = parseNumericArray(rawConfig.include_ranks);
-        if (rawConfig.include_forum_groups) finalConfig.include_forum_groups = parseNumericArray(rawConfig.include_forum_groups);
-        if (rawConfig.exclude_names) finalConfig.exclude_names = parseNameArray(rawConfig.exclude_names);
-
+        let finalConfig: SectionConfig | null = null;
+        if (configJson) {
+            try {
+                finalConfig = JSON.parse(configJson);
+                setJsonError(null);
+            } catch (e) {
+                setJsonError('Invalid JSON format.');
+                return;
+            }
+        }
         onSave(name, description, finalConfig);
     };
     
@@ -138,31 +121,17 @@ const SectionDialog = ({
                         <Label htmlFor="section-description">Description (Optional)</Label>
                         <Textarea id="section-description" value={description} onChange={(e) => setDescription(e.target.value)} />
                     </div>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-base">Auto-Filter Rules (Optional)</CardTitle>
-                            <CardDescription className="text-xs">Define rules to automatically assign members. Separate multiple values with commas, spaces, or new lines.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                             <div className="space-y-2">
-                                <Label>Include Names</Label>
-                                <Textarea value={rawConfig.include_names} onChange={e => handleRawConfigChange('include_names', e.target.value)} placeholder="E.g. John Doe, Jane Smith" />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Include Ranks</Label>
-                                <Textarea value={rawConfig.include_ranks} onChange={e => handleRawConfigChange('include_ranks', e.target.value)} placeholder="E.g. 1, 5, 10" />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Include Forum Groups</Label>
-                                <Textarea value={rawConfig.include_forum_groups} onChange={e => handleRawConfigChange('include_forum_groups', e.target.value)} placeholder="E.g. 25, 30" />
-                            </div>
-                             <div className="space-y-2">
-                                <Label>Exclude Names</Label>
-                                <Textarea value={rawConfig.exclude_names} onChange={e => handleRawConfigChange('exclude_names', e.target.value)} placeholder="E.g. Peter Jones" />
-                                <p className="text-xs text-muted-foreground">Only applies if ranks or forum groups are included.</p>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <div className="space-y-2">
+                        <Label htmlFor="section-config">Auto-Filter Rules (JSON, Optional)</Label>
+                        <Textarea
+                            id="section-config"
+                            value={configJson}
+                            onChange={(e) => setConfigJson(e.target.value)}
+                            placeholder='{ "include_ranks": [1, 5], "exclude_names": ["Some_Name"] }'
+                            className="font-mono h-32"
+                        />
+                        {jsonError && <p className="text-sm text-destructive">{jsonError}</p>}
+                    </div>
                 </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={onClose}>Cancel</Button>
@@ -205,7 +174,7 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
     };
 
     // API Handlers
-    const handleAddOrUpdateSection = async (name: string, description: string, config: SectionConfig) => {
+    const handleAddOrUpdateSection = async (name: string, description: string, config: SectionConfig | null) => {
         const url = editingSection
             ? `/api/rosters/${rosterId}/sections/${editingSection.id}`
             : `/api/rosters/${rosterId}/sections`;
