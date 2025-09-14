@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, MoreVertical, Pencil, Trash2, User, Loader2 } from "lucide-react";
+import { PlusCircle, MoreVertical, Pencil, Trash2, User, Loader2, Move } from "lucide-react";
 import { format } from "date-fns";
 import { Combobox } from '../ui/combobox';
 import { Input } from '../ui/input';
@@ -28,6 +28,7 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { cn } from '@/lib/utils';
+import { MoveMemberDialog } from './move-member-dialog';
 
 
 interface Member {
@@ -45,24 +46,27 @@ interface Member {
 interface MembersTableProps {
     members: Member[];
     allFactionMembers: any[];
-    assignedCharacterIds: number[];
+    allAssignedCharacterIds: number[];
     canManage: boolean;
     cat1Id: number;
     cat2Id: number;
     onDataChange: () => void;
+    allUnitsAndDetails: { label: string; value: string; type: 'cat_2' | 'cat_3' }[];
 }
 
-export function MembersTable({ members, allFactionMembers, assignedCharacterIds, canManage, cat1Id, cat2Id, onDataChange }: MembersTableProps) {
+export function MembersTable({ members, allFactionMembers, allAssignedCharacterIds, canManage, cat1Id, cat2Id, onDataChange, allUnitsAndDetails }: MembersTableProps) {
     const [isAdding, setIsAdding] = useState(false);
     const [selectedCharacterId, setSelectedCharacterId] = useState<string>('');
     const [newTitle, setNewTitle] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingMember, setEditingMember] = useState<Member | null>(null);
     const [isDeleting, setIsDeleting] = useState<number | null>(null);
+    const [movingMember, setMovingMember] = useState<Member | null>(null);
+    const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false);
     const { toast } = useToast();
 
     const currentMemberIds = new Set(members.map(m => m.character_id));
-    const assignedIds = new Set(assignedCharacterIds);
+    const assignedIds = new Set(allAssignedCharacterIds);
     const characterOptions = allFactionMembers
         .filter(fm => !assignedIds.has(fm.character_id) || currentMemberIds.has(fm.character_id))
         .map(fm => fm.character_name);
@@ -131,7 +135,21 @@ export function MembersTable({ members, allFactionMembers, assignedCharacterIds,
         }
     }
 
+    const handleOpenMoveDialog = (member: Member) => {
+        setMovingMember(member);
+        setIsMoveDialogOpen(true);
+    }
+
     return (
+        <>
+        <MoveMemberDialog
+            open={isMoveDialogOpen}
+            onOpenChange={setIsMoveDialogOpen}
+            onSuccess={onDataChange}
+            member={movingMember}
+            sourceCat2Id={cat2Id}
+            allUnitsAndDetails={allUnitsAndDetails.filter(opt => opt.value !== cat2Id.toString())}
+        />
         <Card>
             <CardHeader>
                 <div className="flex justify-between items-start">
@@ -219,6 +237,9 @@ export function MembersTable({ members, allFactionMembers, assignedCharacterIds,
                                                         <DropdownMenuItem onSelect={() => { setEditingMember(member); setNewTitle(member.title || '') }}>
                                                             <Pencil className="mr-2" /> Edit Title
                                                         </DropdownMenuItem>
+                                                        <DropdownMenuItem onSelect={() => handleOpenMoveDialog(member)}>
+                                                            <Move className="mr-2" /> Move Member
+                                                        </DropdownMenuItem>
                                                         <AlertDialogTrigger asChild>
                                                             <div className="relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 text-destructive">
                                                                 <Trash2 className="mr-2" /> Remove
@@ -256,5 +277,6 @@ export function MembersTable({ members, allFactionMembers, assignedCharacterIds,
                 )}
             </CardContent>
         </Card>
+        </>
     )
 }

@@ -1,8 +1,9 @@
+
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { factionOrganizationCat2, factionMembersCache, factionOrganizationMembership, factionOrganizationCat3, factionMembers } from '@/db/schema';
+import { factionOrganizationCat1, factionOrganizationCat2, factionMembersCache, factionOrganizationMembership, factionOrganizationCat3, factionMembers } from '@/db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import { canManageCat2 } from './helpers';
 
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const { authorized } = await canManageCat2(session, cat2Id);
 
-    const [factionCache, members, factionUsers, allAssignedMembers] = await Promise.all([
+    const [factionCache, members, factionUsers, allAssignedMembers, allCat1s] = await Promise.all([
         db.query.factionMembersCache.findFirst({
             where: eq(factionMembersCache.faction_id, cat2.faction_id)
         }),
@@ -72,6 +73,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             }
         }),
         db.query.factionOrganizationMembership.findMany(),
+        db.query.factionOrganizationCat1.findMany({
+            where: eq(factionOrganizationCat1.faction_id, cat2.faction_id),
+            with: {
+                cat2s: {
+                    with: {
+                        cat3s: true
+                    }
+                }
+            }
+        })
     ]);
 
     const allFactionMembers = factionCache?.members || [];
@@ -85,15 +96,37 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     });
     
     const availableUsers = factionUsers.map(fm => fm.user).filter(Boolean);
-    const assignedCharacterIds = new Set(allAssignedMembers.map(m => m.character_id));
+    const allAssignedCharacterIds = allAssignedMembers.map(m => m.character_id);
+
+    // Prepare list for moving members
+    const allUnitsAndDetails: { label: string; value: string; type: 'cat_2' | 'cat_3' }[] = [];
+    allCat1s.forEach(cat1 => {
+        cat1.cat2s.forEach(c2 => {
+            allUnitsAndDetails.push({
+                label: `${cat1.name} / ${c2.name}`,
+                value: c2.id.toString(),
+                type: 'cat_2'
+            });
+            if (c2.cat3s) {
+                c2.cat3s.forEach(c3 => {
+                    allUnitsAndDetails.push({
+                        label: `${cat1.name} / ${c2.name} / ${c3.name}`,
+                        value: c3.id.toString(),
+                        type: 'cat_3'
+                    });
+                });
+            }
+        });
+    });
 
 
     return NextResponse.json({
         unit: cat2,
         members: memberDetails,
         allFactionMembers,
-        assignedCharacterIds: Array.from(assignedCharacterIds),
+        allAssignedCharacterIds,
         canManage: authorized,
         factionUsers: availableUsers,
+        allUnitsAndDetails,
     });
 }

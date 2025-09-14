@@ -34,7 +34,7 @@
 - If a category_3 is enabled, then show the ability to create a category_3, the ability to add people to the category should work the same way as well as showing people in the category.
 
 ### Phase 6:
-- You should have the ability to move people into different categories as long as it's either a sub category or into the main category (thats not cat1, so people can be moved to cat2 or other cat3s that are part of that cat2).
+- You should have the ability to move people into different categories across cat1s (or the same cat1) just ensure the dropdown is clear as to where you can move them.
 
 ### Phase 7:
 - You should have the ability to set a forum_grop in the category's settings (cat2 and cat3), add a sync forum group then add all character_ids to faction_organization_membership (add from cache directly).
