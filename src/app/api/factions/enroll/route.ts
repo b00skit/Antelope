@@ -20,6 +20,7 @@ const enrollSchema = z.object({
     activity_rosters_enabled: z.boolean().default(true),
     character_sheets_enabled: z.boolean().default(true),
     statistics_enabled: z.boolean().default(true),
+    units_divisions_enabled: z.boolean().default(false),
     phpbb_api_url: z.string().url("Must be a valid URL").or(z.literal('')).optional().nullable(),
     phpbb_api_key: z.string().optional().nullable(),
 });
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Invalid input.', details: parsed.error.flatten() }, { status: 400 });
     }
 
-    const { id, name, color, access_rank, administration_rank, supervisor_rank, minimum_abas, minimum_supervisor_abas, user_rank, activity_rosters_enabled, character_sheets_enabled, statistics_enabled, phpbb_api_url, phpbb_api_key } = parsed.data;
+    const { id, name, color, access_rank, administration_rank, supervisor_rank, minimum_abas, minimum_supervisor_abas, user_rank, activity_rosters_enabled, character_sheets_enabled, statistics_enabled, units_divisions_enabled, phpbb_api_url, phpbb_api_key } = parsed.data;
 
     try {
         // Check if faction already exists
@@ -67,6 +68,7 @@ export async function POST(request: NextRequest) {
                     activity_rosters_enabled,
                     character_sheets_enabled,
                     statistics_enabled,
+                    units_divisions_enabled,
                 },
                 phpbb_api_url,
                 phpbb_api_key
