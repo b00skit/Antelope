@@ -1,3 +1,4 @@
+
 import { relations } from 'drizzle-orm';
 import { users } from './users';
 import { factions } from './factions';
@@ -138,7 +139,7 @@ export const factionOrganizationCat2Relations = relations(factionOrganizationCat
     references: [users.id],
   }),
   cat3s: many(factionOrganizationCat3),
-  members: many(factionOrganizationMembership),
+  members: many(factionOrganizationMembership, { relationName: 'cat2_members' }),
 }));
 
 export const factionOrganizationCat3Relations = relations(factionOrganizationCat3, ({ one, many }) => ({
@@ -154,12 +155,22 @@ export const factionOrganizationCat3Relations = relations(factionOrganizationCat
     fields: [factionOrganizationCat3.created_by],
     references: [users.id],
   }),
-  members: many(factionOrganizationMembership),
+  members: many(factionOrganizationMembership, { relationName: 'cat3_members' }),
 }));
 
 export const factionOrganizationMembershipRelations = relations(factionOrganizationMembership, ({ one }) => ({
   creator: one(users, {
     fields: [factionOrganizationMembership.created_by],
     references: [users.id],
+  }),
+  cat2: one(factionOrganizationCat2, {
+    fields: [factionOrganizationMembership.category_id],
+    references: [factionOrganizationCat2.id],
+    relationName: 'cat2_members'
+  }),
+  cat3: one(factionOrganizationCat3, {
+    fields: [factionOrganizationMembership.category_id],
+    references: [factionOrganizationCat3.id],
+    relationName: 'cat3_members'
   }),
 }));

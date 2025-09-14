@@ -1,3 +1,4 @@
+
 import { notFound } from 'next/navigation';
 import { Cat2ClientPage } from '@/components/units-divisions/cat2-client-page';
 

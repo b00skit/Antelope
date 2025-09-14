@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, Loader2, PlusCircle, Building, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { AlertTriangle, Loader2, PlusCircle, Building, MoreVertical, Pencil, Trash2, Eye } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
 import type { Cat2, FactionUser } from "./units-divisions-client-page";
 import { MembersTable } from "./members-table";
@@ -165,42 +165,50 @@ export function Cat2ClientPage({ cat1Id, cat2Id }: Cat2ClientPageProps) {
                             <div className="space-y-2">
                                 {data.unit.cat3s.map(cat3 => (
                                      <div key={cat3.id} className="flex items-center justify-between p-2 border rounded-md">
-                                        <div>
+                                        <div className="flex-1">
                                             <div className="font-medium flex items-center gap-2">
                                                 {cat3.name}
                                                 {cat3.short_name && <Badge variant="secondary">{cat3.short_name}</Badge>}
                                             </div>
                                             <p className="text-xs text-muted-foreground">Created by {cat3.creator.username}</p>
                                         </div>
-                                        {data.canManage && (
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon"><MoreVertical /></Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent>
-                                                    <DropdownMenuItem onSelect={() => handleEditCat3(cat3)}>
-                                                        <Pencil className="mr-2" /> Edit
-                                                    </DropdownMenuItem>
-                                                     <AlertDialog>
-                                                        <AlertDialogTrigger asChild>
-                                                            <div className="relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 text-destructive">
-                                                                <Trash2 className="mr-2" /> Delete
-                                                            </div>
-                                                        </AlertDialogTrigger>
-                                                        <AlertDialogContent>
-                                                            <AlertDialogHeader>
-                                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                                <AlertDialogDescription>This will permanently delete "{cat3.name}".</AlertDialogDescription>
-                                                            </AlertDialogHeader>
-                                                            <AlertDialogFooter>
-                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                                <AlertDialogAction onClick={() => handleDeleteCat3(cat3.id)}>Yes, Delete</AlertDialogAction>
-                                                            </AlertDialogFooter>
-                                                        </AlertDialogContent>
-                                                    </AlertDialog>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        )}
+                                        <div className="flex items-center gap-2">
+                                             <Button asChild variant="outline" size="sm">
+                                                <Link href={`/units-divisions/${cat1Id}/${cat2Id}/${cat3.id}`}>
+                                                    <Eye className="mr-2 h-4 w-4" />
+                                                    View
+                                                </Link>
+                                            </Button>
+                                            {data.canManage && (
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon"><MoreVertical /></Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent>
+                                                        <DropdownMenuItem onSelect={() => handleEditCat3(cat3)}>
+                                                            <Pencil className="mr-2" /> Edit
+                                                        </DropdownMenuItem>
+                                                        <AlertDialog>
+                                                            <AlertDialogTrigger asChild>
+                                                                <div className="relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 text-destructive">
+                                                                    <Trash2 className="mr-2" /> Delete
+                                                                </div>
+                                                            </AlertDialogTrigger>
+                                                            <AlertDialogContent>
+                                                                <AlertDialogHeader>
+                                                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                                    <AlertDialogDescription>This will permanently delete "{cat3.name}".</AlertDialogDescription>
+                                                                </AlertDialogHeader>
+                                                                <AlertDialogFooter>
+                                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                    <AlertDialogAction onClick={() => handleDeleteCat3(cat3.id)}>Yes, Delete</AlertDialogAction>
+                                                                </AlertDialogFooter>
+                                                            </AlertDialogContent>
+                                                        </AlertDialog>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            )}
+                                        </div>
                                     </div>
                                 ))}
                             </div>
