@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     const factionId = user.selectedFaction.id;
     
     try {
-        const [settings, cat1s, membership] = await Promise.all([
+        const [settings, cat1s, membership, factionUsers] = await Promise.all([
             db.query.factionOrganizationSettings.findFirst({
                 where: eq(factionOrganizationSettings.faction_id, factionId),
             }),
@@ -42,6 +42,17 @@ export async function GET(request: NextRequest) {
             }),
              db.query.factionMembers.findFirst({
                 where: and(eq(factionMembers.userId, session.userId), eq(factionMembers.factionId, factionId))
+            }),
+            db.query.factionMembers.findMany({
+                where: and(eq(factionMembers.factionId, factionId), eq(factionMembers.joined, true)),
+                with: {
+                    user: {
+                        columns: {
+                            id: true,
+                            username: true,
+                        }
+                    }
+                }
             })
         ]);
 
@@ -51,11 +62,14 @@ export async function GET(request: NextRequest) {
             ...cat1,
             canManage: canAdminister || cat1.access_json?.includes(session.userId as number) || false
         }));
+        
+        const availableUsers = factionUsers.map(fm => fm.user).filter(Boolean);
 
         return NextResponse.json({
             settings: settings,
             cat1s: cat1sWithPermissions,
             canAdminister,
+            factionUsers: availableUsers,
         });
 
     } catch (error) {

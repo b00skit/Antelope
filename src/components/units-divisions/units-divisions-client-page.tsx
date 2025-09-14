@@ -32,6 +32,11 @@ interface OrgSettings {
     category_3_name: string;
 }
 
+export interface FactionUser {
+    id: number;
+    username: string;
+}
+
 export interface Cat1 {
     id: number;
     name: string;
@@ -48,6 +53,7 @@ interface PageData {
     settings: OrgSettings | null;
     cat1s: Cat1[];
     canAdminister: boolean;
+    factionUsers: FactionUser[];
 }
 
 const settingsSchema = z.object({
@@ -253,6 +259,7 @@ export function UnitsDivisionsClientPage() {
                     onSave={fetchData}
                     cat1={editingCat1}
                     settings={data.settings}
+                    factionUsers={data.factionUsers || []}
                 />
             )}
             <PageHeader

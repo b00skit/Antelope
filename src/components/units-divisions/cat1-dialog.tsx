@@ -13,9 +13,10 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { Cat1 } from './units-divisions-client-page';
+import type { Cat1, FactionUser } from './units-divisions-client-page';
 import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
+import { MultiSelect } from '../ui/multi-select';
 
 const cat1FormSchema = z.object({
     name: z.string().min(1, "Name cannot be empty."),
@@ -29,9 +30,10 @@ interface Cat1DialogProps {
     onSave: () => void;
     cat1: Cat1 | null;
     settings: { category_1_name: string };
+    factionUsers: FactionUser[];
 }
 
-export function Cat1Dialog({ open, onOpenChange, onSave, cat1, settings }: Cat1DialogProps) {
+export function Cat1Dialog({ open, onOpenChange, onSave, cat1, settings, factionUsers }: Cat1DialogProps) {
     const { toast } = useToast();
     const form = useForm<z.infer<typeof cat1FormSchema>>({
         resolver: zodResolver(cat1FormSchema),
@@ -80,6 +82,11 @@ export function Cat1Dialog({ open, onOpenChange, onSave, cat1, settings }: Cat1D
         }
     };
 
+    const userOptions = factionUsers.map(user => ({
+        value: user.id.toString(),
+        label: user.username,
+    }));
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
@@ -118,16 +125,13 @@ export function Cat1Dialog({ open, onOpenChange, onSave, cat1, settings }: Cat1D
                             name="access_json"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Management Access (User IDs, Optional)</FormLabel>
+                                    <FormLabel>Management Access (Optional)</FormLabel>
                                     <FormControl>
-                                        <Input 
-                                            placeholder="e.g., 1, 2, 3"
-                                            value={field.value?.join(', ') ?? ''}
-                                            onChange={(e) => {
-                                                const value = e.target.value;
-                                                const numbers = value.split(/[, ]+/).filter(Boolean).map(Number).filter(n => !isNaN(n));
-                                                field.onChange(numbers);
-                                            }}
+                                        <MultiSelect
+                                            options={userOptions}
+                                            onValueChange={(selected) => field.onChange(selected.map(Number))}
+                                            defaultValue={field.value?.map(String) ?? []}
+                                            placeholder="Select users..."
                                         />
                                     </FormControl>
                                     <FormMessage />
