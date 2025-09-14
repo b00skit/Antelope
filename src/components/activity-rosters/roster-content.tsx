@@ -297,17 +297,18 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
             let assigned = false;
             for (const section of sectionsWithConfig) {
                 const config = section.configuration_json!;
-                
-                const memberName = member.character_name.replace(/ /g, '_');
-                
-                const nameMatch = config.include_names?.includes(memberName);
+
+                const memberName = member.character_name;
+                const memberSlug = memberName.replace(/ /g, '_');
+
+                const nameMatch = config.include_names?.some(n => n === memberName || n === memberSlug);
                 const rankMatch = config.include_ranks?.includes(member.rank);
                 // const forumMatch = member.forum_groups && config.include_forum_groups?.some(fg => member.forum_groups!.includes(fg));
 
                 const shouldBeIncluded = nameMatch || rankMatch; // || forumMatch;
 
                 if (shouldBeIncluded) {
-                    const isExcluded = config.exclude_names?.includes(memberName);
+                    const isExcluded = config.exclude_names?.some(n => n === memberName || n === memberSlug);
                     if (!isExcluded) {
                         section.character_ids_json.push(member.character_id);
                         assignedMemberIds.add(member.character_id);
