@@ -96,10 +96,10 @@ const SectionDialog = ({
             const config = section?.configuration_json || {};
             // Populate raw string state for editing
             setRawConfig({
-                include_names: (config.include_names || []).map(n => n.replace(/_/g, ' ')).join(', '),
-                include_ranks: (config.include_ranks || []).join(', '),
-                include_forum_groups: (config.include_forum_groups || []).join(', '),
-                exclude_names: (config.exclude_names || []).map(n => n.replace(/_/g, ' ')).join(', '),
+                include_names: (config.include_names || []).map(n => n.replace(/_/g, ' ')).join('\n'),
+                include_ranks: (config.include_ranks || []).join('\n'),
+                include_forum_groups: (config.include_forum_groups || []).join('\n'),
+                exclude_names: (config.exclude_names || []).map(n => n.replace(/_/g, ' ')).join('\n'),
             });
         }
     }, [section, isOpen]);
@@ -141,24 +141,24 @@ const SectionDialog = ({
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-base">Auto-Filter Rules (Optional)</CardTitle>
-                            <CardDescription className="text-xs">Define rules to automatically assign members to this section. Enter comma-separated values.</CardDescription>
+                            <CardDescription className="text-xs">Define rules to automatically assign members. Separate multiple values with commas, spaces, or new lines.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                              <div className="space-y-2">
                                 <Label>Include Names</Label>
-                                <Input value={rawConfig.include_names} onChange={e => handleRawConfigChange('include_names', e.target.value)} placeholder="E.g. John Doe, Jane Smith" />
+                                <Textarea value={rawConfig.include_names} onChange={e => handleRawConfigChange('include_names', e.target.value)} placeholder="E.g. John Doe, Jane Smith" />
                             </div>
                             <div className="space-y-2">
                                 <Label>Include Ranks</Label>
-                                <Input value={rawConfig.include_ranks} onChange={e => handleRawConfigChange('include_ranks', e.target.value)} placeholder="E.g. 1, 5, 10" />
+                                <Textarea value={rawConfig.include_ranks} onChange={e => handleRawConfigChange('include_ranks', e.target.value)} placeholder="E.g. 1, 5, 10" />
                             </div>
                             <div className="space-y-2">
                                 <Label>Include Forum Groups</Label>
-                                <Input value={rawConfig.include_forum_groups} onChange={e => handleRawConfigChange('include_forum_groups', e.target.value)} placeholder="E.g. 25, 30" />
+                                <Textarea value={rawConfig.include_forum_groups} onChange={e => handleRawConfigChange('include_forum_groups', e.target.value)} placeholder="E.g. 25, 30" />
                             </div>
                              <div className="space-y-2">
                                 <Label>Exclude Names</Label>
-                                <Input value={rawConfig.exclude_names} onChange={e => handleRawConfigChange('exclude_names', e.target.value)} placeholder="E.g. Peter Jones" />
+                                <Textarea value={rawConfig.exclude_names} onChange={e => handleRawConfigChange('exclude_names', e.target.value)} placeholder="E.g. Peter Jones" />
                                 <p className="text-xs text-muted-foreground">Only applies if ranks or forum groups are included.</p>
                             </div>
                         </CardContent>
