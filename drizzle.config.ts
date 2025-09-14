@@ -3,7 +3,7 @@ import { join, isAbsolute } from 'node:path';
 import { tmpdir } from 'node:os';
 import 'dotenv/config';
 
-// Resolve database file path for drizzle CLI as well.
+const dbType = process.env.DATABASE ?? 'sqlite';
 const envPath = process.env.DB_FILE_NAME;
 const dbFile = envPath
   ? isAbsolute(envPath)
@@ -14,10 +14,10 @@ const dbFile = envPath
 export default defineConfig({
   schema: './src/db/schema.ts',
   out: './drizzle',
-  dialect: 'sqlite',
-  dbCredentials: {
-    url: `file:${dbFile}`,
-  },
+  dialect: dbType === 'sqlite' ? 'sqlite' : 'mysql',
+  dbCredentials: dbType === 'sqlite'
+    ? { url: `file:${dbFile}` }
+    : { url: process.env.DB_URL! },
   strict: true,
   verbose: true,
 });

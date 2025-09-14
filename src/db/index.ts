@@ -1,18 +1,28 @@
-import { drizzle } from 'drizzle-orm/better-sqlite3';
+import { drizzle as drizzleSqlite } from 'drizzle-orm/better-sqlite3';
+import { drizzle as drizzleMysql } from 'drizzle-orm/mysql2';
 import Database from 'better-sqlite3';
+import mysql from 'mysql2/promise';
 import { join, isAbsolute } from 'node:path';
 import { tmpdir } from 'node:os';
 import * as schema from './schema';
 import 'dotenv/config';
 
-// Resolve the database file path to ensure it points to a writable location.
-// If DB_FILE_NAME is not provided, fall back to a temporary directory.
-const envPath = process.env.DB_FILE_NAME;
-const dbFile = envPath
-  ? isAbsolute(envPath)
-    ? envPath
-    : join(process.cwd(), envPath)
-  : join(tmpdir(), 'local.db');
+const dbType = process.env.DATABASE ?? 'sqlite';
+let dbInstance: any;
 
-const sqlite = new Database(dbFile, { fileMustExist: false, readonly: false });
-export const db = drizzle(sqlite, { schema });
+if (dbType === 'mysql' || dbType === 'mariadb') {
+  const pool = mysql.createPool(process.env.DB_URL!);
+  dbInstance = drizzleMysql(pool, { schema });
+} else {
+  const envPath = process.env.DB_FILE_NAME;
+  const dbFile = envPath
+    ? isAbsolute(envPath)
+      ? envPath
+      : join(process.cwd(), envPath)
+    : join(tmpdir(), 'local.db');
+
+  const sqlite = new Database(dbFile, { fileMustExist: false, readonly: false });
+  dbInstance = drizzleSqlite(sqlite, { schema });
+}
+
+export const db = dbInstance;
