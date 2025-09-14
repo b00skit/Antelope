@@ -91,13 +91,30 @@ const SectionDialog = ({
     }, [section, isOpen]);
 
     const handleConfigChange = (key: keyof SectionConfig, value: string) => {
-        const arrayValue = value.split(',').map(item => item.trim()).filter(Boolean);
+        const isNameField = key === 'include_names' || key === 'exclude_names';
         const isNumeric = ['include_ranks', 'include_forum_groups'].includes(key);
-        
+
+        const arrayValue = value.split(/[\s,]+/).map(item => item.trim()).filter(Boolean);
+
         setConfig(prev => ({
             ...prev,
-            [key]: isNumeric ? arrayValue.map(Number).filter(n => !isNaN(n)) : arrayValue,
+            [key]: isNumeric
+                ? arrayValue.map(Number).filter(n => !isNaN(n))
+                : arrayValue.map(name => isNameField ? name.replace(/ /g, '_') : name)
         }));
+    };
+
+    const getConfigValue = (key: keyof SectionConfig) => {
+        const isNameField = key === 'include_names' || key === 'exclude_names';
+        const value = config[key];
+
+        if (Array.isArray(value)) {
+            if (isNameField) {
+                return value.map(name => name.replace(/_/g, ' ')).join(', ');
+            }
+            return value.join(', ');
+        }
+        return '';
     };
     
     return (
@@ -123,19 +140,19 @@ const SectionDialog = ({
                         <CardContent className="space-y-4">
                              <div className="space-y-2">
                                 <Label>Include Names</Label>
-                                <Input value={(config.include_names || []).join(', ')} onChange={e => handleConfigChange('include_names', e.target.value)} placeholder="E.g. John_Doe, Jane_Smith" />
+                                <Input value={getConfigValue('include_names')} onChange={e => handleConfigChange('include_names', e.target.value)} placeholder="E.g. John Doe, Jane Smith" />
                             </div>
                             <div className="space-y-2">
                                 <Label>Include Ranks</Label>
-                                <Input value={(config.include_ranks || []).join(', ')} onChange={e => handleConfigChange('include_ranks', e.target.value)} placeholder="E.g. 1, 5, 10" />
+                                <Input value={getConfigValue('include_ranks')} onChange={e => handleConfigChange('include_ranks', e.target.value)} placeholder="E.g. 1, 5, 10" />
                             </div>
                             <div className="space-y-2">
                                 <Label>Include Forum Groups</Label>
-                                <Input value={(config.include_forum_groups || []).join(', ')} onChange={e => handleConfigChange('include_forum_groups', e.target.value)} placeholder="E.g. 25, 30" />
+                                <Input value={getConfigValue('include_forum_groups')} onChange={e => handleConfigChange('include_forum_groups', e.target.value)} placeholder="E.g. 25, 30" />
                             </div>
                              <div className="space-y-2">
                                 <Label>Exclude Names</Label>
-                                <Input value={(config.exclude_names || []).join(', ')} onChange={e => handleConfigChange('exclude_names', e.target.value)} placeholder="E.g. Peter_Jones" />
+                                <Input value={getConfigValue('exclude_names')} onChange={e => handleConfigChange('exclude_names', e.target.value)} placeholder="E.g. Peter Jones" />
                                 <p className="text-xs text-muted-foreground">Only applies if ranks or forum groups are included.</p>
                             </div>
                         </CardContent>
