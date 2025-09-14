@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, Loader2, PlusCircle, Building } from "lucide-react";
+import { AlertTriangle, Loader2, PlusCircle, Building, Eye } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
 import type { Cat1, Cat2, FactionUser } from "./units-divisions-client-page";
 import { MembersTable } from "./members-table";
@@ -40,6 +40,7 @@ interface PageData {
     members: Member[];
     allFactionMembers: any[];
     canManage: boolean;
+    factionUsers: FactionUser[];
 }
 
 interface Cat2ClientPageProps {
@@ -105,7 +106,7 @@ export function Cat2ClientPage({ cat1Id, cat2Id }: Cat2ClientPageProps) {
                 cat3={null}
                 parentCat2={data.unit}
                 settings={{ category_3_name: 'Detail' }} // This should be dynamic later
-                factionUsers={data.allFactionMembers.map((m: any) => ({ id: m.user_id, username: m.character_name }))}
+                factionUsers={data.factionUsers}
             />
             <PageHeader
                 title={data.unit.name}

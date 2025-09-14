@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { factionOrganizationCat2, factionMembersCache, factionOrganizationMembership, factionOrganizationCat3 } from '@/db/schema';
+import { factionOrganizationCat2, factionMembersCache, factionOrganizationMembership, factionOrganizationCat3, factionMembers } from '@/db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import { canManageCat2 } from './helpers';
 
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const { authorized } = await canManageCat2(session, cat2Id);
 
-    const [factionCache, members] = await Promise.all([
+    const [factionCache, members, factionUsers] = await Promise.all([
         db.query.factionMembersCache.findFirst({
             where: eq(factionMembersCache.faction_id, cat2.faction_id)
         }),
@@ -57,6 +57,17 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             with: {
                 creator: {
                     columns: { username: true }
+                }
+            }
+        }),
+        db.query.factionMembers.findMany({
+            where: and(eq(factionMembers.factionId, cat2.faction_id), eq(factionMembers.joined, true)),
+            with: {
+                user: {
+                    columns: {
+                        id: true,
+                        username: true,
+                    }
                 }
             }
         })
@@ -71,11 +82,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             rank_name: factionMember?.rank_name || 'Unknown',
         }
     });
+    
+    const availableUsers = factionUsers.map(fm => fm.user).filter(Boolean);
 
     return NextResponse.json({
         unit: cat2,
         members: memberDetails,
         allFactionMembers,
         canManage: authorized,
+        factionUsers: availableUsers,
     });
 }
