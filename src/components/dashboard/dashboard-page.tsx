@@ -305,7 +305,7 @@ export function DashboardPage({ notice }: DashboardPageProps) {
 
       <PageHeader
         title={session?.hasActiveFaction ? `Welcome, ${session.username}` : "Dashboard"}
-        description={session?.hasActiveFaction ? `Viewing dashboard for ${session.activeFaction?.name}` : "Welcome to Faction Panel+."}
+        description={session?.hasActiveFaction ? `Viewing dashboard for ${session.activeFaction?.name}` : "Welcome to Antelope."}
       />
       
       {isSessionLoading || isDataLoading ? (

@@ -79,7 +79,7 @@ export default function LandingPage() {
                     <div>
                         <h2 className="text-3xl font-bold tracking-tight">Integrated with GTA:World</h2>
                         <p className="mt-4 text-lg text-muted-foreground">
-                            Faction Panel+ securely connects with your GTA:World account to synchronize your faction memberships and character data, ensuring your information is always up-to-date.
+                            Antelope securely connects with your GTA:World account to synchronize your faction memberships and character data, ensuring your information is always up-to-date.
                         </p>
                         <ul className="mt-6 space-y-4">
                             <li className="flex items-start">
