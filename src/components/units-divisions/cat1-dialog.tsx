@@ -15,6 +15,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { Cat1 } from './units-divisions-client-page';
 import { useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
 
 const cat1FormSchema = z.object({
     name: z.string().min(1, "Name cannot be empty."),
@@ -136,7 +137,7 @@ export function Cat1Dialog({ open, onOpenChange, onSave, cat1, settings }: Cat1D
                         <DialogFooter>
                             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
                             <Button type="submit" disabled={form.formState.isSubmitting}>
-                                {form.formState.isSubmitting && <Loader2 className="animate-spin" />}
+                                {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 {cat1 ? 'Save Changes' : 'Create'}
                             </Button>
                         </DialogFooter>
