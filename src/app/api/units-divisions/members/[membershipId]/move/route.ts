@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { factionOrganizationMembership } from '@/db/schema';
+import { factionOrganizationMembership, factionOrganizationCat3 } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { canManageCat2 } from '../../../[cat1Id]/[cat2Id]/helpers';
 import { z } from 'zod';
@@ -42,6 +42,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const { source_cat2_id, destination_type, destination_id } = parsed.data;
 
     // Check permissions on the SOURCE unit
+    // If the member is in a Cat3, we still check permissions on the parent Cat2.
     const { authorized, message } = await canManageCat2(session, source_cat2_id);
     if (!authorized) {
         return NextResponse.json({ error: message }, { status: 403 });
