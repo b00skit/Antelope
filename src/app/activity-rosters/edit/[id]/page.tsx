@@ -22,10 +22,11 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 
 const jsonString = z.string().refine((value) => {
     if (!value) return true;
@@ -43,8 +44,6 @@ const formSchema = z.object({
     password: z.string().optional().nullable(),
     roster_setup_json: jsonString.optional().nullable(),
 }).refine(data => {
-    // If visibility is changing TO private, a new password is required.
-    // An empty string is a valid new password. null/undefined is not.
     if (data.visibility === 'private' && data.password === null) {
         return false;
     }
@@ -90,12 +89,14 @@ export default function EditRosterPage() {
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState(true);
     const [initialVisibility, setInitialVisibility] = useState<string | null>(null);
+    const [basicIncludeMembers, setBasicIncludeMembers] = useState('');
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
     });
     
     const watchVisibility = form.watch('visibility');
+    const watchJson = form.watch('roster_setup_json');
 
     useEffect(() => {
         if (!rosterId) return;
@@ -109,13 +110,24 @@ export default function EditRosterPage() {
                     throw new Error(err.error || 'Failed to fetch roster data.');
                 }
                 const data = await res.json();
+                const rosterJson = data.roster.roster_setup_json ? JSON.stringify(JSON.parse(data.roster.roster_setup_json), null, 2) : '';
+
                 form.reset({
                     name: data.roster.name,
                     visibility: data.roster.visibility,
-                    // Password field is intentionally left blank for security. It's only for setting a *new* password.
                     password: null, 
-                    roster_setup_json: data.roster.roster_setup_json ? JSON.stringify(JSON.parse(data.roster.roster_setup_json), null, 2) : '',
+                    roster_setup_json: rosterJson,
                 });
+                
+                // Initialize basic editor state from fetched data
+                try {
+                    const json = rosterJson ? JSON.parse(rosterJson) : {};
+                    const members = json.include_members || [];
+                    setBasicIncludeMembers(members.join('\n'));
+                } catch (e) {
+                    setBasicIncludeMembers('');
+                }
+
                 setInitialVisibility(data.roster.visibility);
             } catch (err: any) {
                 toast({ variant: 'destructive', title: 'Error', description: err.message });
@@ -128,12 +140,45 @@ export default function EditRosterPage() {
         fetchRosterData();
     }, [rosterId, router, toast, form]);
 
+    const handleTabChange = (newTab: string) => {
+        if (newTab === 'basic') {
+            try {
+                const json = watchJson ? JSON.parse(watchJson) : {};
+                const members = json.include_members || [];
+                setBasicIncludeMembers(members.join('\n'));
+            } catch (e) {
+                setBasicIncludeMembers('');
+            }
+        } else if (newTab === 'advanced') {
+            try {
+                const json = watchJson ? JSON.parse(watchJson) : {};
+                const members = basicIncludeMembers.split('\n').map(m => m.trim()).filter(Boolean);
+                json.include_members = members;
+                form.setValue('roster_setup_json', JSON.stringify(json, null, 2), { shouldValidate: true });
+            } catch (e) {
+                // If current JSON is invalid, do nothing
+            }
+        }
+    };
+
+
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         try {
+            // Ensure the final JSON is up-to-date before submitting
+            const finalValues = { ...values };
+            try {
+                const json = finalValues.roster_setup_json ? JSON.parse(finalValues.roster_setup_json) : {};
+                const members = basicIncludeMembers.split('\n').map(m => m.trim()).filter(Boolean);
+                json.include_members = members;
+                finalValues.roster_setup_json = JSON.stringify(json);
+            } catch (e) {
+                // Ignore if JSON is malformed, it will be caught by validation
+            }
+
             const response = await fetch(`/api/rosters/${rosterId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(values),
+                body: JSON.stringify(finalValues),
             });
 
             if (!response.ok) {
@@ -230,31 +275,52 @@ export default function EditRosterPage() {
                                     )}
                                 />
                             )}
-                             <FormField
-                                control={form.control}
-                                name="roster_setup_json"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>JSON Configuration (Optional)</FormLabel>
-                                        <FormControl>
-                                            <Textarea
-                                                placeholder='Paste your JSON configuration here...'
-                                                className="font-mono min-h-[150px]"
-                                                {...field}
-                                                value={field.value ?? ''}
-                                            />
-                                        </FormControl>
+                             <FormItem>
+                                <FormLabel>Roster Configuration (Optional)</FormLabel>
+                                <Tabs defaultValue="advanced" className="w-full" onValueChange={handleTabChange}>
+                                    <TabsList>
+                                        <TabsTrigger value="advanced">Advanced (JSON)</TabsTrigger>
+                                        <TabsTrigger value="basic">Basic (Included Members)</TabsTrigger>
+                                    </TabsList>
+                                    <TabsContent value="advanced">
+                                        <FormField
+                                            control={form.control}
+                                            name="roster_setup_json"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormControl>
+                                                        <Textarea
+                                                            placeholder='Paste your JSON configuration here...'
+                                                            className="font-mono min-h-[150px]"
+                                                            {...field}
+                                                            value={field.value ?? ''}
+                                                        />
+                                                    </FormControl>
+                                                    <FormDescription>
+                                                        Use this to filter the roster by rank, name, or forum groups/users.
+                                                    </FormDescription>
+                                                    <details className="text-sm">
+                                                        <summary className="cursor-pointer text-muted-foreground">View Example</summary>
+                                                        <pre className="mt-2 p-2 bg-muted rounded-md text-xs">{jsonExample}</pre>
+                                                    </details>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </TabsContent>
+                                    <TabsContent value="basic">
+                                        <Textarea
+                                            placeholder='Enter one character name per line...'
+                                            className="font-mono min-h-[150px]"
+                                            value={basicIncludeMembers}
+                                            onChange={(e) => setBasicIncludeMembers(e.target.value)}
+                                        />
                                         <FormDescription>
-                                            Use this to filter the roster by rank, name, or forum groups/users.
+                                            Only members with these names will be shown. This will only affect the `include_members` field.
                                         </FormDescription>
-                                        <details className="text-sm">
-                                            <summary className="cursor-pointer text-muted-foreground">View Example</summary>
-                                            <pre className="mt-2 p-2 bg-muted rounded-md text-xs">{jsonExample}</pre>
-                                        </details>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+                                    </TabsContent>
+                                </Tabs>
+                            </FormItem>
                              {form.formState.errors.root && (
                                 <Alert variant="destructive">
                                     <AlertTriangle className="h-4 w-4" />
