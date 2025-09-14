@@ -46,17 +46,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     try {
-        // Check if member is already in this detail
-        const existingMember = await db.query.factionOrganizationMembership.findFirst({
+        // Check if member is already in ANY cat 3 unit for this faction
+        const existingAssignment = await db.query.factionOrganizationMembership.findFirst({
             where: and(
                 eq(factionOrganizationMembership.type, 'cat_3'),
-                eq(factionOrganizationMembership.category_id, cat3Id),
                 eq(factionOrganizationMembership.character_id, parsed.data.character_id)
             )
         });
 
-        if (existingMember) {
-            return NextResponse.json({ error: 'This character is already a member of this detail.' }, { status: 409 });
+        if (existingAssignment) {
+            return NextResponse.json({ error: 'This character is already assigned to another detail.' }, { status: 409 });
         }
 
         await db.insert(factionOrganizationMembership).values({

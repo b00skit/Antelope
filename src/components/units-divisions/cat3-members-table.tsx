@@ -45,6 +45,7 @@ interface Member {
 interface Cat3MembersTableProps {
     members: Member[];
     allFactionMembers: any[];
+    assignedCharacterIds: number[];
     canManage: boolean;
     cat1Id: number;
     cat2Id: number;
@@ -52,7 +53,7 @@ interface Cat3MembersTableProps {
     onDataChange: () => void;
 }
 
-export function Cat3MembersTable({ members, allFactionMembers, canManage, cat1Id, cat2Id, cat3Id, onDataChange }: Cat3MembersTableProps) {
+export function Cat3MembersTable({ members, allFactionMembers, assignedCharacterIds, canManage, cat1Id, cat2Id, cat3Id, onDataChange }: Cat3MembersTableProps) {
     const [isAdding, setIsAdding] = useState(false);
     const [selectedCharacterId, setSelectedCharacterId] = useState<string>('');
     const [newTitle, setNewTitle] = useState('');
@@ -61,9 +62,10 @@ export function Cat3MembersTable({ members, allFactionMembers, canManage, cat1Id
     const [isDeleting, setIsDeleting] = useState<number | null>(null);
     const { toast } = useToast();
 
-    const memberIds = new Set(members.map(m => m.character_id));
+    const currentMemberIds = new Set(members.map(m => m.character_id));
+    const assignedIds = new Set(assignedCharacterIds);
     const characterOptions = allFactionMembers
-        .filter(fm => !memberIds.has(fm.character_id))
+        .filter(fm => !assignedIds.has(fm.character_id) || currentMemberIds.has(fm.character_id))
         .map(fm => fm.character_name);
 
     const handleAddMember = async () => {

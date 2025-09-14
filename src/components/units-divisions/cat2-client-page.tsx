@@ -43,6 +43,7 @@ interface PageData {
     unit: Cat2 & { cat1: { name: string }, cat3s: Cat3[] };
     members: Member[];
     allFactionMembers: any[];
+    assignedCat2CharacterIds: number[];
     canManage: boolean;
     factionUsers: FactionUser[];
 }
@@ -138,6 +139,7 @@ export function Cat2ClientPage({ cat1Id, cat2Id }: Cat2ClientPageProps) {
             <MembersTable 
                 members={data.members}
                 allFactionMembers={data.allFactionMembers}
+                assignedCharacterIds={data.assignedCat2CharacterIds}
                 canManage={data.canManage}
                 cat1Id={cat1Id}
                 cat2Id={cat2Id}

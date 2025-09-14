@@ -45,7 +45,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const { authorized } = await canManageCat2(session, cat2Id);
 
-    const [factionCache, members, factionUsers] = await Promise.all([
+    const [factionCache, members, factionUsers, allCat2Members] = await Promise.all([
         db.query.factionMembersCache.findFirst({
             where: eq(factionMembersCache.faction_id, cat2.faction_id)
         }),
@@ -70,6 +70,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
                     }
                 }
             }
+        }),
+        db.query.factionOrganizationMembership.findMany({
+            where: eq(factionOrganizationMembership.type, 'cat_2'),
         })
     ]);
 
@@ -84,11 +87,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     });
     
     const availableUsers = factionUsers.map(fm => fm.user).filter(Boolean);
+    const assignedCat2CharacterIds = new Set(allCat2Members.map(m => m.character_id));
+
 
     return NextResponse.json({
         unit: cat2,
         members: memberDetails,
         allFactionMembers,
+        assignedCat2CharacterIds: Array.from(assignedCat2CharacterIds),
         canManage: authorized,
         factionUsers: availableUsers,
     });

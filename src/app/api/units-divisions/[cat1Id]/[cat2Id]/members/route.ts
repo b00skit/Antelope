@@ -32,7 +32,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         return NextResponse.json({ error: 'Invalid ID.' }, { status: 400 });
     }
 
-    const { authorized, message } = await canManageCat2(session, cat2Id);
+    const { authorized, message, factionId } = await canManageCat2(session, cat2Id);
     if (!authorized) {
         return NextResponse.json({ error: message }, { status: 403 });
     }
@@ -44,17 +44,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     try {
-        // Check if member is already in this unit
-        const existingMember = await db.query.factionOrganizationMembership.findFirst({
+        // Check if member is already in ANY cat 2 unit for this faction
+        const existingAssignment = await db.query.factionOrganizationMembership.findFirst({
             where: and(
                 eq(factionOrganizationMembership.type, 'cat_2'),
-                eq(factionOrganizationMembership.category_id, cat2Id),
                 eq(factionOrganizationMembership.character_id, parsed.data.character_id)
-            )
+            ),
         });
 
-        if (existingMember) {
-            return NextResponse.json({ error: 'This character is already a member of this unit.' }, { status: 409 });
+        if (existingAssignment) {
+            return NextResponse.json({ error: 'This character is already assigned to another unit.' }, { status: 409 });
         }
 
         await db.insert(factionOrganizationMembership).values({

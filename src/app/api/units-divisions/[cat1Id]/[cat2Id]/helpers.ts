@@ -38,17 +38,17 @@ export async function canManageCat2(session: any, cat2Id: number) {
 
     // Check for admin rank
     if (membership.rank >= (user.selectedFaction.administration_rank ?? 15)) {
-        return { authorized: true };
+        return { authorized: true, factionId: user.selectedFaction.id };
     }
 
     // Check for Cat2 access
     if (cat2.access_json?.includes(session.userId)) {
-        return { authorized: true };
+        return { authorized: true, factionId: user.selectedFaction.id };
     }
     
     // Check for parent Cat1 access
     if (cat2.cat1.access_json?.includes(session.userId)) {
-        return { authorized: true };
+        return { authorized: true, factionId: user.selectedFaction.id };
     }
 
     return { authorized: false, message: 'You do not have permission to manage this unit.' };
