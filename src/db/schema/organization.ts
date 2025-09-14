@@ -48,7 +48,7 @@ export const factionOrganizationCat3 = table('faction_organization_cat3', {
 
 export const factionOrganizationMembership = table('faction_organization_membership', {
   id: serial('id'),
-  type: enumeration('type', ['cat_1', 'cat_2']).notNull(),
+  type: enumeration('type', ['cat_2', 'cat_3']).notNull(),
   category_id: int('category_id').notNull(),
   character_id: int('character_id').notNull(),
   title: text('title', { length: 255 }),

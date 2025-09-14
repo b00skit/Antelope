@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MoreVertical, Pencil, Trash2, PlusCircle } from "lucide-react";
+import { MoreVertical, Pencil, Trash2, PlusCircle, Eye } from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -21,6 +21,7 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import Link from "next/link";
 
 interface Cat1CardProps {
     cat1: Cat1;
@@ -86,6 +87,12 @@ export function Cat1Card({ cat1, onEdit, onDelete, onCreateCat2, settings }: Cat
                                     <p className="font-medium">{cat2.name}</p>
                                     <p className="text-xs text-muted-foreground">Created by {cat2.creator.username}</p>
                                 </div>
+                                <Button asChild variant="outline" size="sm">
+                                    <Link href={`/units-divisions/${cat1.id}/${cat2.id}`}>
+                                        <Eye className="mr-2 h-4 w-4" />
+                                        View
+                                    </Link>
+                                </Button>
                             </div>
                         ))}
                     </div>

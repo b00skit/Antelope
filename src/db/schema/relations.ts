@@ -138,6 +138,7 @@ export const factionOrganizationCat2Relations = relations(factionOrganizationCat
     references: [users.id],
   }),
   cat3s: many(factionOrganizationCat3),
+  members: many(factionOrganizationMembership),
 }));
 
 export const factionOrganizationCat3Relations = relations(factionOrganizationCat3, ({ one }) => ({
@@ -151,6 +152,13 @@ export const factionOrganizationCat3Relations = relations(factionOrganizationCat
   }),
   creator: one(users, {
     fields: [factionOrganizationCat3.created_by],
+    references: [users.id],
+  }),
+}));
+
+export const factionOrganizationMembershipRelations = relations(factionOrganizationMembership, ({ one }) => ({
+  creator: one(users, {
+    fields: [factionOrganizationMembership.created_by],
     references: [users.id],
   }),
 }));
