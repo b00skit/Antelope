@@ -1,10 +1,11 @@
+
 'use client';
 
 import { useEffect, useState } from "react";
 import { useSession } from "@/hooks/use-session";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, Building, Loader2, Settings } from "lucide-react";
+import { AlertTriangle, Building, Loader2, Settings, PlusCircle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "../ui/skeleton";
@@ -17,12 +18,13 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Input } from "../ui/input";
-import { Label } from "../ui/label";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../ui/form";
 import { useToast } from "@/hooks/use-toast";
+import { Cat1Dialog } from "./cat1-dialog";
+import { Cat1Card } from "./cat1-card";
 
 interface OrgSettings {
     category_1_name: string;
@@ -30,9 +32,21 @@ interface OrgSettings {
     category_3_name: string;
 }
 
+export interface Cat1 {
+    id: number;
+    name: string;
+    short_name: string | null;
+    access_json: number[] | null;
+    created_by: number;
+    created_at: string;
+    updated_at: string;
+    creator: { username: string; };
+    canManage: boolean;
+}
+
 interface PageData {
     settings: OrgSettings | null;
-    cat1s: any[]; // Replace with proper type later
+    cat1s: Cat1[];
     canAdminister: boolean;
 }
 
@@ -130,26 +144,28 @@ export function UnitsDivisionsClientPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [isCat1DialogOpen, setIsCat1DialogOpen] = useState(false);
+    const [editingCat1, setEditingCat1] = useState<Cat1 | null>(null);
     const { toast } = useToast();
     
+    const fetchData = async () => {
+        if (!session?.hasActiveFaction) return;
+
+        setIsLoading(true);
+        setError(null);
+        try {
+            const res = await fetch('/api/units-divisions');
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error);
+            setData(result);
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchData = async () => {
-            if (!session?.hasActiveFaction) return;
-
-            setIsLoading(true);
-            setError(null);
-            try {
-                const res = await fetch('/api/units-divisions');
-                const result = await res.json();
-                if (!res.ok) throw new Error(result.error);
-                setData(result);
-            } catch (err: any) {
-                setError(err.message);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
         fetchData();
     }, [session]);
 
@@ -170,6 +186,23 @@ export function UnitsDivisionsClientPage() {
             toast({ variant: 'destructive', title: 'Error', description: err.message });
         }
     };
+
+    const handleEditCat1 = (cat1: Cat1) => {
+        setEditingCat1(cat1);
+        setIsCat1DialogOpen(true);
+    }
+    
+    const handleDeleteCat1 = async (cat1Id: number) => {
+        try {
+            const res = await fetch(`/api/units-divisions/cat1/${cat1Id}`, { method: 'DELETE' });
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error);
+            toast({ title: 'Success', description: 'Unit deleted successfully.' });
+            fetchData(); // Refresh list
+        } catch (err: any) {
+             toast({ variant: 'destructive', title: 'Error', description: err.message });
+        }
+    }
 
     if (isLoading) {
         return (
@@ -196,6 +229,12 @@ export function UnitsDivisionsClientPage() {
         if (!data?.canAdminister) return null;
         return (
             <div className="flex gap-2">
+                {data.settings && (
+                    <Button onClick={() => { setEditingCat1(null); setIsCat1DialogOpen(true) }}>
+                        <PlusCircle />
+                        Create {data.settings.category_1_name}
+                    </Button>
+                )}
                 <Button variant="outline" onClick={() => setIsSettingsOpen(true)}>
                     <Settings />
                     Organizational Settings
@@ -207,6 +246,15 @@ export function UnitsDivisionsClientPage() {
     return (
         <div className="container mx-auto p-4 md:p-6 lg:p-8">
             <SettingsDialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen} settings={data?.settings || null} onSave={handleSaveSettings} />
+            {data?.settings && (
+                 <Cat1Dialog 
+                    open={isCat1DialogOpen} 
+                    onOpenChange={setIsCat1DialogOpen} 
+                    onSave={fetchData}
+                    cat1={editingCat1}
+                    settings={data.settings}
+                />
+            )}
             <PageHeader
                 title="Units & Divisions"
                 description="Manage your faction's organizational structure."
@@ -232,16 +280,24 @@ export function UnitsDivisionsClientPage() {
                     </CardContent>
                 </Card>
             ) : (
-                <div>
-                    {/* Phase 1: Just show this message if settings exist */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Structure Overview</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p>Organizational structure is set up. The display of divisions and units will be implemented in the next phase.</p>
-                        </CardContent>
-                    </Card>
+                <div className="space-y-6">
+                    {data.cat1s.length > 0 ? (
+                        data.cat1s.map(cat1 => (
+                            <Cat1Card 
+                                key={cat1.id} 
+                                cat1={cat1}
+                                onEdit={() => handleEditCat1(cat1)}
+                                onDelete={() => handleDeleteCat1(cat1.id)}
+                            />
+                        ))
+                    ) : (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>No {data.settings.category_1_name}s Found</CardTitle>
+                                <CardDescription>Get started by creating your first one.</CardDescription>
+                            </CardHeader>
+                        </Card>
+                    )}
                 </div>
             )}
         </div>
