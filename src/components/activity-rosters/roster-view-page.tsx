@@ -102,6 +102,7 @@ export function RosterViewPage({ rosterId }: RosterViewPageProps) {
     const [requiresPassword, setRequiresPassword] = useState(false);
     const [isVerifying, setIsVerifying] = useState(false);
     const [lastSyncTime, setLastSyncTime] = useState<number | null>(null);
+    const [showSlowLoadMessage, setShowSlowLoadMessage] = useState(false);
     const router = useRouter();
     const { toast } = useToast();
     const { favorites, toggleFavorite } = useFavorites();
@@ -116,6 +117,11 @@ export function RosterViewPage({ rosterId }: RosterViewPageProps) {
         } else {
             setIsLoading(true);
         }
+        setShowSlowLoadMessage(false);
+
+        const slowLoadTimer = setTimeout(() => {
+            setShowSlowLoadMessage(true);
+        }, 5000);
 
         try {
             const url = `/api/rosters/${rosterId}/view${forceSync ? '?forceSync=true' : ''}`;
@@ -143,6 +149,7 @@ export function RosterViewPage({ rosterId }: RosterViewPageProps) {
             toast({ variant: 'destructive', title: 'Error', description: err.message });
             router.push('/activity-rosters');
         } finally {
+            clearTimeout(slowLoadTimer);
             setIsLoading(false);
             setIsSyncing(false);
         }
@@ -183,19 +190,29 @@ export function RosterViewPage({ rosterId }: RosterViewPageProps) {
     };
 
     const handlePasswordDialogClose = () => {
-        setRequiresPassword(false);
-        router.push('/activity-rosters');
+        if (!isVerifying) {
+            setRequiresPassword(false);
+            router.push('/activity-rosters');
+        }
     };
 
     if (isLoading) {
         return (
             <div className="container mx-auto p-4 md:p-6 lg:p-8 flex justify-center items-center h-full">
-                <Loader2 className="h-8 w-8 animate-spin" />
+                <div className="flex flex-col items-center gap-4 text-center">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                    {showSlowLoadMessage && (
+                        <p className="text-sm text-muted-foreground animate-in fade-in duration-500">
+                            Loading is taking a bit longer than usual.<br/>
+                            This can happen when fetching a lot of data from the game server.
+                        </p>
+                    )}
+                </div>
             </div>
         );
     }
     
-    if (!data) {
+     if (!data) {
         return (
              <div className="container mx-auto p-4 md:p-6 lg:p-8">
                 <PageHeader title="Roster Not Found" description="Could not load the requested roster." />
