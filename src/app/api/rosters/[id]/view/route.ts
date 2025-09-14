@@ -1,4 +1,5 @@
 
+
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
@@ -27,6 +28,7 @@ interface Member {
     abas?: string | null;
     abas_last_sync?: Date | null;
     total_abas?: number | null;
+    forum_groups?: number[];
 }
 
 interface RosterFilters {
@@ -48,27 +50,34 @@ interface RosterFilters {
 async function fetchForumData(roster: any, filters: RosterFilters) {
     const includedUsernames = new Set<string>();
     const excludedUsernames = new Set<string>();
+    const usernameToGroupsMap = new Map<string, number[]>();
+
 
     if (roster.faction.phpbb_api_url && roster.faction.phpbb_api_key) {
         const baseUrl = roster.faction.phpbb_api_url.endsWith('/') ? roster.faction.phpbb_api_url : `${roster.faction.phpbb_api_url}/`;
         const apiKey = roster.faction.phpbb_api_key;
+        
+        const allGroupIds = new Set([
+            ...(filters.forum_groups_included || []),
+            ...(filters.forum_groups_excluded || []),
+            ...(roster.sections.flatMap((s: any) => s.configuration_json?.include_forum_groups || []))
+        ]);
 
-        // Fetch Group Members
-        if (filters.forum_groups_included || filters.forum_groups_excluded) {
-            const groupIds = new Set([...(filters.forum_groups_included || []), ...(filters.forum_groups_excluded || [])]);
-            
-            const groupPromises = Array.from(groupIds).map(async (groupId) => {
+        if (allGroupIds.size > 0) {
+            const groupPromises = Array.from(allGroupIds).map(async (groupId) => {
                 try {
                     const url = `${baseUrl}app.php/booskit/phpbbapi/group/${groupId}?key=${apiKey}`;
-                    const res = await fetch(url);
+                    const res = await fetch(url, { next: { revalidate: 3600 } });
                     if (!res.ok) {
                         console.warn(`[API Roster View] Failed to fetch forum group ${groupId}. Status: ${res.status}`);
                         return { groupId, members: [] };
                     }
                     const data = await res.json();
-                    const groupMembers = data.group?.members.map((m: any) => m.username) || [];
-                    const groupLeaders = data.group?.leaders.map((l: any) => l.username) || [];
-                    return { groupId, members: [...groupMembers, ...groupLeaders] };
+                    const allMembers = [
+                        ...(data.group?.members.map((m: any) => m.username) || []),
+                        ...(data.group?.leaders.map((l: any) => l.username) || [])
+                    ];
+                    return { groupId, members: allMembers };
                 } catch (e) {
                     console.error(`[API Roster View] Error fetching forum group ${groupId}:`, e);
                     return { groupId, members: [] };
@@ -76,6 +85,17 @@ async function fetchForumData(roster: any, filters: RosterFilters) {
             });
 
             const groupResults = await Promise.all(groupPromises);
+            
+            groupResults.forEach(result => {
+                result.members.forEach((username: string) => {
+                    const cleanUsername = username.replace('_', ' ');
+                    if (!usernameToGroupsMap.has(cleanUsername)) {
+                        usernameToGroupsMap.set(cleanUsername, []);
+                    }
+                    usernameToGroupsMap.get(cleanUsername)!.push(result.groupId);
+                });
+            });
+
             const groupUserMap = new Map(groupResults.map(r => [r.groupId, r.members]));
             
             (filters.forum_groups_included || []).forEach(gid => {
@@ -87,14 +107,13 @@ async function fetchForumData(roster: any, filters: RosterFilters) {
             });
         }
         
-        // Fetch Individual Users
         if (filters.forum_users_included || filters.forum_users_excluded) {
             const userIds = new Set([...(filters.forum_users_included || []), ...(filters.forum_users_excluded || [])]);
 
             const userPromises = Array.from(userIds).map(async (userId) => {
                 try {
                     const url = `${baseUrl}app.php/booskit/phpbbapi/user/${userId}?key=${apiKey}`;
-                    const res = await fetch(url);
+                    const res = await fetch(url, { next: { revalidate: 3600 } });
                     if (!res.ok) {
                         console.warn(`[API Roster View] Failed to fetch forum user ${userId}. Status: ${res.status}`);
                         return null;
@@ -125,6 +144,7 @@ async function fetchForumData(roster: any, filters: RosterFilters) {
     return {
         includedUsernames: Array.from(includedUsernames),
         excludedUsernames: Array.from(excludedUsernames),
+        usernameToGroupsMap,
     }
 }
 
@@ -172,11 +192,21 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
         // --- ACCESS CONTROL ---
         let hasAccess = false;
-        if (roster.visibility === 'public' || roster.visibility === 'unlisted' || roster.created_by === session.userId) {
+        if (roster.visibility === 'public' || roster.visibility === 'unlisted') {
             hasAccess = true;
+        } else if (roster.created_by === session.userId) {
+            // Check if creator has access for private rosters
+             const accessRecord = await db.query.activityRosterAccess.findFirst({
+                where: and(
+                    eq(activityRosterAccess.activity_roster_id, rosterId),
+                    eq(activityRosterAccess.user_id, session.userId)
+                )
+            });
+            if (accessRecord) hasAccess = true;
+            else if (roster.visibility !== 'private') hasAccess = true; // access for personal/unlisted
         }
 
-        if (roster.visibility === 'private') {
+        if (roster.visibility === 'private' && !hasAccess) {
             const accessRecord = await db.query.activityRosterAccess.findFirst({
                 where: and(
                     eq(activityRosterAccess.activity_roster_id, rosterId),
@@ -197,14 +227,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
         const factionId = roster.factionId;
         const now = new Date();
-        const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        const oneHourAgo = new Date(now.getTime() - 1 * 60 * 60 * 1000);
         
         let members: Member[] = [];
         const cachedFaction = await db.query.factionMembersCache.findFirst({
             where: eq(factionMembersCache.faction_id, factionId)
         });
 
-        if (forceSync || !cachedFaction || !cachedFaction.last_sync_timestamp || new Date(cachedFaction.last_sync_timestamp) < oneDayAgo) {
+        if (forceSync || !cachedFaction || !cachedFaction.last_sync_timestamp || new Date(cachedFaction.last_sync_timestamp) < oneHourAgo) {
             const [factionApiResponse, abasApiResponse] = await Promise.all([
                  fetch(`https://ucp.gta.world/api/faction/${factionId}`, {
                     headers: {
@@ -287,16 +317,17 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         let includedUsernames = new Set<string>();
         let excludedUsernames = new Set<string>();
         let rosterAbasStandards = {};
+        let usernameToGroupsMap = new Map<string, number[]>();
 
         if (roster.roster_setup_json) {
             try {
                 const filters: RosterFilters = JSON.parse(roster.roster_setup_json);
                 rosterAbasStandards = filters.abas_standards || {};
-                const isForumFilterActive = filters.forum_groups_included?.length || filters.forum_groups_excluded?.length || filters.forum_users_included?.length || filters.forum_users_excluded?.length;
+                const isForumFilterActive = filters.forum_groups_included?.length || filters.forum_groups_excluded?.length || filters.forum_users_included?.length || filters.forum_users_excluded?.length || roster.sections.some(s => s.configuration_json?.include_forum_groups?.length);
 
                 if (isForumFilterActive) {
                     const cachedForumData = roster.forumCache;
-                    if (forceSync || !cachedForumData || !cachedForumData.last_sync_timestamp || new Date(cachedForumData.last_sync_timestamp) < oneDayAgo) {
+                    if (forceSync || !cachedForumData || !cachedForumData.last_sync_timestamp || new Date(cachedForumData.last_sync_timestamp) < oneHourAgo) {
                         const forumData = await fetchForumData(roster, filters);
 
                         await db.insert(forumApiCache).values({
@@ -310,11 +341,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
                         
                         includedUsernames = new Set(forumData.includedUsernames);
                         excludedUsernames = new Set(forumData.excludedUsernames);
+                        usernameToGroupsMap = forumData.usernameToGroupsMap;
                     } else if (cachedForumData.data) {
                         includedUsernames = new Set(cachedForumData.data.includedUsernames);
                         excludedUsernames = new Set(cachedForumData.data.excludedUsernames);
+                        usernameToGroupsMap = new Map(Object.entries(cachedForumData.data.usernameToGroupsMap || {}));
                     }
                 }
+                
+                members = members.map(m => ({ ...m, forum_groups: usernameToGroupsMap.get(m.character_name.replace('_', ' ')) || [] }));
                 
                 if (filters.alert_forum_users_missing && isForumFilterActive) {
                     const gtawUsernames = new Set(members.map(m => m.character_name.replace('_', ' ')));
@@ -354,6 +389,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
                 description: s.description,
                 character_ids_json: s.character_ids_json || [],
                 order: s.order ?? 0,
+                configuration_json: s.configuration_json,
             })).sort((a, b) => a.order - b.order),
             rosterAbasStandards,
         });

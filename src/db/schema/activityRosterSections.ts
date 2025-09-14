@@ -8,4 +8,10 @@ export const activityRosterSections = table('activity_roster_sections', {
   description: text('description'),
   character_ids_json: json('character_ids_json').$type<number[]>().default(jsonDefault([])),
   order: int('order').default(0),
+  configuration_json: json('configuration_json').$type<{
+    include_names?: string[];
+    include_ranks?: number[];
+    include_forum_groups?: number[];
+    exclude_names?: string[];
+  }>(),
 });

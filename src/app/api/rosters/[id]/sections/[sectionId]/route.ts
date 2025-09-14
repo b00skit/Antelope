@@ -13,10 +13,18 @@ interface RouteParams {
     }
 }
 
+const configSchema = z.object({
+    include_names: z.array(z.string()).optional(),
+    include_ranks: z.array(z.number()).optional(),
+    include_forum_groups: z.array(z.number()).optional(),
+    exclude_names: z.array(z.string()).optional(),
+}).optional().nullable();
+
 const updateSectionSchema = z.object({
     name: z.string().min(1, "Section name cannot be empty.").optional(),
     description: z.string().optional().nullable(),
     character_ids_json: z.array(z.number()).optional(),
+    configuration_json: configSchema,
 });
 
 

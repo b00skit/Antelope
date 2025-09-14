@@ -12,9 +12,17 @@ interface RouteParams {
     }
 }
 
+const configSchema = z.object({
+    include_names: z.array(z.string()).optional(),
+    include_ranks: z.array(z.number()).optional(),
+    include_forum_groups: z.array(z.number()).optional(),
+    exclude_names: z.array(z.string()).optional(),
+}).optional().nullable();
+
 const sectionSchema = z.object({
     name: z.string().min(1, "Section name cannot be empty."),
     description: z.string().optional().nullable(),
+    configuration_json: configSchema,
 });
 
 // POST /api/rosters/[id]/sections - Create a new section for a roster
@@ -58,6 +66,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             activity_roster_id: rosterId,
             name: parsed.data.name,
             description: parsed.data.description,
+            configuration_json: parsed.data.configuration_json,
             order: nextOrder
         }).returning();
 
