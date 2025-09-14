@@ -56,16 +56,17 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         
         const { sections } = parsed.data;
         
-        await db.transaction(async (tx) => {
-            const updatePromises = sections.map(section => {
-                return tx.update(activityRosterSections)
+        // Drizzle transactions with better-sqlite3 are synchronous and do not support async callbacks.
+        // We will execute updates sequentially within the transaction block.
+        db.transaction((tx) => {
+            for (const section of sections) {
+                tx.update(activityRosterSections)
                     .set({ character_ids_json: section.character_ids_json })
                     .where(and(
                         eq(activityRosterSections.id, section.id),
                         eq(activityRosterSections.activity_roster_id, rosterId)
-                    ));
-            });
-            await Promise.all(updatePromises);
+                    )).run(); // .run() executes the query synchronously for better-sqlite3
+            }
         });
         
         return NextResponse.json({ success: true, message: 'Roster sections updated successfully.' });
