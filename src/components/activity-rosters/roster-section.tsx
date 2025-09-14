@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useRef } from 'react';
@@ -106,7 +105,10 @@ export function RosterSection({
                         </div>
                     )}
                     <div>
-                        <CardTitle>{section.name}</CardTitle>
+                        <CardTitle className="flex items-center gap-2">
+                            {section.name}
+                            <Badge variant="secondary">{members.length}</Badge>
+                        </CardTitle>
                         {section.description && <CardDescription>{section.description}</CardDescription>}
                     </div>
                 </div>
@@ -157,4 +159,3 @@ export function RosterSection({
         </div>
     );
 }
-
