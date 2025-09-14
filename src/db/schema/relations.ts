@@ -141,7 +141,7 @@ export const factionOrganizationCat2Relations = relations(factionOrganizationCat
   members: many(factionOrganizationMembership),
 }));
 
-export const factionOrganizationCat3Relations = relations(factionOrganizationCat3, ({ one }) => ({
+export const factionOrganizationCat3Relations = relations(factionOrganizationCat3, ({ one, many }) => ({
   faction: one(factions, {
     fields: [factionOrganizationCat3.faction_id],
     references: [factions.id],
@@ -154,6 +154,7 @@ export const factionOrganizationCat3Relations = relations(factionOrganizationCat
     fields: [factionOrganizationCat3.created_by],
     references: [users.id],
   }),
+  members: many(factionOrganizationMembership),
 }));
 
 export const factionOrganizationMembershipRelations = relations(factionOrganizationMembership, ({ one }) => ({

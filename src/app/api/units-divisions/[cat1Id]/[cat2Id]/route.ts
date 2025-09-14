@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { factionOrganizationCat2, factionMembersCache, factionOrganizationMembership } from '@/db/schema';
+import { factionOrganizationCat2, factionMembersCache, factionOrganizationMembership, factionOrganizationCat3 } from '@/db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import { canManageCat2 } from './helpers';
 
@@ -30,6 +30,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         with: {
             cat1: {
                 columns: { name: true }
+            },
+            cat3s: {
+                with: {
+                    creator: { columns: { username: true } }
+                }
             }
         }
     });
