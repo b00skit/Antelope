@@ -11,7 +11,13 @@ const dbType = process.env.DATABASE ?? 'sqlite';
 let dbInstance: any;
 
 if (dbType === 'mysql' || dbType === 'mariadb') {
-  const pool = mysql.createPool(process.env.DB_URL!);
+  const pool = mysql.createPool({
+    host: process.env.DB_IP ?? '127.0.0.1',
+    port: Number(process.env.DB_PORT ?? '3306'),
+    user: process.env.DB_USERNAME!,
+    password: process.env.DB_PASSWORD!,
+    database: process.env.DB_NAME!,
+  });
   dbInstance = drizzleMysql(pool, { schema });
 } else {
   const envPath = process.env.DB_FILE_NAME;
