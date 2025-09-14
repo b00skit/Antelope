@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, Loader2, PlusCircle, Building, Eye } from "lucide-react";
+import { AlertTriangle, Loader2, PlusCircle, Building, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
 import type { Cat2, FactionUser } from "./units-divisions-client-page";
 import { MembersTable } from "./members-table";
@@ -13,6 +13,9 @@ import { Button } from "../ui/button";
 import { Cat3Dialog } from "./cat3-dialog";
 import Link from "next/link";
 import { Badge } from "../ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 interface Member {
     id: number;
@@ -26,10 +29,11 @@ interface Member {
     }
 }
 
-interface Cat3 {
+export interface Cat3 {
     id: number;
     name: string;
     short_name: string | null;
+    access_json: number[] | null;
     creator: {
         username: string;
     }
@@ -53,6 +57,8 @@ export function Cat2ClientPage({ cat1Id, cat2Id }: Cat2ClientPageProps) {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isCat3DialogOpen, setIsCat3DialogOpen] = useState(false);
+    const [editingCat3, setEditingCat3] = useState<Cat3 | null>(null);
+    const { toast } = useToast();
 
     const fetchData = async () => {
         setIsLoading(true);
@@ -73,6 +79,23 @@ export function Cat2ClientPage({ cat1Id, cat2Id }: Cat2ClientPageProps) {
         fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [cat1Id, cat2Id]);
+    
+    const handleEditCat3 = (cat3: Cat3) => {
+        setEditingCat3(cat3);
+        setIsCat3DialogOpen(true);
+    };
+
+    const handleDeleteCat3 = async (cat3Id: number) => {
+        try {
+            const res = await fetch(`/api/units-divisions/cat3/${cat3Id}`, { method: 'DELETE' });
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error);
+            toast({ title: 'Success', description: 'Detail deleted successfully.' });
+            fetchData();
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Error', description: err.message });
+        }
+    };
 
     if (isLoading) {
         return (
@@ -103,7 +126,7 @@ export function Cat2ClientPage({ cat1Id, cat2Id }: Cat2ClientPageProps) {
                 open={isCat3DialogOpen}
                 onOpenChange={setIsCat3DialogOpen}
                 onSave={fetchData}
-                cat3={null}
+                cat3={editingCat3}
                 parentCat2={data.unit}
                 settings={{ category_3_name: 'Detail' }} // This should be dynamic later
                 factionUsers={data.factionUsers}
@@ -130,7 +153,7 @@ export function Cat2ClientPage({ cat1Id, cat2Id }: Cat2ClientPageProps) {
                                 <CardDescription>Manage the details within this unit.</CardDescription>
                             </div>
                             {data.canManage && (
-                                <Button onClick={() => setIsCat3DialogOpen(true)}>
+                                <Button onClick={() => { setEditingCat3(null); setIsCat3DialogOpen(true); }}>
                                     <PlusCircle className="mr-2" />
                                     Create Detail
                                 </Button>
@@ -149,12 +172,35 @@ export function Cat2ClientPage({ cat1Id, cat2Id }: Cat2ClientPageProps) {
                                             </div>
                                             <p className="text-xs text-muted-foreground">Created by {cat3.creator.username}</p>
                                         </div>
-                                        {/* <Button asChild variant="outline" size="sm">
-                                            <Link href={`/units-divisions/${cat1Id}/${cat2Id}/${cat3.id}`}>
-                                                <Eye className="mr-2 h-4 w-4" />
-                                                View
-                                            </Link>
-                                        </Button> */}
+                                        {data.canManage && (
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon"><MoreVertical /></Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent>
+                                                    <DropdownMenuItem onSelect={() => handleEditCat3(cat3)}>
+                                                        <Pencil className="mr-2" /> Edit
+                                                    </DropdownMenuItem>
+                                                     <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                            <div className="relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 text-destructive">
+                                                                <Trash2 className="mr-2" /> Delete
+                                                            </div>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                                <AlertDialogDescription>This will permanently delete "{cat3.name}".</AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                <AlertDialogAction onClick={() => handleDeleteCat3(cat3.id)}>Yes, Delete</AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        )}
                                     </div>
                                 ))}
                             </div>
