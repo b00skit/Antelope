@@ -2,7 +2,7 @@
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { HandHeart, Heart, Code, Bot, HelpCircle } from 'lucide-react';
+import { Heart, Code, Bot, HelpCircle } from 'lucide-react';
 import Link from 'next/link';
 import { promises as fs } from 'fs';
 import path from 'path';
@@ -25,7 +25,6 @@ const techInfo = [
     { key: 'SITE_VERSION', label: 'Site Version', tooltip: 'The current public version of the application.' },
     { key: 'CACHE_VERSION', label: 'Cache Version', tooltip: 'Controls browser cache; changes on major updates to force-fetch new assets.' },
     { key: 'LOCAL_STORAGE_VERSION', label: 'Local Storage Version', tooltip: 'Controls local data; changes on major updates to clear outdated settings.' },
-    { key: 'CONTENT_DELIVERY_NETWORK', label: 'CDN', tooltip: 'The base URL from which static assets like penal codes are served.' },
     { key: 'URL_GITHUB', label: 'GitHub Repository', tooltip: 'The public source code for this project.' },
     { key: 'URL_DISCORD', label: 'Discord Community', tooltip: 'The official community and support server.' },
 ];
@@ -36,7 +35,7 @@ export default async function AboutPage() {
   return (
       <div className="container mx-auto p-4 md:p-6 lg:p-8 space-y-8">
         <PageHeader
-          title="About MDC Panel+"
+          title={`About ${config.SITE_NAME}`}
           description="A passion project designed to help."
         />
 
@@ -46,10 +45,10 @@ export default async function AboutPage() {
             </CardHeader>
             <CardContent className="prose prose-lg dark:prose-invert max-w-none">
                 <p>
-                    Hello! I'm a solo developer who created this tool out of a genuine desire to assist our roleplay community's law enforcement officers. My goal was simple: make the paperwork and resource-gathering aspects of the job a little easier and more efficient.
+                    Hello! I'm a solo developer who created this tool out of a genuine desire to assist our roleplay community's factions. My goal was simple: make the management and resource-gathering aspects of faction operations a little easier and more efficient.
                 </p>
                 <p>
-                    This project is a labor of love, built to streamline daily tasks and provide a centralized hub for essential LEO tools. Whether you're calculating a sentence, writing a report, or looking up a piece of caselaw, I hope this panel makes your experience smoother.
+                    This project is a labor of love, built to streamline daily tasks and provide a centralized hub for essential faction tools. Whether you're managing rosters, viewing statistics, or managing your faction's structure, I hope this panel makes your experience smoother.
                 </p>
             </CardContent>
         </Card>
@@ -116,14 +115,9 @@ export default async function AboutPage() {
             </CardHeader>
             <CardContent className="space-y-4">
                 <p className="text-muted-foreground">
-                    While I truly appreciate any thought of a donation, I'd first encourage you to support the platforms and people who made this project possible. Please consider donating to <a href="https://gta.world/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">GTA:World</a> for keeping our community running, or to the original creator of the MDC Panel, <strong>CXDezign</strong>, whose foundation I built upon.
+                    While I truly appreciate any thought of a donation, I'd first encourage you to support the platforms and people who made this project possible. Please consider donating to <a href="https://gta.world/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">GTA:World</a> for keeping our community running.
                 </p>
                 <div className="flex flex-wrap gap-4">
-                     <Button asChild variant="outline">
-                        <Link href={config.URL_FOUNDER} target="_blank" rel="noopener noreferrer">
-                           <HandHeart className="mr-2" /> Support the Founder
-                        </Link>
-                    </Button>
                      <Button asChild>
                         <Link href={config.URL_KOFI} target="_blank" rel="noopener noreferrer">
                            <Heart className="mr-2" /> Donate to me on Ko-fi
