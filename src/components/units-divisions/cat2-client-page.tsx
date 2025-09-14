@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle, Loader2, PlusCircle, Building, Eye } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
-import type { Cat1, Cat2, FactionUser } from "./units-divisions-client-page";
+import type { Cat2, FactionUser } from "./units-divisions-client-page";
 import { MembersTable } from "./members-table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
@@ -143,10 +143,10 @@ export function Cat2ClientPage({ cat1Id, cat2Id }: Cat2ClientPageProps) {
                                 {data.unit.cat3s.map(cat3 => (
                                      <div key={cat3.id} className="flex items-center justify-between p-2 border rounded-md">
                                         <div>
-                                            <p className="font-medium flex items-center gap-2">
+                                            <div className="font-medium flex items-center gap-2">
                                                 {cat3.name}
                                                 {cat3.short_name && <Badge variant="secondary">{cat3.short_name}</Badge>}
-                                            </p>
+                                            </div>
                                             <p className="text-xs text-muted-foreground">Created by {cat3.creator.username}</p>
                                         </div>
                                         {/* <Button asChild variant="outline" size="sm">
