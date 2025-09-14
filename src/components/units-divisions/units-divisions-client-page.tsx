@@ -25,6 +25,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { Cat1Dialog } from "./cat1-dialog";
 import { Cat1Card } from "./cat1-card";
+import { Cat2Dialog } from "./cat2-dialog";
 
 interface OrgSettings {
     category_1_name: string;
@@ -37,6 +38,16 @@ export interface FactionUser {
     username: string;
 }
 
+export interface Cat2 {
+    id: number;
+    name: string;
+    short_name: string | null;
+    access_json: number[] | null;
+    settings_json: { allow_cat3?: boolean } | null;
+    created_by: number;
+    creator: { username: string };
+}
+
 export interface Cat1 {
     id: number;
     name: string;
@@ -47,6 +58,7 @@ export interface Cat1 {
     updated_at: string;
     creator: { username: string; };
     canManage: boolean;
+    cat2s: Cat2[];
 }
 
 interface PageData {
@@ -151,7 +163,9 @@ export function UnitsDivisionsClientPage() {
     const [error, setError] = useState<string | null>(null);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [isCat1DialogOpen, setIsCat1DialogOpen] = useState(false);
+    const [isCat2DialogOpen, setIsCat2DialogOpen] = useState(false);
     const [editingCat1, setEditingCat1] = useState<Cat1 | null>(null);
+    const [currentParentCat1, setCurrentParentCat1] = useState<Cat1 | null>(null);
     const { toast } = useToast();
     
     const fetchData = async () => {
@@ -262,6 +276,17 @@ export function UnitsDivisionsClientPage() {
                     factionUsers={data.factionUsers || []}
                 />
             )}
+             {data?.settings && currentParentCat1 && (
+                 <Cat2Dialog
+                    open={isCat2DialogOpen}
+                    onOpenChange={setIsCat2DialogOpen}
+                    onSave={fetchData}
+                    cat2={null} // For now, only creation is supported
+                    parentCat1={currentParentCat1}
+                    settings={data.settings}
+                    factionUsers={data.factionUsers || []}
+                />
+            )}
             <PageHeader
                 title="Units & Divisions"
                 description="Manage your faction's organizational structure."
@@ -295,6 +320,8 @@ export function UnitsDivisionsClientPage() {
                                 cat1={cat1}
                                 onEdit={() => handleEditCat1(cat1)}
                                 onDelete={() => handleDeleteCat1(cat1.id)}
+                                onCreateCat2={() => { setCurrentParentCat1(cat1); setIsCat2DialogOpen(true); }}
+                                settings={data.settings!}
                             />
                         ))
                     ) : (

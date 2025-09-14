@@ -36,7 +36,13 @@ export async function GET(request: NextRequest) {
             db.query.factionOrganizationCat1.findMany({
                 where: eq(factionOrganizationCat1.faction_id, factionId),
                 with: {
-                    creator: { columns: { username: true } }
+                    creator: { columns: { username: true } },
+                    cat2s: {
+                        with: {
+                            creator: { columns: { username: true } }
+                        },
+                         orderBy: [desc(factionOrganizationCat1.created_at)],
+                    }
                 },
                 orderBy: [desc(factionOrganizationCat1.created_at)],
             }),

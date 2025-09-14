@@ -23,18 +23,18 @@
 - Once created if the user has administration_rank access (regardless of being added to access_json), they should have the ability to modify & delete.
 - Once created if the user has access_json access, they should have the ability to modify & delete.
 
-### Phase 2:
+### Phase 3:
 - Within each of the category_1 listings, you should show a button (to administration_rank or access_json) called "Create (cat_2_name)", this should open a pop-up that creates a category_2, the settings_json should have the ability to determine if category 3's are allowed. Each category 2 should then be accessible via the page.
 - When the category_2 page is open, ensure the people have the ability to modify and edit the category_2 based on having access to it or administration_rank to it.
 
-### Phase 3:
+### Phase 4:
 - Within a category_2, allow for people that have either administration_rank or access_json to add or remove people based on their character name (from the cache), then save the people into faction_organization_membership. Inside of a category_2, you should have a full list of people added to said faction (regardless of administration_rank and access_json), with the ability to remove people as well as edit each of the people's titles (required access).
 
-### Phase 4:
+### Phase 5:
 - If a category_3 is enabled, then show the ability to create a category_3, the ability to add people to the category should work the same way as well as showing people in the category.
 
-### Phase 5:
+### Phase 6:
 - You should have the ability to move people into different categories as long as it's either a sub category or into the main category (thats not cat1, so people can be moved to cat2 or other cat3s that are part of that cat2).
 
-### Phase 6:
+### Phase 7:
 - You should have the ability to set a forum_grop in the category's settings (cat2 and cat3), add a sync forum group then add all character_ids to faction_organization_membership (add from cache directly).

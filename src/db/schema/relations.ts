@@ -98,7 +98,7 @@ export const activityRosterSectionsRelations = relations(activityRosterSections,
 }));
 
 export const forumApiCacheRelations = relations(forumApiCache, ({ one }) => ({
-  activityRoster: one(activityRosters, {
+  activityRoster: one(forumApiCache, {
     fields: [forumApiCache.activity_roster_id],
     references: [activityRosters.id],
   }),

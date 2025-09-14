@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { MoreVertical, Pencil, Trash2, PlusCircle } from "lucide-react";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -26,9 +26,11 @@ interface Cat1CardProps {
     cat1: Cat1;
     onEdit: () => void;
     onDelete: () => void;
+    onCreateCat2: () => void;
+    settings: { category_2_name: string };
 }
 
-export function Cat1Card({ cat1, onEdit, onDelete }: Cat1CardProps) {
+export function Cat1Card({ cat1, onEdit, onDelete, onCreateCat2, settings }: Cat1CardProps) {
     return (
         <Card>
             <CardHeader className="flex flex-row items-start justify-between">
@@ -76,8 +78,29 @@ export function Cat1Card({ cat1, onEdit, onDelete }: Cat1CardProps) {
                 )}
             </CardHeader>
             <CardContent>
-                <p className="text-sm text-muted-foreground">Sub-units will be displayed here in a future phase.</p>
+                {cat1.cat2s && cat1.cat2s.length > 0 ? (
+                    <div className="space-y-2">
+                        {cat1.cat2s.map(cat2 => (
+                            <div key={cat2.id} className="flex items-center justify-between p-2 border rounded-md">
+                                <div>
+                                    <p className="font-medium">{cat2.name}</p>
+                                    <p className="text-xs text-muted-foreground">Created by {cat2.creator.username}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <p className="text-sm text-muted-foreground">No sub-units found.</p>
+                )}
             </CardContent>
+            {cat1.canManage && (
+                 <CardFooter>
+                    <Button variant="outline" size="sm" onClick={onCreateCat2}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Create {settings.category_2_name}
+                    </Button>
+                </CardFooter>
+            )}
         </Card>
     );
 }
