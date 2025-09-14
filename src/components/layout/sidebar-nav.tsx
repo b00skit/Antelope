@@ -308,18 +308,32 @@ export function SidebarNav() {
                 </SidebarMenuButton>
             </SidebarMenuItem>
             {canManageFaction && (
-                 <SidebarMenuItem>
-                    <SidebarMenuButton
-                        asChild
-                        isActive={isActive('/factions/manage')}
-                        tooltip="Faction Administration"
-                    >
-                        <Link href={`/factions/manage/${session.activeFaction?.id}`}>
-                            <Settings />
-                            <span>Faction Administration</span>
-                        </Link>
-                    </SidebarMenuButton>
-                 </SidebarMenuItem>
+                 <>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton
+                            asChild
+                            isActive={isActive('/users')}
+                            tooltip="Panel User Management"
+                        >
+                            <Link href="/users">
+                                <Users />
+                                <span>Panel User Management</span>
+                            </Link>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton
+                            asChild
+                            isActive={isActive('/factions/manage')}
+                            tooltip="Faction Administration"
+                        >
+                            <Link href={`/factions/manage/${session.activeFaction?.id}`}>
+                                <Settings />
+                                <span>Faction Administration</span>
+                            </Link>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                 </>
             )}
         </SidebarMenu>
         <Separator className="my-2" />

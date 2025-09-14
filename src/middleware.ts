@@ -16,7 +16,8 @@ const protectedRoutes = [
     '/about',
     '/help',
     '/area51',
-    '/factions'
+    '/factions',
+    '/users',
 ];
 const publicRoutes = ['/login', '/'];
 
