@@ -1,9 +1,10 @@
+
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
 import { factionOrganizationMembership } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { canManageCat2 } from '../helpers';
 import { z } from 'zod';
 
@@ -45,11 +46,21 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
     
     try {
-        await db.update(factionOrganizationMembership)
+        const result = await db.update(factionOrganizationMembership)
             .set({ title: parsed.data.title })
-            .where(eq(factionOrganizationMembership.id, membershipId));
+            .where(and(
+                eq(factionOrganizationMembership.id, membershipId),
+                eq(factionOrganizationMembership.category_id, cat2Id),
+                eq(factionOrganizationMembership.type, 'cat_2')
+            )).returning();
+
+        if (result.length === 0) {
+            return NextResponse.json({ error: 'Membership record not found or does not belong to this unit.' }, { status: 404 });
+        }
+        
         return NextResponse.json({ success: true, message: 'Member updated.' });
     } catch (err) {
+        console.error(`[API Update Member Title] Error:`, err);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }
@@ -73,9 +84,21 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     try {
-        await db.delete(factionOrganizationMembership).where(eq(factionOrganizationMembership.id, membershipId));
+        const result = await db.delete(factionOrganizationMembership).where(
+            and(
+                eq(factionOrganizationMembership.id, membershipId),
+                eq(factionOrganizationMembership.category_id, cat2Id),
+                eq(factionOrganizationMembership.type, 'cat_2')
+            )
+        ).returning();
+        
+        if (result.length === 0) {
+            return NextResponse.json({ error: 'Membership record not found or does not belong to this unit.' }, { status: 404 });
+        }
+
         return NextResponse.json({ success: true, message: 'Member removed.' });
     } catch (err) {
+        console.error(`[API Delete Member] Error:`, err);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }

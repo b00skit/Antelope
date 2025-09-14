@@ -1,4 +1,6 @@
 
+'use client';
+
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -25,6 +27,7 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { cn } from '@/lib/utils';
 
 
 interface Member {
@@ -43,11 +46,12 @@ interface MembersTableProps {
     members: Member[];
     allFactionMembers: any[];
     canManage: boolean;
+    cat1Id: number;
     cat2Id: number;
     onDataChange: () => void;
 }
 
-export function MembersTable({ members, allFactionMembers, canManage, cat2Id, onDataChange }: MembersTableProps) {
+export function MembersTable({ members, allFactionMembers, canManage, cat1Id, cat2Id, onDataChange }: MembersTableProps) {
     const [isAdding, setIsAdding] = useState(false);
     const [selectedCharacterId, setSelectedCharacterId] = useState<string>('');
     const [newTitle, setNewTitle] = useState('');
@@ -69,7 +73,7 @@ export function MembersTable({ members, allFactionMembers, canManage, cat2Id, on
         setIsSubmitting(true);
         try {
             const character = allFactionMembers.find(fm => fm.character_name === selectedCharacterId);
-            const res = await fetch(`/api/units-divisions/${cat2Id}/members`, {
+            const res = await fetch(`/api/units-divisions/${cat1Id}/${cat2Id}/members`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ character_id: character.character_id, title: newTitle }),
@@ -92,7 +96,7 @@ export function MembersTable({ members, allFactionMembers, canManage, cat2Id, on
         if (!editingMember) return;
         setIsSubmitting(true);
          try {
-            const res = await fetch(`/api/units-divisions/${cat2Id}/members/${editingMember.id}`, {
+            const res = await fetch(`/api/units-divisions/${cat1Id}/${cat2Id}/members/${editingMember.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ title: newTitle }),
@@ -113,7 +117,7 @@ export function MembersTable({ members, allFactionMembers, canManage, cat2Id, on
     const handleDelete = async (membershipId: number) => {
         setIsDeleting(membershipId);
         try {
-            const res = await fetch(`/api/units-divisions/${cat2Id}/members/${membershipId}`, { method: 'DELETE' });
+            const res = await fetch(`/api/units-divisions/${cat1Id}/${cat2Id}/members/${membershipId}`, { method: 'DELETE' });
             const result = await res.json();
             if (!res.ok) throw new Error(result.error);
             toast({ title: 'Success', description: 'Member removed.' });
@@ -177,15 +181,33 @@ export function MembersTable({ members, allFactionMembers, canManage, cat2Id, on
                                     <TableCell>{member.rank_name}</TableCell>
                                     <TableCell>
                                         {editingMember?.id === member.id ? (
-                                            <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} onBlur={handleUpdateTitle} autoFocus />
+                                            <Input 
+                                                value={newTitle} 
+                                                onChange={(e) => setNewTitle(e.target.value)} 
+                                                onBlur={handleUpdateTitle} 
+                                                onKeyDown={(e) => e.key === 'Enter' && handleUpdateTitle()}
+                                                autoFocus 
+                                                disabled={isSubmitting}
+                                            />
                                         ) : (
-                                            member.title || <span className="text-muted-foreground">N/A</span>
+                                            <div 
+                                                className={cn("group flex items-center gap-2", canManage && "cursor-pointer")}
+                                                onClick={() => {
+                                                    if (canManage) {
+                                                        setEditingMember(member);
+                                                        setNewTitle(member.title || '');
+                                                    }
+                                                }}
+                                            >
+                                                {member.title || <span className="text-muted-foreground">N/A</span>}
+                                                {canManage && <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />}
+                                            </div>
                                         )}
                                     </TableCell>
                                     <TableCell>{member.creator.username}</TableCell>
                                     <TableCell>{format(new Date(member.created_at), 'PPP')}</TableCell>
                                     {canManage && (
-                                         <TableCell>
+                                         <TableCell className="text-right">
                                             <AlertDialog>
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
@@ -196,9 +218,9 @@ export function MembersTable({ members, allFactionMembers, canManage, cat2Id, on
                                                             <Pencil className="mr-2" /> Edit Title
                                                         </DropdownMenuItem>
                                                         <AlertDialogTrigger asChild>
-                                                            <DropdownMenuItem className="text-destructive">
+                                                            <div className="relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 text-destructive">
                                                                 <Trash2 className="mr-2" /> Remove
-                                                            </DropdownMenuItem>
+                                                            </div>
                                                         </AlertDialogTrigger>
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>

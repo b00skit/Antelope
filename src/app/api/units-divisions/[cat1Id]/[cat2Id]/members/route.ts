@@ -1,3 +1,4 @@
+
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
@@ -5,6 +6,7 @@ import { db } from '@/db';
 import { factionOrganizationMembership } from '@/db/schema';
 import { z } from 'zod';
 import { canManageCat2 } from '../helpers';
+import { eq, and } from 'drizzle-orm';
 
 interface RouteParams {
     params: {
@@ -42,6 +44,19 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     try {
+        // Check if member is already in this unit
+        const existingMember = await db.query.factionOrganizationMembership.findFirst({
+            where: and(
+                eq(factionOrganizationMembership.type, 'cat_2'),
+                eq(factionOrganizationMembership.category_id, cat2Id),
+                eq(factionOrganizationMembership.character_id, parsed.data.character_id)
+            )
+        });
+
+        if (existingMember) {
+            return NextResponse.json({ error: 'This character is already a member of this unit.' }, { status: 409 });
+        }
+
         await db.insert(factionOrganizationMembership).values({
             type: 'cat_2',
             category_id: cat2Id,
