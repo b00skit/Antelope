@@ -16,6 +16,7 @@ interface Faction {
     activity_rosters_enabled?: boolean;
     character_sheets_enabled?: boolean;
     statistics_enabled?: boolean;
+    units_divisions_enabled?: boolean;
   } | null;
 }
 

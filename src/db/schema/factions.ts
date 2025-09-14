@@ -10,8 +10,8 @@ export const factions = table('factions', {
   minimum_abas: double('minimum_abas').default(0),
   minimum_supervisor_abas: double('minimum_supervisor_abas').default(0),
   feature_flags: json('feature_flags')
-    .$type<{ activity_rosters_enabled?: boolean; character_sheets_enabled?: boolean; statistics_enabled?: boolean; }>()
-    .default(jsonDefault({ activity_rosters_enabled: true, character_sheets_enabled: true, statistics_enabled: true })),
+    .$type<{ activity_rosters_enabled?: boolean; character_sheets_enabled?: boolean; statistics_enabled?: boolean; units_divisions_enabled?: boolean; }>()
+    .default(jsonDefault({ activity_rosters_enabled: true, character_sheets_enabled: true, statistics_enabled: true, units_divisions_enabled: false })),
   phpbb_api_url: text('phpbb_api_url', { length: 255 }),
   phpbb_api_key: text('phpbb_api_key', { length: 255 }),
 });

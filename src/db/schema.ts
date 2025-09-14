@@ -8,4 +8,5 @@ export * from './schema/activityRosterSections';
 export * from './schema/factionMembersCache';
 export * from './schema/factionMembersAbasCache';
 export * from './schema/forumApiCache';
+export * from './schema/organization';
 export * from './schema/relations';

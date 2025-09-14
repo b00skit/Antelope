@@ -49,6 +49,7 @@ const formSchema = z.object({
     activity_rosters_enabled: z.boolean().default(true),
     character_sheets_enabled: z.boolean().default(true),
     statistics_enabled: z.boolean().default(true),
+    units_divisions_enabled: z.boolean().default(false),
     phpbb_api_url: z.string().url("Must be a valid URL").or(z.literal('')).optional().nullable(),
     phpbb_api_key: z.string().optional().nullable(),
 });
@@ -77,6 +78,7 @@ export function EnrollClientPage() {
             activity_rosters_enabled: true,
             character_sheets_enabled: true,
             statistics_enabled: true,
+            units_divisions_enabled: false,
             phpbb_api_url: '',
             phpbb_api_key: '',
         },
@@ -139,6 +141,7 @@ export function EnrollClientPage() {
                 activity_rosters_enabled: true,
                 character_sheets_enabled: true,
                 statistics_enabled: true,
+                units_divisions_enabled: false,
                 phpbb_api_url: '',
                 phpbb_api_key: '',
             });
@@ -395,6 +398,26 @@ export function EnrollClientPage() {
                                                             <FormLabel>Statistics Page</FormLabel>
                                                             <FormDescription>
                                                                 Allow members to view faction statistics.
+                                                            </FormDescription>
+                                                        </div>
+                                                        <FormControl>
+                                                            <Switch
+                                                                checked={field.value}
+                                                                onCheckedChange={field.onChange}
+                                                            />
+                                                        </FormControl>
+                                                    </FormItem>
+                                                )}
+                                            />
+                                             <FormField
+                                                control={form.control}
+                                                name="units_divisions_enabled"
+                                                render={({ field }) => (
+                                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                                        <div className="space-y-0.5">
+                                                            <FormLabel>Units & Divisions</FormLabel>
+                                                            <FormDescription>
+                                                                Enable the organizational structure module.
                                                             </FormDescription>
                                                         </div>
                                                         <FormControl>
