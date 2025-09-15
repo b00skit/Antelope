@@ -146,6 +146,7 @@ export function Cat2ClientPage({ cat1Id, cat2Id }: Cat2ClientPageProps) {
                 cat2Id={cat2Id}
                 onDataChange={fetchData}
                 allUnitsAndDetails={data.allUnitsAndDetails}
+                forumGroupId={data.unit.settings_json?.forum_group_id}
             />
 
             {data.unit.settings_json?.allow_cat3 && (

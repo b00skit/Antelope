@@ -1,4 +1,3 @@
-
 import {
     Dialog,
     DialogContent,
@@ -25,6 +24,7 @@ const cat2FormSchema = z.object({
     short_name: z.string().optional().nullable(),
     access_json: z.array(z.number()).optional().nullable(),
     allow_cat3: z.boolean().default(false),
+    forum_group_id: z.coerce.number().optional().nullable(),
 });
 
 interface Cat2DialogProps {
@@ -46,6 +46,7 @@ export function Cat2Dialog({ open, onOpenChange, onSave, cat2, parentCat1, setti
             short_name: '',
             access_json: [],
             allow_cat3: false,
+            forum_group_id: undefined,
         }
     });
 
@@ -56,6 +57,7 @@ export function Cat2Dialog({ open, onOpenChange, onSave, cat2, parentCat1, setti
                 short_name: cat2.short_name,
                 access_json: cat2.access_json,
                 allow_cat3: cat2.settings_json?.allow_cat3 ?? false,
+                forum_group_id: cat2.settings_json?.forum_group_id,
             });
         } else {
             form.reset({
@@ -63,6 +65,7 @@ export function Cat2Dialog({ open, onOpenChange, onSave, cat2, parentCat1, setti
                 short_name: '',
                 access_json: [],
                 allow_cat3: false,
+                forum_group_id: undefined,
             });
         }
     }, [cat2, form]);
@@ -79,6 +82,7 @@ export function Cat2Dialog({ open, onOpenChange, onSave, cat2, parentCat1, setti
                 access_json: values.access_json,
                 settings_json: {
                     allow_cat3: values.allow_cat3,
+                    forum_group_id: values.forum_group_id,
                 },
             };
 
@@ -151,6 +155,18 @@ export function Cat2Dialog({ open, onOpenChange, onSave, cat2, parentCat1, setti
                                             placeholder="Select users..."
                                         />
                                     </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="forum_group_id"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Forum Group ID (Optional)</FormLabel>
+                                    <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
+                                    <FormDescription>Sync this unit with a phpBB forum group.</FormDescription>
                                     <FormMessage />
                                 </FormItem>
                             )}

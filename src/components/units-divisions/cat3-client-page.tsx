@@ -24,6 +24,7 @@ interface Member {
 interface Cat3 {
     id: number;
     name: string;
+    settings_json: { forum_group_id?: number } | null;
     cat2: {
         id: number;
         name: string;
@@ -114,6 +115,7 @@ export function Cat3ClientPage({ cat1Id, cat2Id, cat3Id }: Cat3ClientPageProps) 
                 cat3Id={cat3Id}
                 onDataChange={fetchData}
                 allUnitsAndDetails={data.allUnitsAndDetails}
+                forumGroupId={data.detail.settings_json?.forum_group_id}
             />
         </div>
     )

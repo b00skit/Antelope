@@ -8,7 +8,7 @@ import {
   } from '@/components/ui/dialog';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -22,6 +22,7 @@ const cat3FormSchema = z.object({
     name: z.string().min(1, "Name cannot be empty."),
     short_name: z.string().optional().nullable(),
     access_json: z.array(z.number()).optional().nullable(),
+    forum_group_id: z.coerce.number().optional().nullable(),
 });
 
 interface Cat3DialogProps {
@@ -42,6 +43,7 @@ export function Cat3Dialog({ open, onOpenChange, onSave, cat3, parentCat2, setti
             name: '',
             short_name: '',
             access_json: [],
+            forum_group_id: undefined,
         }
     });
 
@@ -51,12 +53,14 @@ export function Cat3Dialog({ open, onOpenChange, onSave, cat3, parentCat2, setti
                 name: cat3.name,
                 short_name: cat3.short_name,
                 access_json: cat3.access_json,
+                forum_group_id: cat3.settings_json?.forum_group_id,
             });
         } else {
             form.reset({
                 name: '',
                 short_name: '',
                 access_json: [],
+                forum_group_id: undefined,
             });
         }
     }, [cat3, form]);
@@ -68,7 +72,12 @@ export function Cat3Dialog({ open, onOpenChange, onSave, cat3, parentCat2, setti
             
             const payload = {
                 cat2_id: parentCat2.id,
-                ...values,
+                name: values.name,
+                short_name: values.short_name,
+                access_json: values.access_json,
+                settings_json: {
+                    forum_group_id: values.forum_group_id,
+                },
             };
 
             const res = await fetch(url, {
@@ -140,6 +149,18 @@ export function Cat3Dialog({ open, onOpenChange, onSave, cat3, parentCat2, setti
                                             placeholder="Select users..."
                                         />
                                     </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="forum_group_id"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Forum Group ID (Optional)</FormLabel>
+                                    <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
+                                    <FormDescription>Sync this detail with a phpBB forum group.</FormDescription>
                                     <FormMessage />
                                 </FormItem>
                             )}

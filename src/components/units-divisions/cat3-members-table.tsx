@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, MoreVertical, Pencil, Trash2, User, Loader2, Move } from "lucide-react";
+import { PlusCircle, MoreVertical, Pencil, Trash2, User, Loader2, Move, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { Combobox } from '../ui/combobox';
 import { Input } from '../ui/input';
@@ -53,9 +53,10 @@ interface Cat3MembersTableProps {
     cat3Id: number;
     onDataChange: () => void;
     allUnitsAndDetails: { label: string; value: string; type: 'cat_2' | 'cat_3' }[];
+    forumGroupId?: number | null;
 }
 
-export function Cat3MembersTable({ members, allFactionMembers, allAssignedCharacterIds, canManage, cat1Id, cat2Id, cat3Id, onDataChange, allUnitsAndDetails }: Cat3MembersTableProps) {
+export function Cat3MembersTable({ members, allFactionMembers, allAssignedCharacterIds, canManage, cat1Id, cat2Id, cat3Id, onDataChange, allUnitsAndDetails, forumGroupId }: Cat3MembersTableProps) {
     const [isAdding, setIsAdding] = useState(false);
     const [selectedCharacterId, setSelectedCharacterId] = useState<string>('');
     const [newTitle, setNewTitle] = useState('');
@@ -64,6 +65,7 @@ export function Cat3MembersTable({ members, allFactionMembers, allAssignedCharac
     const [isDeleting, setIsDeleting] = useState<number | null>(null);
     const [movingMember, setMovingMember] = useState<Member | null>(null);
     const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
     const { toast } = useToast();
 
     const currentMemberIds = new Set(members.map(m => m.character_id));
@@ -140,6 +142,25 @@ export function Cat3MembersTable({ members, allFactionMembers, allAssignedCharac
         setMovingMember(member);
         setIsMoveDialogOpen(true);
     }
+    
+    const handleSync = async () => {
+        setIsSyncing(true);
+        try {
+            const res = await fetch('/api/units-divisions/sync-forum-group', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ categoryType: 'cat_3', categoryId: cat3Id }),
+            });
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error);
+            toast({ title: 'Success', description: result.message });
+            onDataChange();
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Error', description: err.message });
+        } finally {
+            setIsSyncing(false);
+        }
+    }
 
 
     return (
@@ -162,10 +183,18 @@ export function Cat3MembersTable({ members, allFactionMembers, allAssignedCharac
                             <CardDescription>A list of all members assigned to this detail.</CardDescription>
                         </div>
                         {canManage && (
-                            <Button onClick={() => setIsAdding(!isAdding)}>
-                                <PlusCircle className="mr-2" />
-                                {isAdding ? 'Cancel' : 'Add Member'}
-                            </Button>
+                           <div className="flex gap-2">
+                                {forumGroupId && (
+                                    <Button variant="secondary" onClick={handleSync} disabled={isSyncing}>
+                                        {isSyncing ? <Loader2 className="mr-2 animate-spin" /> : <RefreshCw className="mr-2" />}
+                                        Sync with Forum
+                                    </Button>
+                                )}
+                                <Button onClick={() => setIsAdding(!isAdding)}>
+                                    <PlusCircle className="mr-2" />
+                                    {isAdding ? 'Cancel' : 'Add Member'}
+                                </Button>
+                            </div>
                         )}
                     </div>
                 </CardHeader>
