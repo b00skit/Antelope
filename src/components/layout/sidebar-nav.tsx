@@ -29,6 +29,7 @@ import {
   Star,
   Building,
   Building2,
+  RefreshCw,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useState, useEffect } from 'react';
@@ -330,6 +331,18 @@ export function SidebarNav() {
             </SidebarMenuItem>
             {canManageFaction && (
                  <>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton
+                            asChild
+                            isActive={isActive('/sync-management')}
+                            tooltip="Sync Management"
+                        >
+                            <Link href="/sync-management">
+                                <RefreshCw />
+                                <span>Sync Management</span>
+                            </Link>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
                     <SidebarMenuItem>
                         <SidebarMenuButton
                             asChild
