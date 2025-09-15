@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState } from 'react';
@@ -60,7 +61,7 @@ export function CharacterSheetClientPage({ initialData }: CharacterSheetClientPa
         return null;
     }
 
-    const { character, totalAbas, characterSheetsEnabled, forumData, abasSettings, assignment, canManageAssignments, allUnitsAndDetails } = data;
+    const { character, totalAbas, characterSheetsEnabled, forumData, abasSettings, assignment, canManageAssignments, allUnitsAndDetails, secondaryAssignments } = data;
     const characterImage = `https://mdc.gta.world/img/persons/${character.firstname}_${character.lastname}.png?${Date.now()}`;
     
     const handleTransferSuccess = () => {
@@ -68,13 +69,16 @@ export function CharacterSheetClientPage({ initialData }: CharacterSheetClientPa
         window.location.reload();
     }
     
-    const filteredTransferDestinations = allUnitsAndDetails.filter((opt: any) => {
+    const filteredTransferDestinations = (allUnitsAndDetails || []).filter((opt: any) => {
         if (!assignment) return true;
-        const membershipRecord = data.assignment; 
-        const isCurrentAssignment = opt.type === 'cat_2' 
-            ? membershipRecord.type === 'cat_2' && parseInt(opt.value, 10) === membershipRecord.category_id
-            : membershipRecord.type === 'cat_3' && parseInt(opt.value, 10) === membershipRecord.category_id;
-            
+        
+        let isCurrentAssignment = false;
+        if (assignment.type === 'cat_2' && opt.type === 'cat_2') {
+            isCurrentAssignment = parseInt(opt.value, 10) === assignment.category_id;
+        } else if (assignment.type === 'cat_3' && opt.type === 'cat_3') {
+            isCurrentAssignment = parseInt(opt.value, 10) === assignment.category_id;
+        }
+
         return !isCurrentAssignment;
     });
 
@@ -148,7 +152,7 @@ export function CharacterSheetClientPage({ initialData }: CharacterSheetClientPa
                                             <div className="flex items-center gap-3">
                                                 <Building className="h-5 w-5 text-primary" />
                                                 <div>
-                                                    <strong className="text-muted-foreground block text-sm">Assignment</strong>
+                                                    <strong className="text-muted-foreground block text-sm">Primary Assignment</strong>
                                                     <div className="flex items-center gap-2">
                                                         <Link href={assignment.link} className="hover:underline text-primary">{assignment.path}</Link>
                                                         {canManageAssignments && (
@@ -215,6 +219,37 @@ export function CharacterSheetClientPage({ initialData }: CharacterSheetClientPa
                     </div>
                 )}
             </div>
+            
+            {secondaryAssignments && secondaryAssignments.length > 0 && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Secondary Assignments</CardTitle>
+                        <CardDescription>Additional roles and details for this character.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Assignment</TableHead>
+                                    <TableHead>Title</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {secondaryAssignments.map((assignment: any, index: number) => (
+                                    <TableRow key={index}>
+                                        <TableCell>
+                                            <Link href={assignment.link} className="hover:underline text-primary">
+                                                {assignment.path}
+                                            </Link>
+                                        </TableCell>
+                                        <TableCell>{assignment.title || <span className="text-muted-foreground">N/A</span>}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+            )}
 
             <Card>
                 <CardHeader>

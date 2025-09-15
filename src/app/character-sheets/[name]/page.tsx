@@ -1,4 +1,5 @@
 
+
 import { notFound } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { getSession } from '@/lib/session';
@@ -34,6 +35,12 @@ interface AssignmentData {
     link: string;
     membershipId: number;
     sourceCat2Id: number;
+}
+
+interface SecondaryAssignmentData {
+    path: string;
+    link: string;
+    title: string | null;
 }
 
 async function getCharacterData(name: string) {
@@ -164,52 +171,76 @@ async function getCharacterData(name: string) {
     let assignment: AssignmentData | null = null;
     let canManageAssignments = false;
     let allUnitsAndDetails: { label: string; value: string; type: 'cat_2' | 'cat_3' }[] = [];
+    let secondaryAssignments: SecondaryAssignmentData[] = [];
 
     if (selectedFaction.feature_flags?.units_divisions_enabled) {
-        const [membershipRecord, userMembership] = await Promise.all([
-             db.query.factionOrganizationMembership.findFirst({
-                where: and(
-                    eq(factionOrganizationMembership.character_id, characterId),
-                    eq(factionOrganizationMembership.secondary, false)
-                ),
+        const [membershipRecords, userMembership] = await Promise.all([
+             db.query.factionOrganizationMembership.findMany({
+                where: eq(factionOrganizationMembership.character_id, characterId),
             }),
              db.query.factionMembers.findFirst({
                 where: and(eq(factionMembers.userId, session.userId), eq(factionMembers.factionId, factionId))
             })
         ]);
 
-        if (membershipRecord && userMembership) {
-             const { authorized } = await canUserManage(session, user, userMembership, selectedFaction, membershipRecord.type, membershipRecord.category_id);
+        const primaryAssignmentRecord = membershipRecords.find(m => !m.secondary);
+        const secondaryAssignmentRecords = membershipRecords.filter(m => m.secondary);
+
+        if (primaryAssignmentRecord && userMembership) {
+             const { authorized } = await canUserManage(session, user, userMembership, selectedFaction, primaryAssignmentRecord.type, primaryAssignmentRecord.category_id);
              canManageAssignments = authorized;
 
-            if (membershipRecord.type === 'cat_2') {
+            if (primaryAssignmentRecord.type === 'cat_2') {
                 const cat2 = await db.query.factionOrganizationCat2.findFirst({
-                    where: eq(factionOrganizationCat2.id, membershipRecord.category_id),
+                    where: eq(factionOrganizationCat2.id, primaryAssignmentRecord.category_id),
                     with: { cat1: true }
                 });
                 if (cat2) {
                     assignment = {
                         path: `${cat2.cat1.name} / ${cat2.name}`,
                         link: `/units-divisions/${cat2.cat1.id}/${cat2.id}`,
-                        membershipId: membershipRecord.id,
+                        membershipId: primaryAssignmentRecord.id,
                         sourceCat2Id: cat2.id,
                     };
                 }
-            } else if (membershipRecord.type === 'cat_3') {
+            } else if (primaryAssignmentRecord.type === 'cat_3') {
                 const cat3 = await db.query.factionOrganizationCat3.findFirst({
-                    where: eq(factionOrganizationCat3.id, membershipRecord.category_id),
+                    where: eq(factionOrganizationCat3.id, primaryAssignmentRecord.category_id),
                     with: { cat2: { with: { cat1: true } } }
                 });
                  if (cat3) {
                     assignment = {
                         path: `${cat3.cat2.cat1.name} / ${cat3.cat2.name} / ${cat3.name}`,
                         link: `/units-divisions/${cat3.cat2.cat1.id}/${cat3.cat2.id}/${cat3.id}`,
-                        membershipId: membershipRecord.id,
+                        membershipId: primaryAssignmentRecord.id,
                         sourceCat2Id: cat3.cat2.id,
                     };
                 }
             }
         }
+        
+        for (const record of secondaryAssignmentRecords) {
+            if (record.type === 'cat_2') {
+                const cat2 = await db.query.factionOrganizationCat2.findFirst({ where: eq(factionOrganizationCat2.id, record.category_id), with: { cat1: true } });
+                if (cat2) {
+                    secondaryAssignments.push({
+                        path: `${cat2.cat1.name} / ${cat2.name}`,
+                        link: `/units-divisions/${cat2.cat1.id}/${cat2.id}`,
+                        title: record.title,
+                    });
+                }
+            } else if (record.type === 'cat_3') {
+                const cat3 = await db.query.factionOrganizationCat3.findFirst({ where: eq(factionOrganizationCat3.id, record.category_id), with: { cat2: { with: { cat1: true } } } });
+                if (cat3) {
+                     secondaryAssignments.push({
+                        path: `${cat3.cat2.cat1.name} / ${cat3.cat2.name} / ${cat3.name}`,
+                        link: `/units-divisions/${cat3.cat2.cat1.id}/${cat3.cat2.id}/${cat3.id}`,
+                        title: record.title,
+                    });
+                }
+            }
+        }
+
 
         if (canManageAssignments) {
             const allCat1s = await db.query.factionOrganizationCat1.findMany({
@@ -245,7 +276,7 @@ async function getCharacterData(name: string) {
     }
 
 
-    return { character: { ...charData.data, id: characterId }, totalAbas, characterSheetsEnabled, forumData, abasSettings, assignment, canManageAssignments, allUnitsAndDetails };
+    return { character: { ...charData.data, id: characterId }, totalAbas, characterSheetsEnabled, forumData, abasSettings, assignment, canManageAssignments, allUnitsAndDetails, secondaryAssignments };
 }
 
 
