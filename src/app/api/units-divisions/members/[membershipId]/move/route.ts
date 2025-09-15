@@ -5,8 +5,10 @@ import { getSession } from '@/lib/session';
 import { db } from '@/db';
 import { factionOrganizationMembership, factionOrganizationCat3 } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
-import { canManageCat2 } from '../../../[cat1Id]/[cat2Id]/helpers';
+import { canManageCat2, canUserManage } from '../../../[cat1Id]/[cat2Id]/helpers';
 import { z } from 'zod';
+import { users, factionMembers } from '@/db/schema';
+
 
 interface RouteParams {
     params: {
@@ -43,9 +45,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Check permissions on the SOURCE unit
     // If the member is in a Cat3, we still check permissions on the parent Cat2.
-    const { authorized, message } = await canManageCat2(session, source_cat2_id);
+    const { authorized, message, user, membership, faction } = await canManageCat2(session, source_cat2_id);
     if (!authorized) {
         return NextResponse.json({ error: message }, { status: 403 });
+    }
+
+    // Check permissions on the DESTINATION unit
+    const canManageDestination = await canUserManage(session, user, membership, faction, destination_type, destination_id);
+    if (!canManageDestination.authorized) {
+        return NextResponse.json({ error: "You do not have permission to move members to the selected destination." }, { status: 403 });
     }
 
     try {

@@ -5,7 +5,7 @@ import { getSession } from '@/lib/session';
 import { db } from '@/db';
 import { factionOrganizationCat1, factionOrganizationCat2, factionMembersCache, factionOrganizationMembership, factionOrganizationCat3, factionMembers } from '@/db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
-import { canManageCat2 } from './helpers';
+import { canManageCat2, canUserManage } from './helpers';
 
 interface RouteParams {
     params: {
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         return NextResponse.json({ error: 'Unit not found.' }, { status: 404 });
     }
 
-    const { authorized } = await canManageCat2(session, cat2Id);
+    const { authorized, user, membership, faction } = await canManageCat2(session, cat2Id);
 
     const [factionCache, members, factionUsers, allAssignedMembers, allCat1s] = await Promise.all([
         db.query.factionMembersCache.findFirst({
@@ -98,26 +98,32 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const availableUsers = factionUsers.map(fm => fm.user).filter(Boolean);
     const allAssignedCharacterIds = allAssignedMembers.map(m => m.character_id);
 
-    // Prepare list for moving members
+    // Prepare list for moving members, filtering by what the user can manage
     const allUnitsAndDetails: { label: string; value: string; type: 'cat_2' | 'cat_3' }[] = [];
-    allCat1s.forEach(cat1 => {
-        cat1.cat2s.forEach(c2 => {
-            allUnitsAndDetails.push({
-                label: `${cat1.name} / ${c2.name}`,
-                value: c2.id.toString(),
-                type: 'cat_2'
-            });
-            if (c2.cat3s) {
-                c2.cat3s.forEach(c3 => {
-                    allUnitsAndDetails.push({
-                        label: `${cat1.name} / ${c2.name} / ${c3.name}`,
-                        value: c3.id.toString(),
-                        type: 'cat_3'
-                    });
+    for (const cat1 of allCat1s) {
+        for (const c2 of cat1.cat2s) {
+             const canManage = await canUserManage(session, user, membership, faction, 'cat_2', c2.id);
+             if (canManage.authorized) {
+                allUnitsAndDetails.push({
+                    label: `${cat1.name} / ${c2.name}`,
+                    value: c2.id.toString(),
+                    type: 'cat_2'
                 });
+             }
+            if (c2.cat3s) {
+                for (const c3 of c2.cat3s) {
+                    const canManageCat3 = await canUserManage(session, user, membership, faction, 'cat_3', c3.id);
+                    if(canManageCat3.authorized) {
+                         allUnitsAndDetails.push({
+                            label: `${cat1.name} / ${c2.name} / ${c3.name}`,
+                            value: c3.id.toString(),
+                            type: 'cat_3'
+                        });
+                    }
+                }
             }
-        });
-    });
+        }
+    }
 
 
     return NextResponse.json({
