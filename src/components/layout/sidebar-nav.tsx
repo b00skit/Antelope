@@ -221,7 +221,7 @@ export function SidebarNav() {
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              isActive={isActive('/dashboard')}
+              isActive={isActive('/dashboard', true)}
               tooltip="Dashboard"
             >
               <Link href="/dashboard">
@@ -234,7 +234,7 @@ export function SidebarNav() {
             <SidebarMenuItem>
                 <SidebarMenuButton
                 asChild
-                isActive={isActive('/activity-rosters', true)}
+                isActive={isActive('/activity-rosters')}
                 tooltip="Activity Rosters"
                 >
                 <Link href="/activity-rosters">
@@ -262,7 +262,7 @@ export function SidebarNav() {
             <SidebarMenuItem>
                 <SidebarMenuButton
                 asChild
-                isActive={isActive('/units-divisions', true)}
+                isActive={isActive('/units-divisions')}
                 tooltip="Units & Divisions"
                 >
                 <Link href="/units-divisions">
@@ -281,7 +281,7 @@ export function SidebarNav() {
                          <SidebarMenuItem key={`roster-${fav.id}`}>
                             <SidebarMenuButton
                                 asChild
-                                isActive={isActive(`/activity-rosters/${fav.activity_roster_id}`)}
+                                isActive={isActive(`/activity-rosters/${fav.activity_roster_id}`, true)}
                                 tooltip={fav.activity_roster_name}
                             >
                                 <Link href={`/activity-rosters/${fav.activity_roster_id}`}>
@@ -297,7 +297,7 @@ export function SidebarNav() {
                             <SidebarMenuItem key={`${fav.category_type}-${fav.id}`}>
                                 <SidebarMenuButton
                                     asChild
-                                    isActive={isActive(fav.category_path)}
+                                    isActive={isActive(fav.category_path, true)}
                                     tooltip={fav.category_name}
                                 >
                                     <Link href={fav.category_path}>
