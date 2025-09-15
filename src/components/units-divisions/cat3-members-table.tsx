@@ -150,7 +150,9 @@ export function Cat3MembersTable({ members, allFactionMembers, allAssignedCharac
                 onSuccess={onDataChange}
                 member={movingMember}
                 sourceCat2Id={cat2Id}
-                allUnitsAndDetails={allUnitsAndDetails.filter(opt => opt.value !== cat3Id.toString())}
+                allUnitsAndDetails={allUnitsAndDetails.filter(
+                    opt => !(opt.type === 'cat_3' && opt.value === cat3Id.toString())
+                )}
             />
             <Card>
                 <CardHeader>
