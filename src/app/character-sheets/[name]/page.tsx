@@ -1,14 +1,15 @@
 
 
-import { PageHeader } from '@/components/dashboard/page-header';
+'use client';
+
 import { notFound } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { users, factionMembersCache, factionMembersAbasCache, factionOrganizationMembership, factionOrganizationCat2, factionOrganizationCat3, factionOrganizationCat1 } from '@/db/schema';
+import { users, factionMembersCache, factionMembersAbasCache, factionOrganizationMembership, factionOrganizationCat2, factionOrganizationCat3, factionOrganizationCat1, factionMembers } from '@/db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, User, Briefcase, Users, Hash, Calendar, Clock, Sigma, BookUser, Building } from 'lucide-react';
+import { AlertTriangle, User, Briefcase, Users, Hash, Calendar, Clock, Sigma, BookUser, Building, Move } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
@@ -23,6 +24,10 @@ import {
 import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { canUserManage } from '@/app/api/units-divisions/[cat1Id]/[cat2Id]/helpers';
+import { useState } from 'react';
+import { TransferMemberDialog } from '@/components/units-divisions/transfer-member-dialog';
+import { Button } from '@/components/ui/button';
 
 interface PageProps {
     params: {
@@ -46,6 +51,8 @@ interface FactionAbasSettings {
 interface AssignmentData {
     path: string;
     link: string;
+    membershipId: number;
+    sourceCat2Id: number;
 }
 
 async function getCharacterData(name: string) {
@@ -182,39 +189,90 @@ async function getCharacterData(name: string) {
     
     // 6. Fetch Units & Divisions assignment
     let assignment: AssignmentData | null = null;
-    if (selectedFaction.feature_flags?.units_divisions_enabled) {
-        const membership = await db.query.factionOrganizationMembership.findFirst({
-            where: eq(factionOrganizationMembership.character_id, characterId)
-        });
+    let canManageAssignments = false;
+    let allUnitsAndDetails: { label: string; value: string; type: 'cat_2' | 'cat_3' }[] = [];
 
-        if (membership) {
-            if (membership.type === 'cat_2') {
+    if (selectedFaction.feature_flags?.units_divisions_enabled) {
+        const [membershipRecord, userMembership] = await Promise.all([
+             db.query.factionOrganizationMembership.findFirst({
+                where: eq(factionOrganizationMembership.character_id, characterId)
+            }),
+             db.query.factionMembers.findFirst({
+                where: and(eq(factionMembers.userId, session.userId), eq(factionMembers.factionId, factionId))
+            })
+        ]);
+
+        if (membershipRecord) {
+            if (membershipRecord.type === 'cat_2') {
                 const cat2 = await db.query.factionOrganizationCat2.findFirst({
-                    where: eq(factionOrganizationCat2.id, membership.category_id),
+                    where: eq(factionOrganizationCat2.id, membershipRecord.category_id),
                     with: { cat1: true }
                 });
                 if (cat2) {
                     assignment = {
                         path: `${cat2.cat1.name} / ${cat2.name}`,
-                        link: `/units-divisions/${cat2.cat1.id}/${cat2.id}`
+                        link: `/units-divisions/${cat2.cat1.id}/${cat2.id}`,
+                        membershipId: membershipRecord.id,
+                        sourceCat2Id: cat2.id,
                     };
                 }
-            } else if (membership.type === 'cat_3') {
+            } else if (membershipRecord.type === 'cat_3') {
                 const cat3 = await db.query.factionOrganizationCat3.findFirst({
-                    where: eq(factionOrganizationCat3.id, membership.category_id),
+                    where: eq(factionOrganizationCat3.id, membershipRecord.category_id),
                     with: { cat2: { with: { cat1: true } } }
                 });
                  if (cat3) {
                     assignment = {
                         path: `${cat3.cat2.cat1.name} / ${cat3.cat2.name} / ${cat3.name}`,
-                        link: `/units-divisions/${cat3.cat2.cat1.id}/${cat3.cat2.id}/${cat3.id}`
+                        link: `/units-divisions/${cat3.cat2.cat1.id}/${cat3.cat2.id}/${cat3.id}`,
+                        membershipId: membershipRecord.id,
+                        sourceCat2Id: cat3.cat2.id,
                     };
+                }
+            }
+        }
+
+        // Check if viewing user can manage assignments
+        if (userMembership && userMembership.rank >= (selectedFaction.administration_rank ?? 15)) {
+            canManageAssignments = true;
+        }
+
+        // Fetch all units and details for transfer dialog
+        if (canManageAssignments) {
+            const allCat1s = await db.query.factionOrganizationCat1.findMany({
+                where: eq(factionOrganizationCat1.faction_id, factionId),
+                with: { cat2s: { with: { cat3s: true } } }
+            });
+
+             for (const cat1 of allCat1s) {
+                for (const c2 of cat1.cat2s) {
+                    const canManage = await canUserManage(session, user, userMembership, selectedFaction, 'cat_2', c2.id);
+                    if (canManage.authorized) {
+                        allUnitsAndDetails.push({
+                            label: `${cat1.name} / ${c2.name}`,
+                            value: c2.id.toString(),
+                            type: 'cat_2'
+                        });
+                    }
+                    if (c2.cat3s) {
+                        for (const c3 of c2.cat3s) {
+                            const canManageCat3 = await canUserManage(session, user, userMembership, selectedFaction, 'cat_3', c3.id);
+                            if(canManageCat3.authorized) {
+                                allUnitsAndDetails.push({
+                                    label: `${cat1.name} / ${c2.name} / ${c3.name}`,
+                                    value: c3.id.toString(),
+                                    type: 'cat_3'
+                                });
+                            }
+                        }
+                    }
                 }
             }
         }
     }
 
-    return { character: charData.data, totalAbas, characterSheetsEnabled, forumData, abasSettings, assignment };
+
+    return { character: { ...charData.data, id: characterId }, totalAbas, characterSheetsEnabled, forumData, abasSettings, assignment, canManageAssignments, allUnitsAndDetails };
 }
 
 const formatTimestamp = (timestamp: string | null) => {
@@ -240,11 +298,31 @@ const formatAbas = (abas: string | number | null | undefined) => {
     return num.toFixed(2);
 }
 
-export default async function CharacterSheetPage({ params }: PageProps) {
+export default function CharacterSheetPage({ params }: PageProps) {
     const { name } = params;
-    if (!name) return notFound();
+    const [data, setData] = useState<any>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
+    
+    useEffect(() => {
+        setIsLoading(true);
+        getCharacterData(name).then(result => {
+            setData(result);
+            setIsLoading(false);
+        });
+    }, [name]);
 
-    const data = await getCharacterData(name);
+    if (isLoading) {
+        return (
+            <div className="container mx-auto p-4 md:p-6 lg:p-8">
+                 <PageHeader title="Loading Character..." description="Fetching records from GTA:World..." />
+                 <div className="space-y-6">
+                    <Skeleton className="h-64 w-full" />
+                    <Skeleton className="h-48 w-full" />
+                 </div>
+            </div>
+        )
+    }
 
     if (data.reauth) {
         return (
@@ -271,14 +349,36 @@ export default async function CharacterSheetPage({ params }: PageProps) {
         )
     }
 
-    const { character, totalAbas, characterSheetsEnabled, forumData, abasSettings, assignment } = data;
+    const { character, totalAbas, characterSheetsEnabled, forumData, abasSettings, assignment, canManageAssignments, allUnitsAndDetails } = data;
     const characterImage = `https://mdc.gta.world/img/persons/${character.firstname}_${character.lastname}.png?${Date.now()}`;
+
+    const handleTransferSuccess = async () => {
+         setIsLoading(true);
+        getCharacterData(name).then(result => {
+            setData(result);
+            setIsLoading(false);
+        });
+    }
 
     return (
         <div className="container mx-auto p-4 md:p-6 lg:p-8 space-y-6">
+             <TransferMemberDialog
+                open={isTransferDialogOpen}
+                onOpenChange={setIsTransferDialogOpen}
+                onSuccess={handleTransferSuccess}
+                member={assignment ? { id: assignment.membershipId, character_name: character.firstname + ' ' + character.lastname } : null}
+                sourceCat2Id={assignment?.sourceCat2Id}
+                allUnitsAndDetails={allUnitsAndDetails || []}
+            />
             <PageHeader
                 title="Character Record"
                 description={`Viewing file for ${character.firstname} ${character.lastname}`}
+                actions={canManageAssignments && assignment && (
+                    <Button onClick={() => setIsTransferDialogOpen(true)}>
+                        <Move className="mr-2" />
+                        Transfer Member
+                    </Button>
+                )}
             />
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -1,4 +1,7 @@
 
+
+'use client';
+
 import { useState, useMemo } from 'react';
 import {
     Dialog,
@@ -32,7 +35,7 @@ interface UnitDetailOption {
     type: 'cat_2' | 'cat_3';
 }
 
-interface MoveMemberDialogProps {
+interface TransferMemberDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSuccess: () => void;
@@ -41,19 +44,19 @@ interface MoveMemberDialogProps {
     allUnitsAndDetails: UnitDetailOption[];
 }
 
-export function MoveMemberDialog({ open, onOpenChange, onSuccess, member, sourceCat2Id, allUnitsAndDetails }: MoveMemberDialogProps) {
+export function TransferMemberDialog({ open, onOpenChange, onSuccess, member, sourceCat2Id, allUnitsAndDetails }: TransferMemberDialogProps) {
     const { toast } = useToast();
     const [selectedDestination, setSelectedDestination] = useState<UnitDetailOption | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleMove = async () => {
+    const handleTransfer = async () => {
         if (!member || !selectedDestination) {
             toast({ variant: 'destructive', title: 'Error', description: 'No member or destination selected.' });
             return;
         }
         setIsSubmitting(true);
         try {
-            const res = await fetch(`/api/units-divisions/members/${member.id}/move`, {
+            const res = await fetch(`/api/units-divisions/members/${member.id}/transfer`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -64,7 +67,7 @@ export function MoveMemberDialog({ open, onOpenChange, onSuccess, member, source
             });
             const result = await res.json();
             if (!res.ok) throw new Error(result.error);
-            toast({ title: 'Success', description: 'Member moved successfully.' });
+            toast({ title: 'Success', description: 'Member transferred successfully.' });
             onSuccess();
             onOpenChange(false);
         } catch (err: any) {
@@ -78,9 +81,9 @@ export function MoveMemberDialog({ open, onOpenChange, onSuccess, member, source
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Move {member?.character_name}</DialogTitle>
+                    <DialogTitle>Transfer {member?.character_name}</DialogTitle>
                     <DialogDescription>
-                        Select a new unit or detail to move this member to.
+                        Select a new unit or detail to transfer this member to.
                     </DialogDescription>
                 </DialogHeader>
                 <Command>
@@ -110,9 +113,9 @@ export function MoveMemberDialog({ open, onOpenChange, onSuccess, member, source
                 )}
                 <DialogFooter>
                     <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                    <Button onClick={handleMove} disabled={isSubmitting || !selectedDestination}>
+                    <Button onClick={handleTransfer} disabled={isSubmitting || !selectedDestination}>
                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Confirm Move
+                        Confirm Transfer
                     </Button>
                 </DialogFooter>
             </DialogContent>
