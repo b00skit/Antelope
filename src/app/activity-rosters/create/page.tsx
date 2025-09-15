@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useRouter } from 'next/navigation';
@@ -57,6 +58,7 @@ const jsonExample = `{
   "forum_users_included": [2, 123],
   "forum_users_excluded": [45],
   "alert_forum_users_missing": true,
+  "show_assignment_titles": true,
   "abas_standards": {
     "by_rank": {
       "10": 5.0,

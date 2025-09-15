@@ -33,6 +33,7 @@ interface Member {
     last_online: string | null;
     last_duty: string | null;
     abas?: string | null;
+    assignmentTitle?: string | null;
     // Added for forum integration
     forum_groups?: number[];
 }
@@ -154,6 +155,16 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
 
     const assignedMemberIds = new Set(sections.flatMap(s => s.character_ids_json));
     const unassignedMembers = members.filter(m => !assignedMemberIds.has(m.character_id));
+    const showAssignmentTitles = React.useMemo(() => {
+        try {
+            // This is a bit of a hack since we don't have the raw JSON string here.
+            // We infer it by checking if at least one member has an assignment title.
+            // A more robust solution might pass the filter object from the parent.
+            return initialData.members.some(m => m.assignmentTitle);
+        } catch {
+            return false;
+        }
+    }, [initialData.members]);
 
     const getAbasClass = (member: Member): string => {
         const abasValue = parseFloat(member.abas || '0');
@@ -377,6 +388,7 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
                             onDelete={() => handleDeleteSection(section.id)}
                             onReorder={handleReorderSections}
                             getAbasClass={getAbasClass}
+                            showAssignmentTitles={showAssignmentTitles}
                         />
                     );
                 })}
@@ -387,6 +399,7 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
                     onMoveMember={handleMoveMember}
                     isUnassigned
                     getAbasClass={getAbasClass}
+                    showAssignmentTitles={showAssignmentTitles}
                 />
             </div>
              <SectionDialog

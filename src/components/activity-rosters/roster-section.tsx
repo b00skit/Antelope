@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useRef } from 'react';
@@ -32,6 +33,7 @@ interface Member {
     last_online: string | null;
     last_duty: string | null;
     abas?: string | null;
+    assignmentTitle?: string | null;
 }
 
 interface Section {
@@ -50,6 +52,7 @@ interface RosterSectionProps {
     getAbasClass: (member: Member) => string;
     isUnassigned?: boolean;
     index?: number;
+    showAssignmentTitles?: boolean;
 }
 
 
@@ -63,6 +66,7 @@ export function RosterSection({
     getAbasClass,
     isUnassigned = false,
     index,
+    showAssignmentTitles = false,
 }: RosterSectionProps) {
     const ref = useRef<HTMLDivElement>(null);
 
@@ -133,6 +137,7 @@ export function RosterSection({
                             <TableRow>
                                 <TableHead className="w-1/3">Name</TableHead>
                                 <TableHead>Rank</TableHead>
+                                {showAssignmentTitles && <TableHead>Assignment Title</TableHead>}
                                 <TableHead>Last On Duty</TableHead>
                                 <TableHead>ABAS</TableHead>
                             </TableRow>
@@ -144,6 +149,7 @@ export function RosterSection({
                                     member={member}
                                     sourceSectionId={section.id}
                                     abasClass={getAbasClass(member)}
+                                    showAssignmentTitles={showAssignmentTitles}
                                 />
                             ))}
                         </TableBody>

@@ -21,12 +21,14 @@ interface Member {
     last_online: string | null;
     last_duty: string | null;
     abas?: string | null;
+    assignmentTitle?: string | null;
 }
 
 interface RosterMemberProps {
     member: Member;
     sourceSectionId: number | 'unassigned';
     abasClass?: string;
+    showAssignmentTitles: boolean;
 }
 
 const formatTimestamp = (timestamp: string | null) => {
@@ -36,7 +38,7 @@ const formatTimestamp = (timestamp: string | null) => {
     return `${formatDistanceToNow(date)} ago`;
 };
 
-export function RosterMember({ member, sourceSectionId, abasClass }: RosterMemberProps) {
+export function RosterMember({ member, sourceSectionId, abasClass, showAssignmentTitles }: RosterMemberProps) {
     const [{ isDragging }, drag] = useDrag({
         type: ItemTypes.MEMBER,
         item: { characterId: member.character_id, sourceSectionId },
@@ -53,6 +55,9 @@ export function RosterMember({ member, sourceSectionId, abasClass }: RosterMembe
                 </Link>
             </TableCell>
             <TableCell>{member.rank_name}</TableCell>
+            {showAssignmentTitles && (
+                <TableCell>{member.assignmentTitle || <span className="text-muted-foreground/50">N/A</span>}</TableCell>
+            )}
             <TableCell>{formatTimestamp(member.last_duty)}</TableCell>
             <TableCell className={abasClass}>{member.abas ?? 'N/A'}</TableCell>
         </TableRow>

@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { activityRosters, users, factionMembersCache, factionMembersAbasCache, forumApiCache, activityRosterAccess } from '@/db/schema';
+import { activityRosters, users, factionMembersCache, factionMembersAbasCache, forumApiCache, activityRosterAccess, factionOrganizationMembership } from '@/db/schema';
 import { and, eq, or, inArray } from 'drizzle-orm';
 
 interface RouteParams {
@@ -29,6 +29,7 @@ interface Member {
     abas_last_sync?: Date | null;
     total_abas?: number | null;
     forum_groups?: number[];
+    assignmentTitle?: string | null;
 }
 
 interface RosterFilters {
@@ -41,6 +42,7 @@ interface RosterFilters {
     forum_users_included?: number[];
     forum_users_excluded?: number[];
     alert_forum_users_missing?: boolean;
+    show_assignment_titles?: boolean;
     abas_standards?: {
         by_rank?: Record<string, number>;
         by_name?: Record<string, number>;
@@ -318,11 +320,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         let excludedUsernames = new Set<string>();
         let rosterAbasStandards = {};
         let usernameToGroupsMap = new Map<string, number[]>();
+        let showAssignmentTitles = false;
 
         if (roster.roster_setup_json) {
             try {
                 const filters: RosterFilters = JSON.parse(roster.roster_setup_json);
                 rosterAbasStandards = filters.abas_standards || {};
+                showAssignmentTitles = !!(roster.faction.feature_flags?.units_divisions_enabled && filters.show_assignment_titles);
                 const isForumFilterActive = filters.forum_groups_included?.length || filters.forum_groups_excluded?.length || filters.forum_users_included?.length || filters.forum_users_excluded?.length || roster.sections.some(s => s.configuration_json?.include_forum_groups?.length);
 
                 if (isForumFilterActive) {
@@ -375,6 +379,17 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             } catch (e) {
                 console.error(`[API Roster View] Invalid JSON in roster ${rosterId}:`, e);
             }
+        }
+
+        if (showAssignmentTitles && memberIds.length > 0) {
+            const assignments = await db.query.factionOrganizationMembership.findMany({
+                where: and(
+                    inArray(factionOrganizationMembership.character_id, memberIds),
+                    eq(factionOrganizationMembership.secondary, false)
+                )
+            });
+            const assignmentMap = new Map(assignments.map(a => [a.character_id, a.title]));
+            members = members.map(m => ({ ...m, assignmentTitle: assignmentMap.get(m.character_id) }));
         }
 
 
