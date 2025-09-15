@@ -34,6 +34,8 @@ COPY --from=builder /app/package.json ./package.json
 
 RUN npm run db:migrate
 
+RUN ls
+
 EXPOSE 3004
 
 CMD ["npm", "start", "--", "-p", "3004"]
