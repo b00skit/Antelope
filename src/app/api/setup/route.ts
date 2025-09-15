@@ -41,21 +41,23 @@ export async function POST(request: NextRequest) {
     }
 
     // Use a transaction to ensure both operations succeed or fail together.
-    await db.transaction(async (tx) => {
+    db.transaction((tx) => {
       // Grant superadmin role
-      await tx
+      tx
         .update(users)
         .set({ role: 'superadmin' })
-        .where(eq(users.id, session.userId!));
+        .where(eq(users.id, session.userId!))
+        .run();
 
       // Mark setup as complete
-      await tx
+      tx
         .insert(setup)
         .values({ completed: true })
         .onConflictDoUpdate({
           target: setup.completed,
           set: { completed: true },
-        });
+        })
+        .run();
     });
 
     // Update the session with the new role
