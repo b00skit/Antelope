@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/dashboard/page-header';
-import { User, Briefcase, Users, Hash, Calendar, Clock, Sigma, BookUser, Building, Move } from 'lucide-react';
+import { User, Briefcase, Users, Hash, Calendar, Clock, Sigma, BookUser, Building, Move, Award } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
@@ -149,29 +149,37 @@ export function CharacterSheetClientPage({ initialData }: CharacterSheetClientPa
                                             </div>
                                         </div>
                                         {assignment && (
-                                            <div className="flex items-center gap-3">
-                                                <Building className="h-5 w-5 text-primary" />
-                                                <div>
-                                                    <strong className="text-muted-foreground block text-sm">Primary Assignment</strong>
-                                                    <div className="flex items-center gap-2">
-                                                        <Link href={assignment.link} className="hover:underline text-primary">{assignment.path}</Link>
-                                                        {canManageAssignments && (
-                                                             <TooltipProvider>
-                                                                <Tooltip>
-                                                                    <TooltipTrigger asChild>
-                                                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsTransferDialogOpen(true)}>
-                                                                            <Move className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent>
-                                                                        <p>Transfer Member</p>
-                                                                    </TooltipContent>
-                                                                </Tooltip>
-                                                            </TooltipProvider>
-                                                        )}
+                                            <>
+                                                <div className="flex items-center gap-3">
+                                                    <Building className="h-5 w-5 text-primary" />
+                                                    <div>
+                                                        <strong className="text-muted-foreground block text-sm">Primary Assignment</strong>
+                                                        <div className="flex items-center gap-2">
+                                                            <Link href={assignment.link} className="hover:underline text-primary">{assignment.path}</Link>
+                                                            {canManageAssignments && (
+                                                                <TooltipProvider>
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsTransferDialogOpen(true)}>
+                                                                                <Move className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent>
+                                                                            <p>Transfer Member</p>
+                                                                        </TooltipContent>
+                                                                    </Tooltip>
+                                                                </TooltipProvider>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
+                                                 {assignment.title && (
+                                                    <div className="flex items-center gap-3">
+                                                        <Award className="h-5 w-5 text-primary" />
+                                                        <div><strong className="text-muted-foreground block text-sm">Assignment Title</strong> {assignment.title}</div>
+                                                    </div>
+                                                )}
+                                            </>
                                         )}
                                     </div>
                                 </div>

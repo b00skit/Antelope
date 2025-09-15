@@ -35,6 +35,7 @@ interface AssignmentData {
     link: string;
     membershipId: number;
     sourceCat2Id: number;
+    title: string | null;
 }
 
 interface SecondaryAssignmentData {
@@ -201,6 +202,7 @@ async function getCharacterData(name: string) {
                         link: `/units-divisions/${cat2.cat1.id}/${cat2.id}`,
                         membershipId: primaryAssignmentRecord.id,
                         sourceCat2Id: cat2.id,
+                        title: primaryAssignmentRecord.title,
                     };
                 }
             } else if (primaryAssignmentRecord.type === 'cat_3') {
@@ -214,6 +216,7 @@ async function getCharacterData(name: string) {
                         link: `/units-divisions/${cat3.cat2.cat1.id}/${cat3.cat2.id}/${cat3.id}`,
                         membershipId: primaryAssignmentRecord.id,
                         sourceCat2Id: cat3.cat2.id,
+                        title: primaryAssignmentRecord.title,
                     };
                 }
             }
