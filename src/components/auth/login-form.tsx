@@ -19,6 +19,7 @@ export function LoginForm() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState(searchParams.get('error') || '');
   const [isLoading, setIsLoading] = useState(false);
+  const [isGtawLoading, setIsGtawLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,10 +43,12 @@ export function LoginForm() {
   };
 
   const handleGtawLogin = () => {
+    setIsGtawLoading(true);
     const clientId = process.env.NEXT_PUBLIC_GTAW_CLIENT_ID;
     const callbackUrl = process.env.NEXT_PUBLIC_GTAW_CALLBACK_URL;
     if (!clientId || !callbackUrl) {
       setError('GTAW OAuth is not configured correctly.');
+      setIsGtawLoading(false);
       return;
     }
     const authUrl = `https://ucp.gta.world/oauth/authorize?client_id=${clientId}&redirect_uri=${callbackUrl}&response_type=code&scope=`;
@@ -63,7 +66,8 @@ export function LoginForm() {
       )}
 
       {useGtawAuth ? (
-        <Button onClick={handleGtawLogin} className="w-full" disabled={isLoading}>
+        <Button onClick={handleGtawLogin} className="w-full" disabled={isGtawLoading}>
+          {isGtawLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Login with GTA:World
         </Button>
       ) : (
