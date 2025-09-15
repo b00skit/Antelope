@@ -175,7 +175,10 @@ async function getCharacterData(name: string) {
             })
         ]);
 
-        if (membershipRecord) {
+        if (membershipRecord && userMembership) {
+             const { authorized } = await canUserManage(session, user, userMembership, selectedFaction, membershipRecord.type, membershipRecord.category_id);
+             canManageAssignments = authorized;
+
             if (membershipRecord.type === 'cat_2') {
                 const cat2 = await db.query.factionOrganizationCat2.findFirst({
                     where: eq(factionOrganizationCat2.id, membershipRecord.category_id),
@@ -203,10 +206,6 @@ async function getCharacterData(name: string) {
                     };
                 }
             }
-        }
-
-        if (userMembership && userMembership.rank >= (selectedFaction.administration_rank ?? 15)) {
-            canManageAssignments = true;
         }
 
         if (canManageAssignments) {
