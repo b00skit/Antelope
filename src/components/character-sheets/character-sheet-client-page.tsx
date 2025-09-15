@@ -64,9 +64,14 @@ export function CharacterSheetClientPage({ initialData }: CharacterSheetClientPa
     const characterImage = `https://mdc.gta.world/img/persons/${character.firstname}_${character.lastname}.png?${Date.now()}`;
     
     const handleTransferSuccess = () => {
-        // Simple reload, or you could re-fetch data
+        // Simple reload to get fresh data
         window.location.reload();
     }
+    
+    // Filter out the current assignment from the list of transfer destinations
+    const filteredTransferDestinations = allUnitsAndDetails.filter((opt: any) => {
+        return !(opt.type === assignment?.type && opt.value === assignment?.categoryId.toString());
+    });
 
 
     return (
@@ -77,7 +82,7 @@ export function CharacterSheetClientPage({ initialData }: CharacterSheetClientPa
                 onSuccess={handleTransferSuccess}
                 member={assignment ? { id: assignment.membershipId, character_name: character.firstname + ' ' + character.lastname } : null}
                 sourceCat2Id={assignment?.sourceCat2Id}
-                allUnitsAndDetails={allUnitsAndDetails || []}
+                allUnitsAndDetails={filteredTransferDestinations || []}
             />
             <PageHeader
                 title="Character Record"
