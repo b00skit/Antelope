@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { factionOrganizationMembership, factionOrganizationCat3 } from '@/db/schema';
+import { factionOrganizationMembership, factionOrganizationCat2, factionOrganizationCat3 } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { canManageCat2, canUserManage } from '../../../[cat1Id]/[cat2Id]/helpers';
 import { z } from 'zod';
@@ -44,7 +44,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const { source_cat2_id, destination_type, destination_id } = parsed.data;
 
     // Check permissions on the SOURCE unit
-    // If the member is in a Cat3, we still check permissions on the parent Cat2.
     const { authorized, message, user, membership, faction } = await canManageCat2(session, source_cat2_id);
     if (!authorized) {
         return NextResponse.json({ error: message }, { status: 403 });
@@ -57,6 +56,21 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     try {
+        // Check if destination is a secondary unit
+        let isSecondary = false;
+        if (destination_type === 'cat_2') {
+            const destCat2 = await db.query.factionOrganizationCat2.findFirst({ where: eq(factionOrganizationCat2.id, destination_id) });
+            isSecondary = destCat2?.settings_json?.secondary ?? false;
+        } else {
+            const destCat3 = await db.query.factionOrganizationCat3.findFirst({ where: eq(factionOrganizationCat3.id, destination_id) });
+            isSecondary = destCat3?.settings_json?.secondary ?? false;
+        }
+
+        if (isSecondary) {
+            return NextResponse.json({ error: 'Cannot transfer members to a secondary unit.' }, { status: 400 });
+        }
+
+
         const result = await db.update(factionOrganizationMembership)
             .set({
                 type: destination_type,

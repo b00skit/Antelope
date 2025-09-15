@@ -168,7 +168,10 @@ async function getCharacterData(name: string) {
     if (selectedFaction.feature_flags?.units_divisions_enabled) {
         const [membershipRecord, userMembership] = await Promise.all([
              db.query.factionOrganizationMembership.findFirst({
-                where: eq(factionOrganizationMembership.character_id, characterId)
+                where: and(
+                    eq(factionOrganizationMembership.character_id, characterId),
+                    eq(factionOrganizationMembership.secondary, false)
+                ),
             }),
              db.query.factionMembers.findFirst({
                 where: and(eq(factionMembers.userId, session.userId), eq(factionMembers.factionId, factionId))
@@ -217,7 +220,7 @@ async function getCharacterData(name: string) {
              for (const cat1 of allCat1s) {
                 for (const c2 of cat1.cat2s) {
                     const canManage = await canUserManage(session, user, userMembership, selectedFaction, 'cat_2', c2.id);
-                    if (canManage.authorized) {
+                    if (canManage.authorized && !(c2.settings_json?.secondary)) {
                         allUnitsAndDetails.push({
                             label: `${cat1.name} / ${c2.name}`,
                             value: c2.id.toString(),
@@ -227,7 +230,7 @@ async function getCharacterData(name: string) {
                     if (c2.cat3s) {
                         for (const c3 of c2.cat3s) {
                             const canManageCat3 = await canUserManage(session, user, userMembership, selectedFaction, 'cat_3', c3.id);
-                            if(canManageCat3.authorized) {
+                            if(canManageCat3.authorized && !(c3.settings_json?.secondary)) {
                                 allUnitsAndDetails.push({
                                     label: `${cat1.name} / ${c2.name} / ${c3.name}`,
                                     value: c3.id.toString(),

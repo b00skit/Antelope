@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { factionOrganizationMembership } from '@/db/schema';
+import { factionOrganizationMembership, factionOrganizationCat3 } from '@/db/schema';
 import { z } from 'zod';
 import { canManageCat2 } from '../../helpers';
 import { eq, and } from 'drizzle-orm';
@@ -46,15 +46,23 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     try {
-        // Check if member is already in ANY cat 2 or cat 3 unit for this faction
-        const existingAssignment = await db.query.factionOrganizationMembership.findFirst({
-            where: and(
-                eq(factionOrganizationMembership.character_id, parsed.data.character_id)
-            )
+        const cat3 = await db.query.factionOrganizationCat3.findFirst({
+            where: eq(factionOrganizationCat3.id, cat3Id)
         });
 
-        if (existingAssignment) {
-            return NextResponse.json({ error: 'This character is already assigned to another unit or detail.' }, { status: 409 });
+        const isSecondaryUnit = cat3?.settings_json?.secondary ?? false;
+
+        if (!isSecondaryUnit) {
+            const existingAssignment = await db.query.factionOrganizationMembership.findFirst({
+                where: and(
+                    eq(factionOrganizationMembership.character_id, parsed.data.character_id),
+                    eq(factionOrganizationMembership.secondary, false)
+                )
+            });
+
+            if (existingAssignment) {
+                return NextResponse.json({ error: 'This character is already assigned to a primary unit or detail.' }, { status: 409 });
+            }
         }
 
         await db.insert(factionOrganizationMembership).values({
@@ -62,6 +70,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             category_id: cat3Id,
             character_id: parsed.data.character_id,
             title: parsed.data.title,
+            secondary: isSecondaryUnit,
             created_by: session.userId,
         });
 

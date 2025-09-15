@@ -99,7 +99,7 @@ export function CharacterSheetClientPage({ initialData }: CharacterSheetClientPa
                     <Card className="h-full">
                         <CardHeader>
                             <CardTitle>Personnel File</CardTitle>
-                            <CardDescription>Official information for {character.firstname} ${character.lastname}.</CardDescription>
+                            <CardDescription>Official information for {character.firstname} {character.lastname}.</CardDescription>
                         </CardHeader>
                         <CardContent className="flex flex-col md:flex-row gap-6">
                             <div className="flex-shrink-0">

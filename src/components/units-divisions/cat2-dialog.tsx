@@ -25,6 +25,7 @@ const cat2FormSchema = z.object({
     access_json: z.array(z.number()).optional().nullable(),
     allow_cat3: z.boolean().default(false),
     forum_group_id: z.coerce.number().optional().nullable(),
+    secondary: z.boolean().default(false),
 });
 
 interface Cat2DialogProps {
@@ -47,6 +48,7 @@ export function Cat2Dialog({ open, onOpenChange, onSave, cat2, parentCat1, setti
             access_json: [],
             allow_cat3: false,
             forum_group_id: undefined,
+            secondary: false,
         }
     });
 
@@ -58,6 +60,7 @@ export function Cat2Dialog({ open, onOpenChange, onSave, cat2, parentCat1, setti
                 access_json: cat2.access_json,
                 allow_cat3: cat2.settings_json?.allow_cat3 ?? false,
                 forum_group_id: cat2.settings_json?.forum_group_id,
+                secondary: cat2.settings_json?.secondary ?? false,
             });
         } else {
             form.reset({
@@ -66,6 +69,7 @@ export function Cat2Dialog({ open, onOpenChange, onSave, cat2, parentCat1, setti
                 access_json: [],
                 allow_cat3: false,
                 forum_group_id: undefined,
+                secondary: false,
             });
         }
     }, [cat2, form]);
@@ -83,6 +87,7 @@ export function Cat2Dialog({ open, onOpenChange, onSave, cat2, parentCat1, setti
                 settings_json: {
                     allow_cat3: values.allow_cat3,
                     forum_group_id: values.forum_group_id,
+                    secondary: values.secondary,
                 },
             };
 
@@ -180,6 +185,26 @@ export function Cat2Dialog({ open, onOpenChange, onSave, cat2, parentCat1, setti
                                         <FormLabel>Allow Sub-Units</FormLabel>
                                         <FormDescription>
                                             Permit the creation of {settings.category_3_name}s within this {settings.category_2_name}.
+                                        </FormDescription>
+                                    </div>
+                                    <FormControl>
+                                        <Switch
+                                            checked={field.value}
+                                            onCheckedChange={field.onChange}
+                                        />
+                                    </FormControl>
+                                </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name="secondary"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                    <div className="space-y-0.5">
+                                        <FormLabel>Secondary {settings.category_2_name}</FormLabel>
+                                        <FormDescription>
+                                            Allow members to join this {settings.category_2_name.toLowerCase()} even if they have a primary assignment.
                                         </FormDescription>
                                     </div>
                                     <FormControl>

@@ -20,6 +20,7 @@ const cat3UpdateSchema = z.object({
     access_json: z.array(z.number()).optional().nullable(),
     settings_json: z.object({
         forum_group_id: z.coerce.number().optional().nullable(),
+        secondary: z.boolean().optional(),
     }).optional().nullable(),
 });
 

@@ -72,7 +72,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
                 }
             }
         }),
-        db.query.factionOrganizationMembership.findMany(),
+        db.query.factionOrganizationMembership.findMany({
+            where: eq(factionOrganizationMembership.secondary, false)
+        }),
         db.query.factionOrganizationCat1.findMany({
             where: eq(factionOrganizationCat1.faction_id, cat2.faction_id),
             with: {
@@ -103,7 +105,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     for (const cat1 of allCat1s) {
         for (const c2 of cat1.cat2s) {
              const canManage = await canUserManage(session, user, membership, faction, 'cat_2', c2.id);
-             if (canManage.authorized) {
+             if (canManage.authorized && !(c2.settings_json?.secondary)) {
                 allUnitsAndDetails.push({
                     label: `${cat1.name} / ${c2.name}`,
                     value: c2.id.toString(),
@@ -113,7 +115,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             if (c2.cat3s) {
                 for (const c3 of c2.cat3s) {
                     const canManageCat3 = await canUserManage(session, user, membership, faction, 'cat_3', c3.id);
-                    if(canManageCat3.authorized) {
+                    if(canManageCat3.authorized && !(c3.settings_json?.secondary)) {
                          allUnitsAndDetails.push({
                             label: `${cat1.name} / ${c2.name} / ${c3.name}`,
                             value: c3.id.toString(),

@@ -17,12 +17,14 @@ import type { Cat2, FactionUser } from './units-divisions-client-page';
 import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { MultiSelect } from '../ui/multi-select';
+import { Switch } from '../ui/switch';
 
 const cat3FormSchema = z.object({
     name: z.string().min(1, "Name cannot be empty."),
     short_name: z.string().optional().nullable(),
     access_json: z.array(z.number()).optional().nullable(),
     forum_group_id: z.coerce.number().optional().nullable(),
+    secondary: z.boolean().default(false),
 });
 
 interface Cat3DialogProps {
@@ -44,6 +46,7 @@ export function Cat3Dialog({ open, onOpenChange, onSave, cat3, parentCat2, setti
             short_name: '',
             access_json: [],
             forum_group_id: undefined,
+            secondary: false,
         }
     });
 
@@ -54,6 +57,7 @@ export function Cat3Dialog({ open, onOpenChange, onSave, cat3, parentCat2, setti
                 short_name: cat3.short_name,
                 access_json: cat3.access_json,
                 forum_group_id: cat3.settings_json?.forum_group_id,
+                secondary: cat3.settings_json?.secondary ?? false,
             });
         } else {
             form.reset({
@@ -61,6 +65,7 @@ export function Cat3Dialog({ open, onOpenChange, onSave, cat3, parentCat2, setti
                 short_name: '',
                 access_json: [],
                 forum_group_id: undefined,
+                secondary: false,
             });
         }
     }, [cat3, form]);
@@ -77,6 +82,7 @@ export function Cat3Dialog({ open, onOpenChange, onSave, cat3, parentCat2, setti
                 access_json: values.access_json,
                 settings_json: {
                     forum_group_id: values.forum_group_id,
+                    secondary: values.secondary,
                 },
             };
 
@@ -162,6 +168,26 @@ export function Cat3Dialog({ open, onOpenChange, onSave, cat3, parentCat2, setti
                                     <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
                                     <FormDescription>Sync this detail with a phpBB forum group.</FormDescription>
                                     <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="secondary"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                    <div className="space-y-0.5">
+                                        <FormLabel>Secondary {settings.category_3_name}</FormLabel>
+                                        <FormDescription>
+                                            Allow members to join this {settings.category_3_name.toLowerCase()} even if they have a primary assignment.
+                                        </FormDescription>
+                                    </div>
+                                    <FormControl>
+                                        <Switch
+                                            checked={field.value}
+                                            onCheckedChange={field.onChange}
+                                        />
+                                    </FormControl>
                                 </FormItem>
                             )}
                         />

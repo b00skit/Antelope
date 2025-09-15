@@ -32,7 +32,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         return NextResponse.json({ error: 'Invalid ID.' }, { status: 400 });
     }
 
-    const { authorized, message, factionId } = await canManageCat2(session, cat2Id);
+    const { authorized, message, cat2 } = await canManageCat2(session, cat2Id);
     if (!authorized) {
         return NextResponse.json({ error: message }, { status: 403 });
     }
@@ -43,16 +43,20 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         return NextResponse.json({ error: 'Invalid input.', details: parsed.error.flatten() }, { status: 400 });
     }
 
-    try {
-        // Check if member is already in ANY cat 2 or cat 3 unit for this faction
-        const existingAssignment = await db.query.factionOrganizationMembership.findFirst({
-            where: and(
-                eq(factionOrganizationMembership.character_id, parsed.data.character_id)
-            ),
-        });
+    const isSecondaryUnit = cat2?.settings_json?.secondary ?? false;
 
-        if (existingAssignment) {
-            return NextResponse.json({ error: 'This character is already assigned to another unit or detail.' }, { status: 409 });
+    try {
+        if (!isSecondaryUnit) {
+            const existingAssignment = await db.query.factionOrganizationMembership.findFirst({
+                where: and(
+                    eq(factionOrganizationMembership.character_id, parsed.data.character_id),
+                    eq(factionOrganizationMembership.secondary, false)
+                ),
+            });
+
+            if (existingAssignment) {
+                return NextResponse.json({ error: 'This character is already assigned to a primary unit or detail.' }, { status: 409 });
+            }
         }
 
         await db.insert(factionOrganizationMembership).values({
@@ -60,6 +64,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             category_id: cat2Id,
             character_id: parsed.data.character_id,
             title: parsed.data.title,
+            secondary: isSecondaryUnit,
             created_by: session.userId,
         });
 

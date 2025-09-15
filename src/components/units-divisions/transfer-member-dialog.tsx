@@ -82,7 +82,7 @@ export function TransferMemberDialog({ open, onOpenChange, onSuccess, member, so
                 <DialogHeader>
                     <DialogTitle>Transfer {member?.character_name}</DialogTitle>
                     <DialogDescription>
-                        Select a new unit or detail to transfer this member to.
+                        Select a new primary unit or detail to transfer this member to. Secondary units are not available for transfers.
                     </DialogDescription>
                 </DialogHeader>
                 <Command>

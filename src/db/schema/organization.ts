@@ -1,4 +1,4 @@
-import { table, serial, int, text, json, timestamp, now, enumeration } from './helpers';
+import { table, serial, int, text, json, timestamp, now, enumeration, boolean } from './helpers';
 import { factions } from './factions';
 import { users } from './users';
 
@@ -27,7 +27,7 @@ export const factionOrganizationCat2 = table('faction_organization_cat2', {
   name: text('name', { length: 255 }).notNull(),
   short_name: text('short_name', { length: 50 }),
   access_json: json('access_json').$type<number[]>(),
-  settings_json: json('settings_json').$type<{ allow_cat3?: boolean; forum_group_id?: number }>(),
+  settings_json: json('settings_json').$type<{ allow_cat3?: boolean; forum_group_id?: number, secondary?: boolean }>(),
   created_by: int('created_by').notNull().references(() => users.id),
   created_at: timestamp('created_at').default(now()),
   updated_at: timestamp('updated_at').default(now()),
@@ -40,7 +40,7 @@ export const factionOrganizationCat3 = table('faction_organization_cat3', {
   name: text('name', { length: 255 }).notNull(),
   short_name: text('short_name', { length: 50 }),
   access_json: json('access_json').$type<number[]>(),
-  settings_json: json('settings_json').$type<{ forum_group_id?: number }>(),
+  settings_json: json('settings_json').$type<{ forum_group_id?: number, secondary?: boolean }>(),
   created_by: int('created_by').notNull().references(() => users.id),
   created_at: timestamp('created_at').default(now()),
   updated_at: timestamp('updated_at').default(now()),
@@ -52,6 +52,7 @@ export const factionOrganizationMembership = table('faction_organization_members
   category_id: int('category_id').notNull(),
   character_id: int('character_id').notNull(),
   title: text('title', { length: 255 }),
+  secondary: boolean('secondary').default(false),
   created_by: int('created_by').notNull().references(() => users.id),
   created_at: timestamp('created_at').default(now()),
   updated_at: timestamp('updated_at').default(now()),
