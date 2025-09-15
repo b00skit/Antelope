@@ -69,14 +69,17 @@ export async function POST(request: NextRequest) {
         const baseUrl = faction.phpbb_api_url.endsWith('/') ? faction.phpbb_api_url : `${faction.phpbb_api_url}/`;
         const forumApiUrl = `${baseUrl}app.php/booskit/phpbbapi/group/${forumGroupId}?key=${faction.phpbb_api_key}`;
         
-        const [forumResponse, factionCache] = await Promise.all([
+        const [forumResponse, factionCache, allExistingMemberships] = await Promise.all([
             fetch(forumApiUrl, { next: { revalidate: 60 } }), // Cache for 1 min
-            db.query.factionMembersCache.findFirst({ where: eq(factionMembersCache.faction_id, faction.id) })
+            db.query.factionMembersCache.findFirst({ where: eq(factionMembersCache.faction_id, faction.id) }),
+            db.query.factionOrganizationMembership.findMany(),
         ]);
 
         if (!forumResponse.ok) {
             return NextResponse.json({ error: `Failed to fetch forum group data (Status: ${forumResponse.status})` }, { status: 502 });
         }
+        
+        const allAssignedCharacterIds = new Set(allExistingMemberships.map(m => m.character_id));
 
         const forumData = await forumResponse.json();
         const forumUsernames = new Set([
@@ -89,10 +92,14 @@ export async function POST(request: NextRequest) {
         }
         
         const factionMembersMap = new Map(factionCache.members.map((m: any) => [m.character_name, m.character_id]));
-        const characterIdsToSync = Array.from(forumUsernames)
+        
+        const characterIdsFromForum = Array.from(forumUsernames)
             .map(username => factionMembersMap.get(username))
             .filter((id): id is number => id !== undefined);
 
+        // Filter out members who are already in another unit/detail
+        const characterIdsToSync = characterIdsFromForum.filter(id => !allAssignedCharacterIds.has(id));
+        
         // --- Perform Sync ---
         // better-sqlite3 transactions are synchronous and do not support async callbacks.
         // We will perform the operations sequentially.
@@ -104,7 +111,7 @@ export async function POST(request: NextRequest) {
             eq(factionOrganizationMembership.type, categoryType)
             ));
         
-        // 2. Add the new members
+        // 2. Add the new, filtered members
         if (characterIdsToSync.length > 0) {
             await db.insert(factionOrganizationMembership).values(
                 characterIdsToSync.map(charId => ({
