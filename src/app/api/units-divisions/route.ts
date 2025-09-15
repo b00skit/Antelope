@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { users, factions, factionMembers, factionOrganizationSettings, factionOrganizationCat1 } from '@/db/schema';
+import { users, factions, factionMembers, factionOrganizationSettings, factionOrganizationCat1, factionOrganizationCat2 } from '@/db/schema';
 import { and, eq, desc } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
@@ -64,10 +64,20 @@ export async function GET(request: NextRequest) {
 
         const canAdminister = membership && membership.rank >= (user.selectedFaction.administration_rank ?? 15);
         
-        const cat1sWithPermissions = cat1s.map(cat1 => ({
-            ...cat1,
-            canManage: canAdminister || cat1.access_json?.includes(session.userId as number) || false
-        }));
+        const cat1sWithPermissions = cat1s.map(cat1 => {
+            const canManageCat1 = canAdminister || cat1.access_json?.includes(session.userId as number) || false;
+            
+            const cat2sWithPermissions = cat1.cat2s.map(cat2 => ({
+                ...cat2,
+                canManage: canManageCat1 || cat2.access_json?.includes(session.userId as number) || false,
+            }));
+
+            return {
+                ...cat1,
+                canManage: canManageCat1,
+                cat2s: cat2sWithPermissions,
+            };
+        });
         
         const availableUsers = factionUsers.map(fm => fm.user).filter(Boolean);
 

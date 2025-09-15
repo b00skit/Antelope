@@ -7,7 +7,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { Cat1 } from "./units-divisions-client-page";
+import type { Cat1, Cat2 } from "./units-divisions-client-page";
 import { format } from 'date-fns';
 import { Badge } from "../ui/badge";
 import {
@@ -28,10 +28,11 @@ interface Cat1CardProps {
     onEdit: () => void;
     onDelete: () => void;
     onCreateCat2: () => void;
+    onEditCat2: (cat2: Cat2) => void;
     settings: { category_2_name: string };
 }
 
-export function Cat1Card({ cat1, onEdit, onDelete, onCreateCat2, settings }: Cat1CardProps) {
+export function Cat1Card({ cat1, onEdit, onDelete, onCreateCat2, onEditCat2, settings }: Cat1CardProps) {
     return (
         <Card>
             <CardHeader className="flex flex-row items-start justify-between">
@@ -87,12 +88,20 @@ export function Cat1Card({ cat1, onEdit, onDelete, onCreateCat2, settings }: Cat
                                     <p className="font-medium">{cat2.name}</p>
                                     <p className="text-xs text-muted-foreground">Created by {cat2.creator.username}</p>
                                 </div>
-                                <Button asChild variant="outline" size="sm">
-                                    <Link href={`/units-divisions/${cat1.id}/${cat2.id}`}>
-                                        <Eye className="mr-2 h-4 w-4" />
-                                        View
-                                    </Link>
-                                </Button>
+                                <div className="flex items-center gap-2">
+                                    <Button asChild variant="outline" size="sm">
+                                        <Link href={`/units-divisions/${cat1.id}/${cat2.id}`}>
+                                            <Eye className="mr-2 h-4 w-4" />
+                                            View
+                                        </Link>
+                                    </Button>
+                                    {cat2.canManage && (
+                                        <Button variant="secondary" size="sm" onClick={() => onEditCat2(cat2)}>
+                                            <Pencil className="mr-2 h-4 w-4" />
+                                            Edit
+                                        </Button>
+                                    )}
+                                </div>
                             </div>
                         ))}
                     </div>

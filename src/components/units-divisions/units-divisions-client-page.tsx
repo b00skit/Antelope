@@ -46,6 +46,7 @@ export interface Cat2 {
     settings_json: { allow_cat3?: boolean } | null;
     created_by: number;
     creator: { username: string };
+    canManage?: boolean;
 }
 
 export interface Cat1 {
@@ -165,6 +166,7 @@ export function UnitsDivisionsClientPage() {
     const [isCat1DialogOpen, setIsCat1DialogOpen] = useState(false);
     const [isCat2DialogOpen, setIsCat2DialogOpen] = useState(false);
     const [editingCat1, setEditingCat1] = useState<Cat1 | null>(null);
+    const [editingCat2, setEditingCat2] = useState<Cat2 | null>(null);
     const [currentParentCat1, setCurrentParentCat1] = useState<Cat1 | null>(null);
     const { toast } = useToast();
     
@@ -211,6 +213,12 @@ export function UnitsDivisionsClientPage() {
         setEditingCat1(cat1);
         setIsCat1DialogOpen(true);
     }
+
+    const handleEditCat2 = (cat2: Cat2, parentCat1: Cat1) => {
+        setEditingCat2(cat2);
+        setCurrentParentCat1(parentCat1);
+        setIsCat2DialogOpen(true);
+    };
     
     const handleDeleteCat1 = async (cat1Id: number) => {
         try {
@@ -281,7 +289,7 @@ export function UnitsDivisionsClientPage() {
                     open={isCat2DialogOpen}
                     onOpenChange={setIsCat2DialogOpen}
                     onSave={fetchData}
-                    cat2={null} // For now, only creation is supported
+                    cat2={editingCat2}
                     parentCat1={currentParentCat1}
                     settings={data.settings}
                     factionUsers={data.factionUsers || []}
@@ -320,7 +328,8 @@ export function UnitsDivisionsClientPage() {
                                 cat1={cat1}
                                 onEdit={() => handleEditCat1(cat1)}
                                 onDelete={() => handleDeleteCat1(cat1.id)}
-                                onCreateCat2={() => { setCurrentParentCat1(cat1); setIsCat2DialogOpen(true); }}
+                                onCreateCat2={() => { setEditingCat2(null); setCurrentParentCat1(cat1); setIsCat2DialogOpen(true); }}
+                                onEditCat2={(cat2) => handleEditCat2(cat2, cat1)}
                                 settings={data.settings!}
                             />
                         ))
