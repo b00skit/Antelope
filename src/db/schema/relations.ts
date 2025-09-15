@@ -15,6 +15,7 @@ import {
   factionOrganizationCat3,
   factionOrganizationMembership
 } from './organization';
+import { organizationFavorites } from './organizationFavorites';
 
 
 export const usersRelations = relations(users, ({ many, one }) => ({
@@ -25,6 +26,7 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   }),
   activityRosters: many(activityRosters),
   favoriteRosters: many(activityRosterFavorites),
+  organizationFavorites: many(organizationFavorites),
 }));
 
 export const factionsRelations = relations(factions, ({ one, many }) => ({
@@ -174,3 +176,14 @@ export const factionOrganizationMembershipRelations = relations(factionOrganizat
     relationName: 'cat3_members'
   }),
 }));
+
+export const organizationFavoritesRelations = relations(organizationFavorites, ({ one }) => ({
+    user: one(users, {
+      fields: [organizationFavorites.user_id],
+      references: [users.id],
+    }),
+    faction: one(factions, {
+      fields: [organizationFavorites.faction_id],
+      references: [factions.id],
+    }),
+  }));

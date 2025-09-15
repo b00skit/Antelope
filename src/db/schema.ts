@@ -9,4 +9,5 @@ export * from './schema/factionMembersCache';
 export * from './schema/factionMembersAbasCache';
 export * from './schema/forumApiCache';
 export * from './schema/organization';
+export * from './schema/organizationFavorites';
 export * from './schema/relations';

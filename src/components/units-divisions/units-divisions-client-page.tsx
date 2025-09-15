@@ -26,6 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Cat1Dialog } from "./cat1-dialog";
 import { Cat1Card } from "./cat1-card";
 import { Cat2Dialog } from "./cat2-dialog";
+import { useOrganizationFavorites } from "@/hooks/use-organization-favorites";
 
 interface OrgSettings {
     category_1_name: string;
@@ -43,7 +44,7 @@ export interface Cat2 {
     name: string;
     short_name: string | null;
     access_json: number[] | null;
-    settings_json: { allow_cat3?: boolean } | null;
+    settings_json: { allow_cat3?: boolean; forum_group_id?: number, secondary?: boolean } | null;
     created_by: number;
     creator: { username: string };
     canManage?: boolean;
@@ -169,6 +170,7 @@ export function UnitsDivisionsClientPage() {
     const [editingCat2, setEditingCat2] = useState<Cat2 | null>(null);
     const [currentParentCat1, setCurrentParentCat1] = useState<Cat1 | null>(null);
     const { toast } = useToast();
+    const { favorites, toggleFavorite } = useOrganizationFavorites();
     
     const fetchData = async () => {
         if (!session?.hasActiveFaction) return;
@@ -331,6 +333,8 @@ export function UnitsDivisionsClientPage() {
                                 onCreateCat2={() => { setEditingCat2(null); setCurrentParentCat1(cat1); setIsCat2DialogOpen(true); }}
                                 onEditCat2={(cat2) => handleEditCat2(cat2, cat1)}
                                 settings={data.settings!}
+                                favorites={favorites}
+                                onToggleFavorite={toggleFavorite}
                             />
                         ))
                     ) : (

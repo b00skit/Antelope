@@ -23,10 +23,12 @@ import {
   User,
   Users,
   ClipboardList,
+  Clipboard,
   Search,
   BarChart,
   Star,
   Building,
+  Building2,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useState, useEffect } from 'react';
@@ -57,6 +59,7 @@ import {
 import { useSession } from '@/hooks/use-session';
 import { Input } from '../ui/input';
 import { useFavorites } from '@/hooks/use-favorites';
+import { useOrganizationFavorites } from '@/hooks/use-organization-favorites';
   
 
 type SiteConfig = {
@@ -75,7 +78,8 @@ export function SidebarNav() {
   const { session, isLoading } = useSession();
   const router = useRouter();
   const [characterSearch, setCharacterSearch] = useState('');
-  const { favorites } = useFavorites();
+  const { favorites: rosterFavorites } = useFavorites();
+  const { favorites: orgFavorites } = useOrganizationFavorites();
 
 
   useEffect(() => {
@@ -167,7 +171,7 @@ export function SidebarNav() {
   const showStatistics = session?.hasActiveFaction && session.activeFaction?.feature_flags?.statistics_enabled;
   const showUnitsDivisions = session?.hasActiveFaction && session.activeFaction?.feature_flags?.units_divisions_enabled;
   const canManageFaction = session?.hasActiveFaction && session?.factionRank && session?.activeFaction && session.factionRank >= (session.activeFaction.administration_rank || 15);
-
+  const hasFavorites = rosterFavorites.length > 0 || orgFavorites.length > 0;
 
   return (
     <>
@@ -269,24 +273,41 @@ export function SidebarNav() {
             </SidebarMenuItem>
           )}
         </SidebarMenu>
-        {favorites.length > 0 && (
+        {hasFavorites && (
             <>
                 <Separator className="my-2" />
                 <SidebarMenu>
-                    {favorites.map(fav => (
-                         <SidebarMenuItem key={fav.id}>
+                    {rosterFavorites.map(fav => (
+                         <SidebarMenuItem key={`roster-${fav.id}`}>
                             <SidebarMenuButton
                                 asChild
                                 isActive={isActive(`/activity-rosters/${fav.activity_roster_id}`)}
                                 tooltip={fav.activity_roster_name}
                             >
                                 <Link href={`/activity-rosters/${fav.activity_roster_id}`}>
-                                    <Star className="text-yellow-400 fill-yellow-400" />
+                                    <Clipboard/>
                                     <span>{fav.activity_roster_name}</span>
                                 </Link>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
                     ))}
+                     {orgFavorites.map(fav => {
+                        const Icon = fav.category_type === 'cat_2' ? Building2 : Archive;
+                        return (
+                            <SidebarMenuItem key={`${fav.category_type}-${fav.id}`}>
+                                <SidebarMenuButton
+                                    asChild
+                                    isActive={isActive(fav.category_path)}
+                                    tooltip={fav.category_name}
+                                >
+                                    <Link href={fav.category_path}>
+                                        <Icon />
+                                        <span>{fav.category_name}</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                        )
+                    })}
                 </SidebarMenu>
             </>
         )}
