@@ -1,14 +1,8 @@
-
 {
-    "enabled": false,
-    "dismissible": true,
-    "variant": "default",
+    "enabled":  true,
+    "dismissible": false,
+    "variant": "destructive",
     "icon": "Info",
-    "title": "Welcome to the all new MDC Panel!",
-    "content": "We've completely revamped the MDC Panel to provide a new look, provide a ton of quality-of-life features while maintaining the same exact use-flow and most importantly, maintaining minimalism. Any and all feedback is welcome!",
-    "button": {
-        "text": "Give Feedback",
-        "type": "function",
-        "action": "open_feedback_dialog"
-    }
+    "title": "Early Access",
+    "content": "This panel is really early access, data wipes can happen and will happen, it's currently in the phase of testing. Feel free to report any and all bugs!"
 }

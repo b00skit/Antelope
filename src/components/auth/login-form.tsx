@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -6,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 import { Separator } from '../ui/separator';
 
 const useGtawAuth = process.env.NEXT_PUBLIC_GTAW_AUTH_ENABLED === 'true';
@@ -90,6 +91,7 @@ export function LoginForm() {
             />
           </div>
           <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isLoading ? 'Logging in...' : 'Login'}
           </Button>
         </form>
