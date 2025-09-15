@@ -273,6 +273,20 @@ export function SidebarNav() {
                 </SidebarMenuButton>
             </SidebarMenuItem>
           )}
+          {session?.hasActiveFaction && (
+            <SidebarMenuItem>
+                <SidebarMenuButton
+                    asChild
+                    isActive={isActive('/sync-management')}
+                    tooltip="Sync Management"
+                >
+                    <Link href="/sync-management">
+                        <RefreshCw />
+                        <span>Sync Management</span>
+                    </Link>
+                </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
         </SidebarMenu>
         {hasFavorites && (
             <>
@@ -331,18 +345,6 @@ export function SidebarNav() {
             </SidebarMenuItem>
             {canManageFaction && (
                  <>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton
-                            asChild
-                            isActive={isActive('/sync-management')}
-                            tooltip="Sync Management"
-                        >
-                            <Link href="/sync-management">
-                                <RefreshCw />
-                                <span>Sync Management</span>
-                            </Link>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
                     <SidebarMenuItem>
                         <SidebarMenuButton
                             asChild
