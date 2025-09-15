@@ -5,36 +5,8 @@
     {
       "idx": 0,
       "version": "6",
-      "when": 1757770550242,
-      "tag": "0000_solid_jocasta",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1757851279817,
-      "tag": "0001_classy_sugar_man",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1757860542326,
-      "tag": "0002_real_sebastian_shaw",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "6",
-      "when": 1757921331174,
-      "tag": "0003_spotty_marrow",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "6",
-      "when": 1757922348292,
-      "tag": "0004_grey_grey_gargoyle",
+      "when": 1757929112454,
+      "tag": "0000_material_molly_hayes",
       "breakpoints": true
     }
   ]

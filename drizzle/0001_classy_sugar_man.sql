@@ -1,1 +1,0 @@
-ALTER TABLE `activity_roster_sections` ADD `configuration_json` text;

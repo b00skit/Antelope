@@ -1,1 +1,0 @@
-ALTER TABLE `faction_organization_membership` ADD `secondary` integer DEFAULT false;
