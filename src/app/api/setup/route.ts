@@ -41,36 +41,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Use a transaction to ensure both operations succeed or fail together.
-    const dbType = process.env.DATABASE ?? 'sqlite';
-    if (dbType === 'mysql' || dbType === 'mariadb') {
-      await db.transaction(async (tx) => {
-        // Grant superadmin role
-        await tx
-          .update(users)
-          .set({ role: 'superadmin' })
-          .where(eq(users.id, session.userId!));
+    await db.transaction(async (tx) => {
+      // Grant superadmin role
+      await tx
+        .update(users)
+        .set({ role: 'superadmin' })
+        .where(eq(users.id, session.userId!));
 
-        // Mark setup as complete
-        await tx.insert(setup).values({ completed: true }).onConflictDoUpdate({
+      // Mark setup as complete
+      await tx
+        .insert(setup)
+        .values({ completed: true })
+        .onConflictDoUpdate({
           target: setup.completed,
           set: { completed: true },
         });
-      });
-    } else {
-      db.transaction((tx) => {
-        // Grant superadmin role
-        tx
-          .update(users)
-          .set({ role: 'superadmin' })
-          .where(eq(users.id, session.userId!));
-
-        // Mark setup as complete
-        tx.insert(setup).values({ completed: true }).onConflictDoUpdate({
-          target: setup.completed,
-          set: { completed: true },
-        });
-      });
-    }
+    });
 
     // Update the session with the new role
     session.role = 'superadmin';
