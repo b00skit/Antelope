@@ -15,10 +15,13 @@ RUN npm run build
 FROM node:20-alpine AS runner
 WORKDIR /app
 
-ENV NODE_ENV=production
+ENV NODE_ENV=production \
+    DB_FILE_NAME=/app/sqlite/local.db
 
-# Make sure /public/data exists before copying
-RUN mkdir -p /app/public/data
+# Create required directories
+RUN mkdir -p /app/public/data /app/sqlite
+
+VOLUME /app/sqlite
 
 # Copy built assets from the builder stage
 COPY --from=builder /app/public ./public
@@ -27,6 +30,6 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 
-EXPOSE 3003
+EXPOSE 3004
 
-CMD ["npm", "start", "--", "-p", "3003"]
+CMD ["npm", "start", "--", "-p", "3004"]
