@@ -148,7 +148,9 @@ export function MembersTable({ members, allFactionMembers, allAssignedCharacterI
             onSuccess={onDataChange}
             member={movingMember}
             sourceCat2Id={cat2Id}
-            allUnitsAndDetails={allUnitsAndDetails.filter(opt => opt.value !== cat2Id.toString())}
+            allUnitsAndDetails={allUnitsAndDetails.filter(
+                opt => !(opt.type === 'cat_2' && opt.value === cat2Id.toString())
+            )}
         />
         <Card>
             <CardHeader>
