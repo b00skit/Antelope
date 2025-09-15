@@ -28,7 +28,7 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { cn } from '@/lib/utils';
-import { MoveMemberDialog } from './move-member-dialog';
+import { TransferMemberDialog } from './transfer-member-dialog';
 
 
 interface Member {
@@ -62,8 +62,8 @@ export function MembersTable({ members, allFactionMembers, allAssignedCharacterI
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingMember, setEditingMember] = useState<Member | null>(null);
     const [isDeleting, setIsDeleting] = useState<number | null>(null);
-    const [movingMember, setMovingMember] = useState<Member | null>(null);
-    const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false);
+    const [transferringMember, setTransferringMember] = useState<Member | null>(null);
+    const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
     const { toast } = useToast();
 
@@ -137,9 +137,9 @@ export function MembersTable({ members, allFactionMembers, allAssignedCharacterI
         }
     }
 
-    const handleOpenMoveDialog = (member: Member) => {
-        setMovingMember(member);
-        setIsMoveDialogOpen(true);
+    const handleOpenTransferDialog = (member: Member) => {
+        setTransferringMember(member);
+        setIsTransferDialogOpen(true);
     }
     
     const handleSync = async () => {
@@ -164,11 +164,11 @@ export function MembersTable({ members, allFactionMembers, allAssignedCharacterI
 
     return (
         <>
-        <MoveMemberDialog
-            open={isMoveDialogOpen}
-            onOpenChange={setIsMoveDialogOpen}
+        <TransferMemberDialog
+            open={isTransferDialogOpen}
+            onOpenChange={setIsTransferDialogOpen}
             onSuccess={onDataChange}
-            member={movingMember}
+            member={transferringMember}
             sourceCat2Id={cat2Id}
             allUnitsAndDetails={allUnitsAndDetails.filter(
                 opt => !(opt.type === 'cat_2' && opt.value === cat2Id.toString())
@@ -269,8 +269,8 @@ export function MembersTable({ members, allFactionMembers, allAssignedCharacterI
                                                         <DropdownMenuItem onSelect={() => { setEditingMember(member); setNewTitle(member.title || '') }}>
                                                             <Pencil className="mr-2" /> Edit Title
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuItem onSelect={() => handleOpenMoveDialog(member)}>
-                                                            <Move className="mr-2" /> Move Member
+                                                        <DropdownMenuItem onSelect={() => handleOpenTransferDialog(member)}>
+                                                            <Move className="mr-2" /> Transfer Member
                                                         </DropdownMenuItem>
                                                         <AlertDialogTrigger asChild>
                                                             <div className="relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 text-destructive">
