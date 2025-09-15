@@ -62,13 +62,18 @@ export async function POST(request: NextRequest) {
         tx
           .update(users)
           .set({ role: 'superadmin' })
-          .where(eq(users.id, session.userId!));
+          .where(eq(users.id, session.userId!))
+          .run();
 
         // Mark setup as complete
-        tx.insert(setup).values({ completed: true }).onConflictDoUpdate({
-          target: setup.completed,
-          set: { completed: true },
-        });
+        tx
+          .insert(setup)
+          .values({ completed: true })
+          .onConflictDoUpdate({
+            target: setup.completed,
+            set: { completed: true },
+          })
+          .run();
       });
     }
 
