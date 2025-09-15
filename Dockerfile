@@ -4,6 +4,9 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm install
 
+ENV NODE_ENV=production \
+    DB_FILE_NAME=/app/sqlite/local.db
+
 # Stage 2: Build the application
 FROM node:20-alpine AS builder
 WORKDIR /app
@@ -14,9 +17,6 @@ RUN npm run build
 # Stage 3: Production image
 FROM node:20-alpine AS runner
 WORKDIR /app
-
-ENV NODE_ENV=production \
-    DB_FILE_NAME=/app/sqlite/local.db
 
 # Create required directories
 RUN mkdir -p /app/public/data /app/sqlite
@@ -32,6 +32,7 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
 
+# Migrate the database
 RUN npm run db:migrate
 
 RUN ls
