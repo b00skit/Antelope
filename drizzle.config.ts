@@ -18,7 +18,8 @@ export default defineConfig({
   dbCredentials: dbType === 'sqlite'
     ? { url: `file:${dbFile}` }
     : {
-        url: `mysql://${process.env.DB_USERNAME!}:${process.env.DB_PASSWORD!}` +
+        url:
+          `mysql://${encodeURIComponent(process.env.DB_USERNAME!)}:${encodeURIComponent(process.env.DB_PASSWORD!)}` +
           `@${process.env.DB_IP ?? '127.0.0.1'}:${process.env.DB_PORT ?? '3306'}/${process.env.DB_NAME!}`,
       },
   strict: true,
