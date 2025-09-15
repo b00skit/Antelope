@@ -16,4 +16,4 @@ ENV NODE_ENV=production \
 EXPOSE 3004
 
 # Build, migrate, and start the application at container startup
-CMD ["sh", "-c", "npm run db:migrate && npm run build && npm start -p 3004"]
+CMD ["sh", "-c", "npm run db:migrate && npm run build && npm start -- -p 3004"]
