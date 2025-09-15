@@ -32,7 +32,7 @@ export function useFavorites() {
     } catch (error) {
       console.error('Failed to fetch favorites', error);
     }
-  }, [session?.hasActiveFaction]);
+  }, [session?.hasActiveFaction, session?.activeFaction?.id]);
 
   useEffect(() => {
     fetchFavorites();

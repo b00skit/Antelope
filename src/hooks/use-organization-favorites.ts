@@ -34,7 +34,7 @@ export function useOrganizationFavorites() {
     } catch (error) {
       console.error('Failed to fetch organization favorites', error);
     }
-  }, [session?.hasActiveFaction]);
+  }, [session?.hasActiveFaction, session?.activeFaction?.id]);
 
   useEffect(() => {
     fetchFavorites();
