@@ -1,3 +1,4 @@
+
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
@@ -93,27 +94,28 @@ export async function POST(request: NextRequest) {
             .filter((id): id is number => id !== undefined);
 
         // --- Perform Sync ---
-        await db.transaction(async (tx) => {
-            // 1. Remove all existing members from this category
-            await tx.delete(factionOrganizationMembership)
-              .where(and(
-                eq(factionOrganizationMembership.category_id, categoryId),
-                eq(factionOrganizationMembership.type, categoryType)
-              ));
-            
-            // 2. Add the new members
-            if (characterIdsToSync.length > 0) {
-                 await tx.insert(factionOrganizationMembership).values(
-                    characterIdsToSync.map(charId => ({
-                        type: categoryType,
-                        category_id: categoryId,
-                        character_id: charId,
-                        created_by: session.userId!,
-                        title: 'Member' // Default title
-                    }))
-                );
-            }
-        });
+        // better-sqlite3 transactions are synchronous and do not support async callbacks.
+        // We will perform the operations sequentially.
+        
+        // 1. Remove all existing members from this category
+        await db.delete(factionOrganizationMembership)
+            .where(and(
+            eq(factionOrganizationMembership.category_id, categoryId),
+            eq(factionOrganizationMembership.type, categoryType)
+            ));
+        
+        // 2. Add the new members
+        if (characterIdsToSync.length > 0) {
+            await db.insert(factionOrganizationMembership).values(
+                characterIdsToSync.map(charId => ({
+                    type: categoryType,
+                    category_id: categoryId,
+                    character_id: charId,
+                    created_by: session.userId!,
+                    title: 'Member' // Default title
+                }))
+            );
+        }
 
         return NextResponse.json({ 
             success: true, 
