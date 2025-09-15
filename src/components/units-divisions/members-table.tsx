@@ -53,9 +53,10 @@ interface MembersTableProps {
     onDataChange: () => void;
     allUnitsAndDetails: { label: string; value: string; type: 'cat_2' | 'cat_3' }[];
     forumGroupId?: number | null;
+    isSecondary: boolean;
 }
 
-export function MembersTable({ members, allFactionMembers, allAssignedCharacterIds, canManage, cat1Id, cat2Id, onDataChange, allUnitsAndDetails, forumGroupId }: MembersTableProps) {
+export function MembersTable({ members, allFactionMembers, allAssignedCharacterIds, canManage, cat1Id, cat2Id, onDataChange, allUnitsAndDetails, forumGroupId, isSecondary }: MembersTableProps) {
     const [isAdding, setIsAdding] = useState(false);
     const [selectedCharacterId, setSelectedCharacterId] = useState<string>('');
     const [newTitle, setNewTitle] = useState('');
@@ -69,9 +70,14 @@ export function MembersTable({ members, allFactionMembers, allAssignedCharacterI
 
     const currentMemberIds = new Set(members.map(m => m.character_id));
     const assignedIds = new Set(allAssignedCharacterIds);
+    
     const characterOptions = allFactionMembers
-        .filter(fm => !assignedIds.has(fm.character_id) || currentMemberIds.has(fm.character_id))
+        .filter(fm => {
+            if (isSecondary) return true; // For secondary units, show everyone
+            return !assignedIds.has(fm.character_id) || currentMemberIds.has(fm.character_id);
+        })
         .map(fm => fm.character_name);
+
 
     const handleAddMember = async () => {
         if (!selectedCharacterId) {
@@ -269,9 +275,11 @@ export function MembersTable({ members, allFactionMembers, allAssignedCharacterI
                                                         <DropdownMenuItem onSelect={() => { setEditingMember(member); setNewTitle(member.title || '') }}>
                                                             <Pencil className="mr-2" /> Edit Title
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuItem onSelect={() => handleOpenTransferDialog(member)}>
-                                                            <Move className="mr-2" /> Transfer Member
-                                                        </DropdownMenuItem>
+                                                        {!isSecondary && (
+                                                            <DropdownMenuItem onSelect={() => handleOpenTransferDialog(member)}>
+                                                                <Move className="mr-2" /> Transfer Member
+                                                            </DropdownMenuItem>
+                                                        )}
                                                         <AlertDialogTrigger asChild>
                                                             <div className="relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 text-destructive">
                                                                 <Trash2 className="mr-2" /> Remove
