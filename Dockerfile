@@ -1,42 +1,19 @@
-# Stage 1: Install dependencies
-FROM node:20-alpine AS deps
+# Install dependencies and prepare runtime
+FROM node:20-alpine
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm install
-
-ENV NODE_ENV=production \
-    DB_FILE_NAME=/app/sqlite/local.db
-
-# Stage 2: Build the application
-FROM node:20-alpine AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npm run build
-
-# Stage 3: Production image
-FROM node:20-alpine AS runner
-WORKDIR /app
 
 # Create required directories
 RUN mkdir -p /app/public/data /app/sqlite
 
 VOLUME /app/sqlite
 
-# Copy built assets from the builder stage
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/data ./data
-COPY --from=builder /app/drizzle.config.ts ./drizzle.config.ts
-COPY --from=builder /app/drizzle ./drizzle
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
-
-# Migrate the database
-RUN npm run db:migrate
-
-RUN ls
+ENV NODE_ENV=production \
+    DB_FILE_NAME=/app/sqlite/local.db
 
 EXPOSE 3004
 
-CMD ["npm", "start", "--", "-p", "3004"]
+# Build, migrate, and start the application at container startup
+CMD ["sh", "-c", "npm run db:migrate && npm run build && npm start -p 3004"]
