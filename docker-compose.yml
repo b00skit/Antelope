@@ -4,9 +4,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: mdc-panel-plus
+    container_name: antelope
     env_file:
       - stack.env
     ports:
-      - "3003:3003"
+      - "3004:3004"
     restart: unless-stopped
