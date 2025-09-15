@@ -1,3 +1,4 @@
+
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
@@ -41,6 +42,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Use a transaction to ensure both operations succeed or fail together.
+    // The transaction function must be synchronous for better-sqlite3.
     await db.transaction(async (tx) => {
       // Grant superadmin role
       await tx.update(users)
