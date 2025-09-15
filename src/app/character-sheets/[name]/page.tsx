@@ -5,10 +5,10 @@ import { notFound } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { users, factionMembersCache, factionMembersAbasCache } from '@/db/schema';
+import { users, factionMembersCache, factionMembersAbasCache, factionOrganizationMembership, factionOrganizationCat2, factionOrganizationCat3, factionOrganizationCat1 } from '@/db/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, User, Briefcase, Users, Hash, Calendar, Clock, Sigma, BookUser } from 'lucide-react';
+import { AlertTriangle, User, Briefcase, Users, Hash, Calendar, Clock, Sigma, BookUser, Building } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
@@ -41,6 +41,11 @@ interface FactionAbasSettings {
     supervisor_rank: number;
     minimum_abas: number;
     minimum_supervisor_abas: number;
+}
+
+interface AssignmentData {
+    path: string;
+    link: string;
 }
 
 async function getCharacterData(name: string) {
@@ -175,7 +180,41 @@ async function getCharacterData(name: string) {
         }
     }
     
-    return { character: charData.data, totalAbas, characterSheetsEnabled, forumData, abasSettings };
+    // 6. Fetch Units & Divisions assignment
+    let assignment: AssignmentData | null = null;
+    if (selectedFaction.feature_flags?.units_divisions_enabled) {
+        const membership = await db.query.factionOrganizationMembership.findFirst({
+            where: eq(factionOrganizationMembership.character_id, characterId)
+        });
+
+        if (membership) {
+            if (membership.type === 'cat_2') {
+                const cat2 = await db.query.factionOrganizationCat2.findFirst({
+                    where: eq(factionOrganizationCat2.id, membership.category_id),
+                    with: { cat1: true }
+                });
+                if (cat2) {
+                    assignment = {
+                        path: `${cat2.cat1.name} / ${cat2.name}`,
+                        link: `/units-divisions/${cat2.cat1.id}/${cat2.id}`
+                    };
+                }
+            } else if (membership.type === 'cat_3') {
+                const cat3 = await db.query.factionOrganizationCat3.findFirst({
+                    where: eq(factionOrganizationCat3.id, membership.category_id),
+                    with: { cat2: { with: { cat1: true } } }
+                });
+                 if (cat3) {
+                    assignment = {
+                        path: `${cat3.cat2.cat1.name} / ${cat3.cat2.name} / ${cat3.name}`,
+                        link: `/units-divisions/${cat3.cat2.cat1.id}/${cat3.cat2.id}/${cat3.id}`
+                    };
+                }
+            }
+        }
+    }
+
+    return { character: charData.data, totalAbas, characterSheetsEnabled, forumData, abasSettings, assignment };
 }
 
 const formatTimestamp = (timestamp: string | null) => {
@@ -232,7 +271,7 @@ export default async function CharacterSheetPage({ params }: PageProps) {
         )
     }
 
-    const { character, totalAbas, characterSheetsEnabled, forumData, abasSettings } = data;
+    const { character, totalAbas, characterSheetsEnabled, forumData, abasSettings, assignment } = data;
     const characterImage = `https://mdc.gta.world/img/persons/${character.firstname}_${character.lastname}.png?${Date.now()}`;
 
     return (
@@ -276,7 +315,7 @@ export default async function CharacterSheetPage({ params }: PageProps) {
                                             <Users className="h-5 w-5 text-primary" />
                                             <div><strong className="text-muted-foreground block text-sm">ABAS</strong> <span className={cn(getAbasClass(parseFloat(character.abas), character.rank, abasSettings))}>{formatAbas(character.abas)}</span></div>
                                         </div>
-                                        <div className="flex items-center gap-3 sm:col-span-2">
+                                        <div className="flex items-center gap-3">
                                             <Sigma className="h-5 w-5 text-primary" />
                                             <div>
                                                 <strong className="text-muted-foreground block text-sm">Total ABAS</strong> 
@@ -292,6 +331,15 @@ export default async function CharacterSheetPage({ params }: PageProps) {
                                                 </TooltipProvider>
                                             </div>
                                         </div>
+                                        {assignment && (
+                                            <div className="flex items-center gap-3">
+                                                <Building className="h-5 w-5 text-primary" />
+                                                <div>
+                                                    <strong className="text-muted-foreground block text-sm">Assignment</strong>
+                                                    <Link href={assignment.link} className="hover:underline text-primary">{assignment.path}</Link>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
