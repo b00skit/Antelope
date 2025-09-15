@@ -8,6 +8,9 @@ import { AlertTriangle, Loader2 } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
 import type { FactionUser } from "./units-divisions-client-page";
 import { Cat3MembersTable } from "./cat3-members-table";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../ui/breadcrumb";
+import Link from "next/link";
+
 
 interface Member {
     id: number;
@@ -101,9 +104,27 @@ export function Cat3ClientPage({ cat1Id, cat2Id, cat3Id }: Cat3ClientPageProps) 
 
     return (
         <div className="container mx-auto p-4 md:p-6 lg:p-8 space-y-6">
+             <Breadcrumb>
+                <BreadcrumbList>
+                    <BreadcrumbItem>
+                        <BreadcrumbLink asChild>
+                            <Link href="/units-divisions">Units & Divisions</Link>
+                        </BreadcrumbLink>
+                    </BreadcrumbItem>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                        <BreadcrumbLink asChild>
+                            <Link href={`/units-divisions/${data.detail.cat2.cat1.id}/${data.detail.cat2.id}`}>{data.detail.cat2.name}</Link>
+                        </BreadcrumbLink>
+                    </BreadcrumbItem>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                        <BreadcrumbPage>{data.detail.name}</BreadcrumbPage>
+                    </BreadcrumbItem>
+                </BreadcrumbList>
+            </Breadcrumb>
             <PageHeader
                 title={data.detail.name}
-                description={`Viewing members of this detail within ${data.detail.cat2.name} / ${data.detail.cat2.cat1.name}.`}
             />
             <Cat3MembersTable 
                 members={data.members}

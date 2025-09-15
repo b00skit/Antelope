@@ -18,6 +18,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import { useOrganizationFavorites } from "@/hooks/use-organization-favorites";
 import { cn } from "@/lib/utils";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../ui/breadcrumb";
 
 interface Member {
     id: number;
@@ -138,9 +139,21 @@ export function Cat2ClientPage({ cat1Id, cat2Id }: Cat2ClientPageProps) {
                 settings={{ category_3_name: 'Detail' }} // This should be dynamic later
                 factionUsers={data.factionUsers}
             />
+             <Breadcrumb>
+                <BreadcrumbList>
+                    <BreadcrumbItem>
+                        <BreadcrumbLink asChild>
+                            <Link href="/units-divisions">Units & Divisions</Link>
+                        </BreadcrumbLink>
+                    </BreadcrumbItem>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                        <BreadcrumbPage>{data.unit.cat1.name}</BreadcrumbPage>
+                    </BreadcrumbItem>
+                </BreadcrumbList>
+            </Breadcrumb>
             <PageHeader
                 title={data.unit.name}
-                description={`Viewing members of this unit within ${data.unit.cat1.name}.`}
             />
             <MembersTable 
                 members={data.members}
