@@ -18,6 +18,8 @@ const protectedRoutes = [
     '/area51',
     '/factions',
     '/users',
+    '/setup',
+    '/sync-management',
 ];
 const publicRoutes = ['/login', '/'];
 
