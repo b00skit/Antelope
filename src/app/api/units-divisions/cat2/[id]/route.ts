@@ -21,6 +21,7 @@ const cat2UpdateSchema = z.object({
     access_json: z.array(z.number()).optional().nullable(),
     settings_json: z.object({
         allow_cat3: z.boolean().optional(),
+        forum_group_id: z.coerce.number().optional().nullable(),
     }).optional().nullable(),
 });
 

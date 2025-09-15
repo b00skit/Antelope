@@ -18,6 +18,9 @@ const cat3UpdateSchema = z.object({
     name: z.string().min(1, "Name cannot be empty."),
     short_name: z.string().optional().nullable(),
     access_json: z.array(z.number()).optional().nullable(),
+    settings_json: z.object({
+        forum_group_id: z.coerce.number().optional().nullable(),
+    }).optional().nullable(),
 });
 
 
