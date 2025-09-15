@@ -68,9 +68,14 @@ export function CharacterSheetClientPage({ initialData }: CharacterSheetClientPa
         window.location.reload();
     }
     
-    // Filter out the current assignment from the list of transfer destinations
     const filteredTransferDestinations = allUnitsAndDetails.filter((opt: any) => {
-        return !(opt.type === assignment?.type && opt.value === assignment?.categoryId.toString());
+        if (!assignment) return true;
+        const membershipRecord = data.assignment; 
+        const isCurrentAssignment = opt.type === 'cat_2' 
+            ? membershipRecord.type === 'cat_2' && parseInt(opt.value, 10) === membershipRecord.category_id
+            : membershipRecord.type === 'cat_3' && parseInt(opt.value, 10) === membershipRecord.category_id;
+            
+        return !isCurrentAssignment;
     });
 
 
@@ -87,12 +92,6 @@ export function CharacterSheetClientPage({ initialData }: CharacterSheetClientPa
             <PageHeader
                 title="Character Record"
                 description={`Viewing file for ${character.firstname} ${character.lastname}`}
-                actions={canManageAssignments && assignment && (
-                    <Button onClick={() => setIsTransferDialogOpen(true)}>
-                        <Move className="mr-2" />
-                        Transfer Member
-                    </Button>
-                )}
             />
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -150,7 +149,23 @@ export function CharacterSheetClientPage({ initialData }: CharacterSheetClientPa
                                                 <Building className="h-5 w-5 text-primary" />
                                                 <div>
                                                     <strong className="text-muted-foreground block text-sm">Assignment</strong>
-                                                    <Link href={assignment.link} className="hover:underline text-primary">{assignment.path}</Link>
+                                                    <div className="flex items-center gap-2">
+                                                        <Link href={assignment.link} className="hover:underline text-primary">{assignment.path}</Link>
+                                                        {canManageAssignments && (
+                                                             <TooltipProvider>
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsTransferDialogOpen(true)}>
+                                                                            <Move className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent>
+                                                                        <p>Transfer Member</p>
+                                                                    </TooltipContent>
+                                                                </Tooltip>
+                                                            </TooltipProvider>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         )}
