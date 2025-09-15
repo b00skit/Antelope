@@ -262,7 +262,7 @@ export function SidebarNav() {
             <SidebarMenuItem>
                 <SidebarMenuButton
                 asChild
-                isActive={isActive('/units-divisions')}
+                isActive={isActive('/units-divisions', true)}
                 tooltip="Units & Divisions"
                 >
                 <Link href="/units-divisions">

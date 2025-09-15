@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, Loader2, PlusCircle, Building, MoreVertical, Pencil, Trash2, Eye } from "lucide-react";
+import { AlertTriangle, Loader2, PlusCircle, Building, MoreVertical, Pencil, Trash2, Eye, Star } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
 import type { Cat2, FactionUser } from "./units-divisions-client-page";
 import { MembersTable } from "./members-table";
@@ -16,6 +16,8 @@ import { Badge } from "../ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "../ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useOrganizationFavorites } from "@/hooks/use-organization-favorites";
+import { cn } from "@/lib/utils";
 
 interface Member {
     id: number;
@@ -61,6 +63,7 @@ export function Cat2ClientPage({ cat1Id, cat2Id }: Cat2ClientPageProps) {
     const [isCat3DialogOpen, setIsCat3DialogOpen] = useState(false);
     const [editingCat3, setEditingCat3] = useState<Cat3 | null>(null);
     const { toast } = useToast();
+    const { favorites, toggleFavorite } = useOrganizationFavorites();
 
     const fetchData = async () => {
         setIsLoading(true);
@@ -98,6 +101,8 @@ export function Cat2ClientPage({ cat1Id, cat2Id }: Cat2ClientPageProps) {
             toast({ variant: 'destructive', title: 'Error', description: err.message });
         }
     };
+    
+    const favoriteIdsCat3 = new Set(favorites.filter(f => f.category_type === 'cat_3').map(f => f.category_id));
 
     if (isLoading) {
         return (
@@ -169,7 +174,9 @@ export function Cat2ClientPage({ cat1Id, cat2Id }: Cat2ClientPageProps) {
                     <CardContent>
                         {data.unit.cat3s.length > 0 ? (
                             <div className="space-y-2">
-                                {data.unit.cat3s.map(cat3 => (
+                                {data.unit.cat3s.map(cat3 => {
+                                    const isFavorited = favoriteIdsCat3.has(cat3.id);
+                                    return (
                                      <div key={cat3.id} className="flex items-center justify-between p-2 border rounded-md">
                                         <div className="flex-1">
                                             <div className="font-medium flex items-center gap-2">
@@ -179,6 +186,9 @@ export function Cat2ClientPage({ cat1Id, cat2Id }: Cat2ClientPageProps) {
                                             <p className="text-xs text-muted-foreground">Created by {cat3.creator.username}</p>
                                         </div>
                                         <div className="flex items-center gap-2">
+                                             <Button variant="ghost" size="icon" onClick={() => toggleFavorite('cat_3', cat3.id)}>
+                                                <Star className={cn("h-4 w-4", isFavorited ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground")} />
+                                            </Button>
                                              <Button asChild variant="outline" size="sm">
                                                 <Link href={`/units-divisions/${cat1Id}/${cat2Id}/${cat3.id}`}>
                                                     <Eye className="mr-2 h-4 w-4" />
@@ -216,7 +226,7 @@ export function Cat2ClientPage({ cat1Id, cat2Id }: Cat2ClientPageProps) {
                                             )}
                                         </div>
                                     </div>
-                                ))}
+                                )})}
                             </div>
                         ) : (
                              <div className="text-center py-8 text-muted-foreground">
