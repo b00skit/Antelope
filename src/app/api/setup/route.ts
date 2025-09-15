@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
 
     // Use a transaction to ensure both operations succeed or fail together.
     const dbType = process.env.DATABASE ?? 'sqlite';
+
     if (dbType === 'mysql' || dbType === 'mariadb') {
       await db.transaction(async (tx) => {
         // Grant superadmin role
@@ -51,10 +52,13 @@ export async function POST(request: NextRequest) {
           .where(eq(users.id, session.userId!));
 
         // Mark setup as complete
-        await tx.insert(setup).values({ completed: true }).onConflictDoUpdate({
-          target: setup.completed,
-          set: { completed: true },
-        });
+        await tx
+          .insert(setup)
+          .values({ completed: true })
+          .onConflictDoUpdate({
+            target: setup.completed,
+            set: { completed: true },
+          });
       });
     } else {
       db.transaction((tx) => {
@@ -65,10 +69,13 @@ export async function POST(request: NextRequest) {
           .where(eq(users.id, session.userId!));
 
         // Mark setup as complete
-        tx.insert(setup).values({ completed: true }).onConflictDoUpdate({
-          target: setup.completed,
-          set: { completed: true },
-        });
+        tx
+          .insert(setup)
+          .values({ completed: true })
+          .onConflictDoUpdate({
+            target: setup.completed,
+            set: { completed: true },
+          });
       });
     }
 
