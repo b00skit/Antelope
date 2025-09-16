@@ -1,11 +1,10 @@
 
-
 'use client';
 
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, PlusCircle, MoreVertical, Pencil, Trash2, Filter, Loader2 } from 'lucide-react';
+import { AlertTriangle, PlusCircle, MoreVertical, Pencil, Trash2, Filter, Loader2, Move } from 'lucide-react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { RosterSection } from './roster-section';
@@ -18,11 +17,18 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '../ui/skeleton';
 import * as React from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Interfaces matching the API response
 interface Member {
@@ -45,7 +51,7 @@ interface SectionConfig {
     exclude_names?: string[];
 }
 interface Section {
-    id: number;
+    id: number | 'unassigned';
     name: string;
     description: string | null;
     character_ids_json: number[];
@@ -151,15 +157,13 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingSection, setEditingSection] = useState<Section | null>(null);
     const [isFiltering, setIsFiltering] = useState(false);
+    const [selectedMemberIds, setSelectedMemberIds] = useState<Set<number>>(new Set());
     const { toast } = useToast();
 
     const assignedMemberIds = new Set(sections.flatMap(s => s.character_ids_json));
     const unassignedMembers = members.filter(m => !assignedMemberIds.has(m.character_id));
     const showAssignmentTitles = React.useMemo(() => {
         try {
-            // This is a bit of a hack since we don't have the raw JSON string here.
-            // We infer it by checking if at least one member has an assignment title.
-            // A more robust solution might pass the filter object from the parent.
             return initialData.members.some(m => m.assignmentTitle);
         } catch {
             return false;
@@ -314,9 +318,8 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
 
                 const nameMatch = config.include_names?.some(n => n === memberName || n === memberSlug);
                 const rankMatch = config.include_ranks?.includes(member.rank);
-                // const forumMatch = member.forum_groups && config.include_forum_groups?.some(fg => member.forum_groups!.includes(fg));
-
-                const shouldBeIncluded = nameMatch || rankMatch; // || forumMatch;
+                
+                const shouldBeIncluded = nameMatch || rankMatch;
 
                 if (shouldBeIncluded) {
                     const isExcluded = config.exclude_names?.some(n => n === memberName || n === memberSlug);
@@ -324,7 +327,7 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
                         section.character_ids_json.push(member.character_id);
                         assignedMemberIds.add(member.character_id);
                         assigned = true;
-                        break; // Member is assigned, move to the next member
+                        break;
                     }
                 }
             }
@@ -350,6 +353,45 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
             setIsFiltering(false);
         }
     };
+
+    const handleToggleSelection = (characterId: number) => {
+        setSelectedMemberIds(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(characterId)) {
+                newSet.delete(characterId);
+            } else {
+                newSet.add(characterId);
+            }
+            return newSet;
+        });
+    };
+
+    const handleBulkMove = async (destinationSectionId: number | 'unassigned') => {
+        const characterIds = Array.from(selectedMemberIds);
+        try {
+            const res = await fetch(`/api/rosters/${rosterId}/sections/bulk-move`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ characterIds, destinationSectionId }),
+            });
+            if (!res.ok) throw new Error('Bulk move failed.');
+            toast({ title: 'Success', description: `${characterIds.length} members moved.`});
+            
+            // Manually update state for responsiveness
+            const newSections = sections.map(s => {
+                let ids = (s.character_ids_json || []).filter(id => !characterIds.includes(id));
+                if (s.id === destinationSectionId) {
+                    ids = [...ids, ...characterIds];
+                }
+                return { ...s, character_ids_json: ids };
+            });
+            setSections(newSections);
+            setSelectedMemberIds(new Set());
+        } catch(err: any) {
+             toast({ variant: 'destructive', title: 'Error', description: err.message });
+        }
+    };
+    
 
     return (
         <DndProvider backend={HTML5Backend}>
@@ -383,23 +425,29 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
                             index={index}
                             section={section}
                             members={sectionMembers}
+                            allSections={sections}
                             onMoveMember={handleMoveMember}
                             onEdit={() => { setEditingSection(section); setIsDialogOpen(true); }}
-                            onDelete={() => handleDeleteSection(section.id)}
+                            onDelete={() => handleDeleteSection(section.id as number)}
                             onReorder={handleReorderSections}
                             getAbasClass={getAbasClass}
                             showAssignmentTitles={showAssignmentTitles}
+                            selectedMemberIds={selectedMemberIds}
+                            onToggleSelection={handleToggleSelection}
                         />
                     );
                 })}
 
                 <RosterSection
-                    section={{ id: 'unassigned', name: 'Unassigned', description: 'Members not assigned to a section.' }}
+                    section={{ id: 'unassigned', name: 'Unassigned', description: 'Members not assigned to a section.', order: 999, character_ids_json: [], configuration_json: null }}
                     members={unassignedMembers}
+                    allSections={sections}
                     onMoveMember={handleMoveMember}
                     isUnassigned
                     getAbasClass={getAbasClass}
                     showAssignmentTitles={showAssignmentTitles}
+                    selectedMemberIds={selectedMemberIds}
+                    onToggleSelection={handleToggleSelection}
                 />
             </div>
              <SectionDialog
@@ -408,6 +456,37 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
                 onSave={handleAddOrUpdateSection}
                 section={editingSection}
             />
+            <AnimatePresence>
+                {selectedMemberIds.size > 0 && (
+                    <motion.div
+                        initial={{ y: 100, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: 100, opacity: 0 }}
+                        transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+                        className="fixed bottom-4 left-1/2 -translate-x-1/2 w-auto bg-card border shadow-lg rounded-lg p-2 flex items-center gap-4 z-50"
+                    >
+                         <p className="text-sm font-medium">{selectedMemberIds.size} selected</p>
+                         <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button>
+                                    <Move className="mr-2 h-4 w-4" />
+                                    Move Selected To...
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                {sections.map(s => (
+                                    <DropdownMenuItem key={s.id} onSelect={() => handleBulkMove(s.id as number)}>
+                                        {s.name}
+                                    </DropdownMenuItem>
+                                ))}
+                                 <DropdownMenuItem onSelect={() => handleBulkMove('unassigned')}>
+                                    Unassigned
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                         </DropdownMenu>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </DndProvider>
     );
 }

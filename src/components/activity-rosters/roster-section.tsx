@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useRef } from 'react';
@@ -18,6 +17,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { RosterMember } from './roster-member';
+import { Checkbox } from '../ui/checkbox';
 
 const ItemTypes = {
     MEMBER: 'member',
@@ -45,6 +45,7 @@ interface Section {
 interface RosterSectionProps {
     section: Section;
     members: Member[];
+    allSections: Section[];
     onMoveMember: (characterId: number, sourceSectionId: number | 'unassigned', destinationSectionId: number | 'unassigned') => void;
     onEdit?: () => void;
     onDelete?: () => void;
@@ -53,12 +54,15 @@ interface RosterSectionProps {
     isUnassigned?: boolean;
     index?: number;
     showAssignmentTitles?: boolean;
+    selectedMemberIds: Set<number>;
+    onToggleSelection: (characterId: number) => void;
 }
 
 
 export function RosterSection({
     section,
     members,
+    allSections,
     onMoveMember,
     onEdit,
     onDelete,
@@ -67,6 +71,8 @@ export function RosterSection({
     isUnassigned = false,
     index,
     showAssignmentTitles = false,
+    selectedMemberIds,
+    onToggleSelection
 }: RosterSectionProps) {
     const ref = useRef<HTMLDivElement>(null);
 
@@ -96,6 +102,23 @@ export function RosterSection({
     });
 
     drag(dropReorder(ref));
+
+    const selectedInSection = members.filter(m => selectedMemberIds.has(m.character_id)).length;
+    const isAllSelected = members.length > 0 && selectedInSection === members.length;
+    const isPartiallySelected = selectedInSection > 0 && selectedInSection < members.length;
+
+    const handleSelectAll = () => {
+        const memberIds = members.map(m => m.character_id);
+        if (isAllSelected) {
+            memberIds.forEach(id => {
+                if(selectedMemberIds.has(id)) onToggleSelection(id);
+            });
+        } else {
+            memberIds.forEach(id => {
+                if(!selectedMemberIds.has(id)) onToggleSelection(id);
+            });
+        }
+    }
 
 
     return (
@@ -135,11 +158,20 @@ export function RosterSection({
                     <Table>
                         <TableHeader>
                             <TableRow>
+                                <TableHead className="w-12">
+                                     <Checkbox
+                                        checked={isAllSelected || isPartiallySelected}
+                                        onCheckedChange={handleSelectAll}
+                                        aria-label="Select all members in this section"
+                                        data-state={isPartiallySelected ? 'indeterminate' : isAllSelected ? 'checked' : 'unchecked'}
+                                    />
+                                </TableHead>
                                 <TableHead className="w-1/3">Name</TableHead>
                                 <TableHead>Rank</TableHead>
                                 {showAssignmentTitles && <TableHead>Assignment Title</TableHead>}
                                 <TableHead>Last On Duty</TableHead>
                                 <TableHead>ABAS</TableHead>
+                                <TableHead className="w-12"></TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -148,8 +180,12 @@ export function RosterSection({
                                     key={member.character_id}
                                     member={member}
                                     sourceSectionId={section.id}
+                                    allSections={allSections}
+                                    onMoveMember={onMoveMember}
                                     abasClass={getAbasClass(member)}
                                     showAssignmentTitles={showAssignmentTitles}
+                                    isSelected={selectedMemberIds.has(member.character_id)}
+                                    onToggleSelection={onToggleSelection}
                                 />
                             ))}
                         </TableBody>
