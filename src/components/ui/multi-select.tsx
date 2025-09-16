@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
-import { X, Check } from 'lucide-react';
+import { X, Check, ChevronsUpDown } from 'lucide-react';
 import {
   Popover,
   PopoverContent,
@@ -119,39 +119,41 @@ const MultiSelect = React.forwardRef<
               'flex h-auto min-h-10 w-full items-center justify-between rounded-md border bg-background px-3 py-2 text-sm',
               className,
             )}
+            variant="outline"
           >
-            {selectedValues.length > 0 ? (
-              <div className="flex w-full items-center gap-1">
-                {selectedValues.slice(0, maxCount).map((value) => {
-                  const option = options.find((o) => o.value === value);
-                  return (
-                    <Badge
-                      key={value}
-                      variant="outline"
-                      className={cn(multiSelectVariants({ variant }))}
-                    >
-                      {option?.label}
-                      <X
-                        className="ml-2 h-4 w-4 cursor-pointer"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          toggleOption(value);
-                        }}
-                      />
+             <div className="flex items-center justify-between w-full">
+                {selectedValues.length > 0 ? (
+                <div className="flex w-full items-center flex-wrap gap-1">
+                    {selectedValues.slice(0, maxCount).map((value) => {
+                    const option = options.find((o) => o.value === value);
+                    return (
+                        <Badge
+                        key={value}
+                        variant="outline"
+                        className={cn(multiSelectVariants({ variant }))}
+                        >
+                        {option?.label}
+                        <X
+                            className="ml-2 h-4 w-4 cursor-pointer"
+                            onClick={(event) => {
+                            event.stopPropagation();
+                            toggleOption(value);
+                            }}
+                        />
+                        </Badge>
+                    );
+                    })}
+                    {selectedValues.length > maxCount && (
+                    <Badge variant="outline" className="px-1.5">
+                        +{selectedValues.length - maxCount}
                     </Badge>
-                  );
-                })}
-                {selectedValues.length > maxCount && (
-                  <Badge variant="outline" className="px-1.5">
-                    +{selectedValues.length - maxCount}
-                  </Badge>
-                )}
-              </div>
-            ) : (
-              <div className="mx-auto flex w-full items-center justify-between">
+                    )}
+                </div>
+                ) : (
                 <span className="text-sm text-muted-foreground">{placeholder}</span>
-              </div>
-            )}
+                )}
+                 <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+             </div>
           </Button>
         </PopoverTrigger>
         <PopoverContent

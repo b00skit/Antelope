@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { activityRosters } from '@/db/schema';
+import { activityRosters, users as usersTable } from '@/db/schema';
 import { and, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
@@ -29,6 +29,7 @@ const updateRosterSchema = z.object({
     visibility: z.enum(['personal', 'private', 'unlisted', 'public']).default('personal'),
     password: z.string().optional().nullable(),
     roster_setup_json: jsonString.optional().nullable(),
+    access_json: z.array(z.number()).optional().nullable(),
 }).refine(data => data.visibility !== 'private' || (data.password && data.password.length > 0) || (data.password === null), {
     message: "A new password is required to keep this roster private.",
     path: ["password"],
@@ -50,19 +51,35 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     try {
         const roster = await db.query.activityRosters.findFirst({
-            where: and(
-                eq(activityRosters.id, rosterId),
-                eq(activityRosters.created_by, session.userId)
-            ),
+            where: eq(activityRosters.id, rosterId),
         });
 
         if (!roster) {
-            return NextResponse.json({ error: 'Roster not found or you do not have permission to edit it.' }, { status: 404 });
+            return NextResponse.json({ error: 'Roster not found.' }, { status: 404 });
+        }
+
+        const hasAccess = roster.created_by === session.userId || roster.access_json?.includes(session.userId);
+
+        if (!hasAccess) {
+             return NextResponse.json({ error: 'You do not have permission to edit this roster.' }, { status: 403 });
         }
         
         // Don't expose the hashed password
         const { password, ...rosterData } = roster;
-        return NextResponse.json({ roster: rosterData });
+        
+        const user = await db.query.users.findFirst({
+            where: eq(usersTable.id, session.userId),
+        });
+
+        if (!user || !user.selected_faction_id) {
+            return NextResponse.json({ error: 'No active faction selected.' }, { status: 400 });
+        }
+
+        const factionUsers = await db.query.users.findMany({
+            where: eq(usersTable.selected_faction_id, user.selected_faction_id)
+        });
+
+        return NextResponse.json({ roster: rosterData, factionUsers });
 
     } catch (error) {
         console.error(`[API Roster GET] Error getting roster ${rosterId}:`, error);
@@ -93,10 +110,24 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
     
     try {
+        const roster = await db.query.activityRosters.findFirst({
+            where: eq(activityRosters.id, rosterId)
+        });
+
+        if (!roster) {
+            return NextResponse.json({ error: 'Roster not found.' }, { status: 404 });
+        }
+
+        const hasAccess = roster.created_by === session.userId || roster.access_json?.includes(session.userId);
+        if (!hasAccess) {
+            return NextResponse.json({ error: 'You do not have permission to edit this roster.' }, { status: 403 });
+        }
+        
         const updateData: Partial<typeof activityRosters.$inferInsert> = {
             name: parsed.data.name,
             visibility: parsed.data.visibility,
             roster_setup_json: parsed.data.roster_setup_json,
+            access_json: parsed.data.visibility === 'personal' ? null : parsed.data.access_json,
             updated_at: sql`(strftime('%s', 'now'))`
         };
 
@@ -109,13 +140,11 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
         const result = await db.update(activityRosters)
             .set(updateData)
-            .where(and(
-                eq(activityRosters.id, rosterId),
-                eq(activityRosters.created_by, session.userId)
-            )).returning();
+            .where(eq(activityRosters.id, rosterId))
+            .returning();
 
         if (result.length === 0) {
-            return NextResponse.json({ error: 'Roster not found or you do not have permission to edit it.' }, { status: 404 });
+            return NextResponse.json({ error: 'Roster not found or update failed.' }, { status: 404 });
         }
         
         return NextResponse.json({ success: true, message: 'Roster updated successfully.' });
@@ -142,14 +171,25 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     try {
+        const roster = await db.query.activityRosters.findFirst({
+            where: eq(activityRosters.id, rosterId)
+        });
+
+        if (!roster) {
+            return NextResponse.json({ error: 'Roster not found.' }, { status: 404 });
+        }
+
+        const hasAccess = roster.created_by === session.userId || roster.access_json?.includes(session.userId);
+        if (!hasAccess) {
+            return NextResponse.json({ error: 'You do not have permission to delete this roster.' }, { status: 403 });
+        }
+
         const result = await db.delete(activityRosters)
-            .where(and(
-                eq(activityRosters.id, rosterId),
-                eq(activityRosters.created_by, session.userId)
-            )).returning();
+            .where(eq(activityRosters.id, rosterId))
+            .returning();
 
         if (result.length === 0) {
-            return NextResponse.json({ error: 'Roster not found or you do not have permission to delete it.' }, { status: 404 });
+            return NextResponse.json({ error: 'Roster not found or delete failed.' }, { status: 404 });
         }
         
         return NextResponse.json({ success: true, message: 'Roster deleted successfully.' });

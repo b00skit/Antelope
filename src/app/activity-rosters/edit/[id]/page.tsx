@@ -27,6 +27,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { MultiSelect } from '@/components/ui/multi-select';
 
 
 const jsonString = z.string().refine((value) => {
@@ -44,6 +45,7 @@ const formSchema = z.object({
     visibility: z.enum(['personal', 'private', 'unlisted', 'public']).default('personal'),
     password: z.string().optional().nullable(),
     roster_setup_json: jsonString.optional().nullable(),
+    access_json: z.array(z.number()).optional().nullable(),
 }).refine(data => {
     if (data.visibility === 'private' && data.password === null) {
         return false;
@@ -92,6 +94,7 @@ export default function EditRosterPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [initialVisibility, setInitialVisibility] = useState<string | null>(null);
     const [basicIncludeMembers, setBasicIncludeMembers] = useState('');
+    const [factionUsers, setFactionUsers] = useState<{ id: number; username: string }[]>([]);
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -113,12 +116,14 @@ export default function EditRosterPage() {
                 }
                 const data = await res.json();
                 const rosterJson = data.roster.roster_setup_json ? JSON.stringify(JSON.parse(data.roster.roster_setup_json), null, 2) : '';
+                setFactionUsers(data.factionUsers || []);
 
                 form.reset({
                     name: data.roster.name,
                     visibility: data.roster.visibility,
                     password: null, 
                     roster_setup_json: rosterJson,
+                    access_json: data.roster.access_json || [],
                 });
                 
                 // Initialize basic editor state from fetched data
@@ -196,6 +201,8 @@ export default function EditRosterPage() {
             form.setError("root", { message: err.message });
         }
     };
+    
+    const userOptions = factionUsers.map(user => ({ value: user.id.toString(), label: user.username }));
 
     if (isLoading) {
         return (
@@ -272,6 +279,27 @@ export default function EditRosterPage() {
                                                     ? 'Only enter a value here if you want to change the password.'
                                                     : 'A new password is required to make this roster private.'}
                                             </FormDescription>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            )}
+                             {watchVisibility !== 'personal' && (
+                                <FormField
+                                    control={form.control}
+                                    name="access_json"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Edit Access</FormLabel>
+                                            <FormControl>
+                                                 <MultiSelect
+                                                    options={userOptions}
+                                                    onValueChange={(selected) => field.onChange(selected.map(Number))}
+                                                    defaultValue={field.value?.map(String) ?? []}
+                                                    placeholder="Select users..."
+                                                />
+                                            </FormControl>
+                                            <FormDescription>Grant other users permission to edit this roster.</FormDescription>
                                             <FormMessage />
                                         </FormItem>
                                     )}

@@ -26,6 +26,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useState, useEffect } from 'react';
+import { useSession } from '@/hooks/use-session';
+import { MultiSelect } from '@/components/ui/multi-select';
 
 const jsonString = z.string().refine((value) => {
     if (!value) return true; // Allow empty string
@@ -43,6 +45,7 @@ const formSchema = z.object({
     visibility: z.enum(['personal', 'private', 'unlisted', 'public']).default('personal'),
     password: z.string().optional().nullable(),
     roster_setup_json: jsonString.optional().nullable(),
+    access_json: z.array(z.number()).optional().nullable(),
 }).refine(data => data.visibility !== 'private' || (data.password && data.password.length > 0), {
     message: "Password is required for private rosters.",
     path: ["password"],
@@ -80,7 +83,25 @@ const visibilityOptions = [
 export default function CreateRosterPage() {
     const router = useRouter();
     const { toast } = useToast();
+    const { session } = useSession();
     const [basicIncludeMembers, setBasicIncludeMembers] = useState('');
+    const [factionUsers, setFactionUsers] = useState<{ id: number; username: string }[]>([]);
+
+    useEffect(() => {
+        const fetchUsers = async () => {
+            if (!session?.hasActiveFaction) return;
+            try {
+                const res = await fetch('/api/rosters');
+                const data = await res.json();
+                if (res.ok) {
+                    setFactionUsers(data.factionUsers || []);
+                }
+            } catch (e) {
+                console.error("Failed to fetch faction users");
+            }
+        };
+        fetchUsers();
+    }, [session]);
     
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -89,6 +110,7 @@ export default function CreateRosterPage() {
             visibility: 'personal',
             password: '',
             roster_setup_json: '',
+            access_json: [],
         },
     });
 
@@ -151,6 +173,8 @@ export default function CreateRosterPage() {
             form.setError("root", { message: err.message });
         }
     };
+    
+    const userOptions = factionUsers.map(user => ({ value: user.id.toString(), label: user.username }));
 
     return (
         <div className="container mx-auto p-4 md:p-6 lg:p-8">
@@ -209,6 +233,27 @@ export default function CreateRosterPage() {
                                                 <Input type="password" placeholder="Set a password" {...field} value={field.value ?? ''} />
                                             </FormControl>
                                             <FormDescription>Users will need this password to access the roster.</FormDescription>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            )}
+                            {watchVisibility !== 'personal' && (
+                                <FormField
+                                    control={form.control}
+                                    name="access_json"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Edit Access</FormLabel>
+                                            <FormControl>
+                                                 <MultiSelect
+                                                    options={userOptions}
+                                                    onValueChange={(selected) => field.onChange(selected.map(Number))}
+                                                    defaultValue={field.value?.map(String) ?? []}
+                                                    placeholder="Select users..."
+                                                />
+                                            </FormControl>
+                                            <FormDescription>Grant other users permission to edit this roster.</FormDescription>
                                             <FormMessage />
                                         </FormItem>
                                     )}

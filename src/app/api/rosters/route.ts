@@ -22,6 +22,7 @@ const createRosterSchema = z.object({
     visibility: z.enum(['personal', 'private', 'unlisted', 'public']).default('personal'),
     password: z.string().optional().nullable(),
     roster_setup_json: jsonString.optional().nullable(),
+    access_json: z.array(z.number()).optional().nullable(),
 }).refine(data => data.visibility !== 'private' || (data.password && data.password.length > 0), {
     message: "Password is required for private rosters.",
     path: ["password"],
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'No active faction selected.' }, { status: 400 });
         }
 
-        const [rosters, favorites] = await Promise.all([
+        const [rosters, favorites, factionUsers] = await Promise.all([
              db.query.activityRosters.findMany({
                 where: and(
                     eq(activityRosters.factionId, user.selected_faction_id),
@@ -72,18 +73,21 @@ export async function GET(request: NextRequest) {
                 columns: {
                     activity_roster_id: true,
                 }
-            })
+            }),
+             db.query.users.findMany({
+                where: eq(users.selected_faction_id, user.selected_faction_id)
+            }),
         ]);
         
         const favoriteIds = new Set(favorites.map(f => f.activity_roster_id));
 
         const rostersWithDetails = rosters.map(r => ({
             ...r,
-            isOwner: r.created_by === session.userId,
+            isOwner: r.created_by === session.userId || r.access_json?.includes(session.userId!),
             isFavorited: favoriteIds.has(r.id),
         }));
 
-        return NextResponse.json({ rosters: rostersWithDetails });
+        return NextResponse.json({ rosters: rostersWithDetails, factionUsers });
 
     } catch (error) {
         console.error('[API Rosters GET] Error:', error);
@@ -128,6 +132,7 @@ export async function POST(request: NextRequest) {
             roster_setup_json: parsed.data.roster_setup_json,
             factionId: user.selected_faction_id,
             created_by: session.userId,
+            access_json: parsed.data.visibility === 'personal' ? null : parsed.data.access_json,
         }).returning();
 
         return NextResponse.json({ success: true, roster: newRoster[0] }, { status: 201 });
