@@ -2,7 +2,7 @@
 import { cookies } from 'next/headers';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { users, factionMembers, factions } from '@/db/schema';
+import { users, factionMembers, factions, factionBlockedUsers } from '@/db/schema';
 import { and, eq } from 'drizzle-orm';
 
 export async function GET() {
@@ -25,16 +25,25 @@ export async function GET() {
   let factionRank = null;
 
   if (user?.selected_faction_id) {
-    const membership = await db.query.factionMembers.findFirst({
+    const isBlocked = await db.query.factionBlockedUsers.findFirst({
         where: and(
-            eq(factionMembers.userId, session.userId),
-            eq(factionMembers.factionId, user.selected_faction_id),
-            eq(factionMembers.joined, true)
+            eq(factionBlockedUsers.user_id, session.userId),
+            eq(factionBlockedUsers.faction_id, user.selected_faction_id)
         )
     });
-    if (membership) {
-        hasActiveFaction = true;
-        factionRank = membership.rank;
+
+    if (!isBlocked) {
+        const membership = await db.query.factionMembers.findFirst({
+            where: and(
+                eq(factionMembers.userId, session.userId),
+                eq(factionMembers.factionId, user.selected_faction_id),
+                eq(factionMembers.joined, true)
+            )
+        });
+        if (membership) {
+            hasActiveFaction = true;
+            factionRank = membership.rank;
+        }
     }
   }
 
@@ -42,8 +51,9 @@ export async function GET() {
     isLoggedIn: true,
     username: session.username,
     role: session.role,
+    userId: session.userId,
     hasActiveFaction,
-    activeFaction: user?.selectedFaction,
-    factionRank,
+    activeFaction: hasActiveFaction ? user?.selectedFaction : null,
+    factionRank: hasActiveFaction ? factionRank : null,
   }), { status: 200 });
 }

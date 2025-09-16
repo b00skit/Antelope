@@ -24,6 +24,7 @@ interface Session {
   isLoggedIn: boolean;
   username?: string;
   role?: string;
+  userId?: number;
   hasActiveFaction?: boolean;
   activeFaction?: Faction | null;
   factionRank?: number | null;

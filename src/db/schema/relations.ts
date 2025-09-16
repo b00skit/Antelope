@@ -16,6 +16,7 @@ import {
   factionOrganizationMembership
 } from './organization';
 import { organizationFavorites } from './organizationFavorites';
+import { factionBlockedUsers } from './factionBlockedUsers';
 
 
 export const usersRelations = relations(users, ({ many, one }) => ({
@@ -27,6 +28,7 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   activityRosters: many(activityRosters),
   favoriteRosters: many(activityRosterFavorites),
   organizationFavorites: many(organizationFavorites),
+  blockedEntries: many(factionBlockedUsers),
 }));
 
 export const factionsRelations = relations(factions, ({ one, many }) => ({
@@ -37,6 +39,7 @@ export const factionsRelations = relations(factions, ({ one, many }) => ({
     references: [factionOrganizationSettings.faction_id],
   }),
   organizationCat1s: many(factionOrganizationCat1),
+  blockedUsers: many(factionBlockedUsers),
 }));
 
 export const factionMembersRelations = relations(factionMembers, ({ one }) => ({
@@ -187,3 +190,18 @@ export const organizationFavoritesRelations = relations(organizationFavorites, (
       references: [factions.id],
     }),
   }));
+
+export const factionBlockedUsersRelations = relations(factionBlockedUsers, ({ one }) => ({
+  faction: one(factions, {
+    fields: [factionBlockedUsers.faction_id],
+    references: [factions.id],
+  }),
+  user: one(users, {
+    fields: [factionBlockedUsers.user_id],
+    references: [users.id],
+  }),
+  blockedBy: one(users, {
+    fields: [factionBlockedUsers.blocked_by_user_id],
+    references: [users.id],
+  }),
+}));

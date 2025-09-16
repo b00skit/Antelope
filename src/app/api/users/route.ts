@@ -2,8 +2,8 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { users, factionMembers } from '@/db/schema';
-import { and, eq } from 'drizzle-orm';
+import { users, factionMembers, factionBlockedUsers } from '@/db/schema';
+import { and, eq, notInArray } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
     const cookieStore = await cookies();
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'You do not have permission to view this page.' }, { status: 403 });
         }
 
-        const joinedMembers = await db.query.factionMembers.findMany({
+        const allJoinedMembers = await db.query.factionMembers.findMany({
             where: and(
                 eq(factionMembers.factionId, factionId),
                 eq(factionMembers.joined, true)
@@ -52,13 +52,41 @@ export async function GET(request: NextRequest) {
             }
         });
 
-        const panelUsers = joinedMembers.map(m => ({
-            ...m.user,
-            rank: m.rank,
+        const blocked = await db.query.factionBlockedUsers.findMany({
+            where: eq(factionBlockedUsers.faction_id, factionId),
+            with: {
+                user: { columns: { id: true, username: true, role: true } },
+                blockedBy: { columns: { username: true } },
+            }
+        });
+
+        const blockedUserIds = blocked.map(b => b.user_id);
+
+        const activeUsers = allJoinedMembers
+            .filter(m => !blockedUserIds.includes(m.userId))
+            .map(m => ({
+                ...m.user,
+                rank: m.rank,
+            }));
+
+        const blockedUsers = await Promise.all(blocked.map(async b => {
+            const blockedUserMembership = await db.query.factionMembers.findFirst({
+                where: and(eq(factionMembers.userId, b.user_id), eq(factionMembers.factionId, factionId))
+            });
+            return {
+                ...b.user,
+                rank: blockedUserMembership?.rank || 0,
+                blockedBy: b.blockedBy.username,
+                blockedAt: b.created_at,
+            }
         }));
 
 
-        return NextResponse.json({ users: panelUsers });
+        return NextResponse.json({ 
+            users: activeUsers, 
+            blockedUsers: blockedUsers,
+            currentUserRank: membership.rank 
+        });
 
     } catch (error) {
         console.error('[API Users] Error fetching panel users:', error);
