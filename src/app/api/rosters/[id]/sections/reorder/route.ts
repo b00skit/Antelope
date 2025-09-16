@@ -50,17 +50,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         
         const { orderedSectionIds } = parsed.data;
         
-        // Use a transaction to update all orders at once
-        await db.transaction(async (tx) => {
-            const updatePromises = orderedSectionIds.map((sectionId, index) => {
-                return tx.update(activityRosterSections)
+        // Drizzle transactions backed by better-sqlite3 must be synchronous.
+        // Execute the updates sequentially within the transaction block.
+        db.transaction((tx) => {
+            orderedSectionIds.forEach((sectionId, index) => {
+                tx.update(activityRosterSections)
                     .set({ order: index })
                     .where(and(
                         eq(activityRosterSections.id, sectionId),
                         eq(activityRosterSections.activity_roster_id, rosterId)
-                    ));
+                    ))
+                    .run();
             });
-            await Promise.all(updatePromises);
         });
         
         return NextResponse.json({ success: true, message: 'Sections reordered successfully.' });
