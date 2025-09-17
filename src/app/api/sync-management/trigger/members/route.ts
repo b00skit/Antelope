@@ -3,7 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
 import { users, factionMembersCache } from '@/db/schema';
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
+import { processFactionMemberAlts } from '@/lib/faction-sync';
 
 export async function POST(request: NextRequest) {
     const cookieStore = await cookies();
@@ -38,10 +39,12 @@ export async function POST(request: NextRequest) {
 
         await db.insert(factionMembersCache)
             .values({ faction_id: factionId, members, last_sync_timestamp: new Date() })
-            .onConflictDoUpdate({ 
-                target: factionMembersCache.faction_id, 
-                set: { members, last_sync_timestamp: new Date() } 
+            .onConflictDoUpdate({
+                target: factionMembersCache.faction_id,
+                set: { members, last_sync_timestamp: new Date() }
             });
+
+        await processFactionMemberAlts(factionId, members);
 
         return NextResponse.json({ success: true, message: 'Faction members sync completed.' });
 
