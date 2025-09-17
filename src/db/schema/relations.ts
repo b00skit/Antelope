@@ -7,6 +7,7 @@ import { activityRosters } from './activityRosters';
 import { activityRosterAccess } from './activityRosterAccess';
 import { activityRosterFavorites } from './activityRosterFavorites';
 import { activityRosterSections } from './activityRosterSections';
+import { activityRosterLabels } from './activityRosterLabels';
 import { forumApiCache } from './forumApiCache';
 import { 
   factionOrganizationSettings, 
@@ -67,6 +68,7 @@ export const activityRostersRelations = relations(activityRosters, ({ one, many 
     references: [forumApiCache.activity_roster_id],
   }),
   sections: many(activityRosterSections),
+  labels: many(activityRosterLabels),
   accessGrants: many(activityRosterAccess),
 }));
 
@@ -101,6 +103,13 @@ export const activityRosterSectionsRelations = relations(activityRosterSections,
     fields: [activityRosterSections.activity_roster_id],
     references: [activityRosters.id],
   }),
+}));
+
+export const activityRosterLabelsRelations = relations(activityRosterLabels, ({ one }) => ({
+    roster: one(activityRosters, {
+      fields: [activityRosterLabels.activity_roster_id],
+      references: [activityRosters.id],
+    }),
 }));
 
 export const forumApiCacheRelations = relations(forumApiCache, ({ one }) => ({
