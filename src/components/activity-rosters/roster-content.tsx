@@ -462,17 +462,19 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
                     </Alert>
                 )}
                 
-                <div className="flex flex-wrap gap-2 items-center">
-                     <Button variant="outline" onClick={() => { setEditingSection(null); setIsDialogOpen(true); }}>
-                        <PlusCircle />
-                        Add Section
-                    </Button>
-                     <Button variant="secondary" onClick={handleAutoFilter} disabled={isFiltering}>
-                        {isFiltering ? <Loader2 className="animate-spin" /> : <Filter />}
-                        Auto-Filter Roster
-                    </Button>
+                <div className="space-y-4">
+                    <div className="flex flex-wrap gap-2 items-center">
+                        <Button variant="outline" onClick={() => { setEditingSection(null); setIsDialogOpen(true); }}>
+                            <PlusCircle />
+                            Add Section
+                        </Button>
+                        <Button variant="secondary" onClick={handleAutoFilter} disabled={isFiltering}>
+                            {isFiltering ? <Loader2 className="animate-spin" /> : <Filter />}
+                            Auto-Filter Roster
+                        </Button>
+                    </div>
                      {Object.keys(labels).length > 0 && (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                              <Badge variant={!labelFilter ? 'default' : 'secondary'} className="cursor-pointer" onClick={() => setLabelFilter(null)}>All</Badge>
                             {Object.entries(labels).map(([color, title]) => (
                                 <Badge
@@ -488,6 +490,7 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
                         </div>
                     )}
                 </div>
+
 
                 {sections.map((section, index) => {
                     const sectionMembers = filteredMembers.filter(m => section.character_ids_json.includes(m.character_id));
