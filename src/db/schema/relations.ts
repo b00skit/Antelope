@@ -8,6 +8,7 @@ import { activityRosterAccess } from './activityRosterAccess';
 import { activityRosterFavorites } from './activityRosterFavorites';
 import { activityRosterSections } from './activityRosterSections';
 import { activityRosterLabels } from './activityRosterLabels';
+import { activityRosterSnapshots } from './activityRosterSnapshots';
 import { forumApiCache } from './forumApiCache';
 import { 
   factionOrganizationSettings, 
@@ -35,6 +36,7 @@ export const usersRelations = relations(users, ({ many, one }) => ({
 export const factionsRelations = relations(factions, ({ one, many }) => ({
   factionMembers: many(factionMembers),
   activityRosters: many(activityRosters),
+  activityRosterSnapshots: many(activityRosterSnapshots),
   organizationSettings: one(factionOrganizationSettings, {
     fields: [factions.id],
     references: [factionOrganizationSettings.faction_id],
@@ -70,6 +72,7 @@ export const activityRostersRelations = relations(activityRosters, ({ one, many 
   sections: many(activityRosterSections),
   labels: many(activityRosterLabels),
   accessGrants: many(activityRosterAccess),
+  snapshots: many(activityRosterSnapshots),
 }));
 
 export const activityRosterAccessRelations = relations(activityRosterAccess, ({ one }) => ({
@@ -110,6 +113,21 @@ export const activityRosterLabelsRelations = relations(activityRosterLabels, ({ 
       fields: [activityRosterLabels.activity_roster_id],
       references: [activityRosters.id],
     }),
+}));
+
+export const activityRosterSnapshotsRelations = relations(activityRosterSnapshots, ({ one }) => ({
+  faction: one(factions, {
+    fields: [activityRosterSnapshots.faction_id],
+    references: [factions.id],
+  }),
+  sourceRoster: one(activityRosters, {
+    fields: [activityRosterSnapshots.source_roster_id],
+    references: [activityRosters.id],
+  }),
+  creator: one(users, {
+    fields: [activityRosterSnapshots.created_by],
+    references: [users.id],
+  }),
 }));
 
 export const forumApiCacheRelations = relations(forumApiCache, ({ one }) => ({

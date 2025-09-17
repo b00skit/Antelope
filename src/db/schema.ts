@@ -6,6 +6,7 @@ export * from './schema/activityRosterAccess';
 export * from './schema/activityRosterFavorites';
 export * from './schema/activityRosterSections';
 export * from './schema/activityRosterLabels';
+export * from './schema/activityRosterSnapshots';
 export * from './schema/factionMembersCache';
 export * from './schema/factionMembersAbasCache';
 export * from './schema/forumApiCache';
