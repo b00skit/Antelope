@@ -44,8 +44,8 @@ export async function processFactionMemberAlts(factionId: number, allMembers: Fa
         const userCharacters = membersByUser[userId];
         const existingEntry = existingCacheMap.get(userId);
 
-        let primaryCharacter: FactionMember;
-        let alternativeCharacters: FactionMember[];
+        let primaryCharacter: FactionMember | undefined;
+        let alternativeCharacters: FactionMember[] = [];
 
         if (existingEntry && existingEntry.manually_set) {
             // Flow 3: Manually set primary character
@@ -55,24 +55,37 @@ export async function processFactionMemberAlts(factionId: number, allMembers: Fa
                 // The manually set character is still in the faction.
                 primaryCharacter = manualPrimary;
                 alternativeCharacters = userCharacters.filter(c => c.character_id !== primaryCharacter.character_id);
-                
-                await db.update(apiCacheAlternativeCharacters)
-                    .set({
-                        rank: primaryCharacter.rank,
-                        alternative_characters_json: alternativeCharacters,
-                    })
-                    .where(eq(apiCacheAlternativeCharacters.id, existingEntry.id));
+
+                if (alternativeCharacters.length === 0) {
+                    await db.delete(apiCacheAlternativeCharacters)
+                        .where(eq(apiCacheAlternativeCharacters.id, existingEntry.id));
+                } else {
+                    await db.update(apiCacheAlternativeCharacters)
+                        .set({
+                            rank: primaryCharacter.rank,
+                            alternative_characters_json: alternativeCharacters,
+                        })
+                        .where(eq(apiCacheAlternativeCharacters.id, existingEntry.id));
+                }
                 continue; // Move to next user
             } else {
                 // The manually set primary character is no longer in the faction.
                 // We fall through to default logic as if it wasn't manually set.
             }
         }
-        
+
         // Flow 1 & 2: Default logic (not manually set, or manual char left faction)
         userCharacters.sort((a, b) => b.rank - a.rank);
         primaryCharacter = userCharacters[0];
         alternativeCharacters = userCharacters.slice(1);
+
+        if (!primaryCharacter || alternativeCharacters.length === 0) {
+            if (existingEntry) {
+                await db.delete(apiCacheAlternativeCharacters)
+                    .where(eq(apiCacheAlternativeCharacters.id, existingEntry.id));
+            }
+            continue;
+        }
 
         await db.insert(apiCacheAlternativeCharacters)
             .values({

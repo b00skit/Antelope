@@ -136,7 +136,7 @@ export function SnapshotsListPage() {
                                         <TableCell>
                                             <div className="flex gap-2">
                                                 <Button variant="outline" size="icon" asChild>
-                                                    <Link href={`/activity-rosters/snapshots/${snapshot.id}`}>
+                                                    <Link href={`/roster-snapshots/${snapshot.id}`}>
                                                         <Eye className="h-4 w-4" />
                                                     </Link>
                                                 </Button>

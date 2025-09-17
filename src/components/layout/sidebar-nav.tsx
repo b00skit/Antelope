@@ -31,6 +31,7 @@ import {
   Building2,
   RefreshCw,
   Camera,
+  Download,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useState, useEffect } from 'react';
@@ -115,7 +116,7 @@ export function SidebarNav() {
   const isActive = (path: string, exact: boolean = false) => {
     if (exact) return pathname === path;
     if (path === '/dashboard') return pathname === '/dashboard';
-    return pathname.startsWith(path);
+    return pathname.startsWith(path + '/');
   };
 
   const siteName = config?.SITE_NAME.replace('+', '') || 'MDC Panel';
@@ -172,6 +173,7 @@ export function SidebarNav() {
   const showCharacterSheets = session?.hasActiveFaction && session.activeFaction?.feature_flags?.character_sheets_enabled;
   const showStatistics = session?.hasActiveFaction && session.activeFaction?.feature_flags?.statistics_enabled;
   const showUnitsDivisions = session?.hasActiveFaction && session.activeFaction?.feature_flags?.units_divisions_enabled;
+  const showDataExports = session?.hasActiveFaction && session.activeFaction?.feature_flags?.data_exports_enabled;
   const canManageFaction = session?.hasActiveFaction && session?.factionRank && session?.activeFaction && session.factionRank >= (session.activeFaction.administration_rank || 15);
   const hasFavorites = rosterFavorites.length > 0 || orgFavorites.length > 0;
 
@@ -278,12 +280,26 @@ export function SidebarNav() {
             <SidebarMenuItem>
                 <SidebarMenuButton
                 asChild
-                isActive={isActive('/units-divisions', true)}
+                isActive={isActive('/units-divisions')}
                 tooltip="Units & Divisions"
                 >
                 <Link href="/units-divisions">
                     <Building />
                     <span>Units & Divisions</span>
+                </Link>
+                </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
+           {showDataExports && (
+            <SidebarMenuItem>
+                <SidebarMenuButton
+                asChild
+                isActive={isActive('/data-exports')}
+                tooltip="Data Exports"
+                >
+                <Link href="/data-exports">
+                    <Download />
+                    <span>Data Exports</span>
                 </Link>
                 </SidebarMenuButton>
             </SidebarMenuItem>

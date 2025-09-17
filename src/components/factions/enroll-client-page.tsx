@@ -50,6 +50,7 @@ const formSchema = z.object({
     character_sheets_enabled: z.boolean().default(true),
     statistics_enabled: z.boolean().default(true),
     units_divisions_enabled: z.boolean().default(false),
+    data_exports_enabled: z.boolean().default(false),
     phpbb_api_url: z.string().url("Must be a valid URL").or(z.literal('')).optional().nullable(),
     phpbb_api_key: z.string().optional().nullable(),
 });
@@ -79,6 +80,7 @@ export function EnrollClientPage() {
             character_sheets_enabled: true,
             statistics_enabled: true,
             units_divisions_enabled: false,
+            data_exports_enabled: false,
             phpbb_api_url: '',
             phpbb_api_key: '',
         },
@@ -142,6 +144,7 @@ export function EnrollClientPage() {
                 character_sheets_enabled: true,
                 statistics_enabled: true,
                 units_divisions_enabled: false,
+                data_exports_enabled: false,
                 phpbb_api_url: '',
                 phpbb_api_key: '',
             });
@@ -418,6 +421,26 @@ export function EnrollClientPage() {
                                                             <FormLabel>Units & Divisions</FormLabel>
                                                             <FormDescription>
                                                                 Enable the organizational structure module.
+                                                            </FormDescription>
+                                                        </div>
+                                                        <FormControl>
+                                                            <Switch
+                                                                checked={field.value}
+                                                                onCheckedChange={field.onChange}
+                                                            />
+                                                        </FormControl>
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name="data_exports_enabled"
+                                                render={({ field }) => (
+                                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                                        <div className="space-y-0.5">
+                                                            <FormLabel>Data Exports</FormLabel>
+                                                            <FormDescription>
+                                                                Allow exporting faction data to CSV/Excel files.
                                                             </FormDescription>
                                                         </div>
                                                         <FormControl>

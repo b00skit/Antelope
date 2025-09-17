@@ -141,12 +141,23 @@ export function RosterMember({
             </TableCell>
             <TableCell>
                 <div className="flex items-center gap-2">
-                     {markAlts && (
+                    <Link
+                        href={`/character-sheets/${member.character_name.replace(/ /g, '_')}`}
+                        className="hover:underline text-primary"
+                    >
+                        {member.character_name}
+                    </Link>
+                    {markAlts && (member.isPrimary || member.isAlternative) && (
                         <TooltipProvider>
                             <Tooltip>
-                                <TooltipTrigger>
-                                     {member.isPrimary && <UserCheck className="h-4 w-4 text-green-500" />}
-                                     {member.isAlternative && <User className="h-4 w-4 text-muted-foreground" />}
+                                <TooltipTrigger asChild>
+                                    <span className="ml-auto inline-flex items-center">
+                                        {member.isPrimary ? (
+                                            <UserCheck className="h-4 w-4 text-green-500" />
+                                        ) : (
+                                            <User className="h-4 w-4 text-muted-foreground" />
+                                        )}
+                                    </span>
                                 </TooltipTrigger>
                                 <TooltipContent>
                                     <p>{member.isPrimary ? 'Primary Character' : 'Alternative Character'}</p>
@@ -154,9 +165,6 @@ export function RosterMember({
                             </Tooltip>
                         </TooltipProvider>
                     )}
-                    <Link href={`/character-sheets/${member.character_name.replace(/ /g, '_')}`} className="hover:underline text-primary">
-                        {member.character_name}
-                    </Link>
                 </div>
             </TableCell>
             <TableCell>{member.rank_name}</TableCell>

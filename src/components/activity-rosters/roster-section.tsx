@@ -59,6 +59,7 @@ interface RosterSectionProps {
     labels: Record<string, string>;
     onSetLabel: (characterId: number, color: string | null) => void;
     readOnly?: boolean;
+    markAlts?: boolean;
 }
 
 
@@ -79,6 +80,7 @@ export function RosterSection({
     labels,
     onSetLabel,
     readOnly = false,
+    markAlts = false,
 }: RosterSectionProps) {
     const ref = useRef<HTMLDivElement>(null);
 
@@ -198,6 +200,7 @@ export function RosterSection({
                                     labels={labels}
                                     onSetLabel={onSetLabel}
                                     readOnly={readOnly}
+                                    markAlts={markAlts}
                                 />
                             ))}
                         </TableBody>

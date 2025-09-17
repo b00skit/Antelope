@@ -17,6 +17,7 @@ interface Faction {
     character_sheets_enabled?: boolean;
     statistics_enabled?: boolean;
     units_divisions_enabled?: boolean;
+    data_exports_enabled?: boolean;
   } | null;
 }
 

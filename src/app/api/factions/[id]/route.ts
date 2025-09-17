@@ -24,6 +24,7 @@ const updateSchema = z.object({
     character_sheets_enabled: z.boolean().default(true),
     statistics_enabled: z.boolean().default(true),
     units_divisions_enabled: z.boolean().default(false),
+    data_exports_enabled: z.boolean().default(false),
     phpbb_api_url: z.string().url("Must be a valid URL").or(z.literal('')).optional().nullable(),
     phpbb_api_key: z.string().optional().nullable(),
 });
@@ -71,7 +72,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             return NextResponse.json({ error: 'You must join the faction panel before managing it.' }, { status: 403 });
         }
         
-        const { activity_rosters_enabled, character_sheets_enabled, statistics_enabled, units_divisions_enabled, ...factionData } = parsed.data;
+        const { activity_rosters_enabled, character_sheets_enabled, statistics_enabled, units_divisions_enabled, data_exports_enabled, ...factionData } = parsed.data;
 
         await db.update(factions)
             .set({
@@ -81,6 +82,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
                     character_sheets_enabled,
                     statistics_enabled,
                     units_divisions_enabled,
+                    data_exports_enabled,
                 }
             })
             .where(eq(factions.id, factionId));

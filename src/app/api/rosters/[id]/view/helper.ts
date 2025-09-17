@@ -329,18 +329,38 @@ export async function getRosterViewData(rosterId: number, session: IronSession<S
                 const altCache = await db.query.apiCacheAlternativeCharacters.findMany({
                     where: eq(apiCacheAlternativeCharacters.faction_id, factionId),
                 });
-                const primaryCharMap = new Map(altCache.map(entry => [entry.user_id, entry.character_id]));
+                const altMap = new Map(
+                    altCache.map(entry => [
+                        entry.user_id,
+                        {
+                            primaryCharacterId: entry.character_id,
+                            alternatives: Array.isArray(entry.alternative_characters_json)
+                                ? entry.alternative_characters_json
+                                : [],
+                        },
+                    ]),
+                );
 
                 members = members.map(m => {
-                    const primaryCharId = primaryCharMap.get(m.user_id);
-                    if (primaryCharId) {
-                        return {
-                            ...m,
-                            isPrimary: m.character_id === primaryCharId,
-                            isAlternative: m.character_id !== primaryCharId,
-                        };
+                    const altInfo = altMap.get(m.user_id);
+                    if (!altInfo) {
+                        return m;
                     }
-                    return { ...m, isPrimary: true, isAlternative: false };
+
+                    const isPrimary = m.character_id === altInfo.primaryCharacterId;
+                    const isAlternative = altInfo.alternatives.some(
+                        (alt: any) => alt?.character_id === m.character_id,
+                    );
+
+                    if (!isPrimary && !isAlternative) {
+                        return m;
+                    }
+
+                    return {
+                        ...m,
+                        ...(isPrimary ? { isPrimary: true } : {}),
+                        ...(isAlternative ? { isAlternative: true } : {}),
+                    };
                 });
             }
 
