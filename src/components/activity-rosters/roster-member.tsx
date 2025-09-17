@@ -8,7 +8,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { Checkbox } from '../ui/checkbox';
-import { MoreVertical, Move, Tag } from 'lucide-react';
+import { MoreVertical, Move, Tag, User, UserCheck } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -20,6 +20,7 @@ import {
     DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '../ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 const ItemTypes = {
     MEMBER: 'member',
@@ -35,6 +36,8 @@ interface Member {
     abas?: string | null;
     assignmentTitle?: string | null;
     label?: string | null;
+    isPrimary?: boolean;
+    isAlternative?: boolean;
 }
 
 interface Section {
@@ -54,6 +57,7 @@ interface RosterMemberProps {
     labels: Record<string, string>;
     onSetLabel: (characterId: number, color: string | null) => void;
     readOnly?: boolean;
+    markAlts?: boolean;
 }
 
 const formatTimestamp = (timestamp: string | null) => {
@@ -75,6 +79,7 @@ export function RosterMember({
     labels,
     onSetLabel,
     readOnly = false,
+    markAlts = false,
 }: RosterMemberProps) {
     const [{ isDragging }, drag] = useDrag({
         type: ItemTypes.MEMBER,
@@ -135,9 +140,24 @@ export function RosterMember({
                 />
             </TableCell>
             <TableCell>
-                <Link href={`/character-sheets/${member.character_name.replace(/ /g, '_')}`} className="hover:underline text-primary">
-                    {member.character_name}
-                </Link>
+                <div className="flex items-center gap-2">
+                     {markAlts && (
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger>
+                                     {member.isPrimary && <UserCheck className="h-4 w-4 text-green-500" />}
+                                     {member.isAlternative && <User className="h-4 w-4 text-muted-foreground" />}
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>{member.isPrimary ? 'Primary Character' : 'Alternative Character'}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    )}
+                    <Link href={`/character-sheets/${member.character_name.replace(/ /g, '_')}`} className="hover:underline text-primary">
+                        {member.character_name}
+                    </Link>
+                </div>
             </TableCell>
             <TableCell>{member.rank_name}</TableCell>
             {showAssignmentTitles && (
@@ -183,7 +203,7 @@ export function RosterMember({
                                         </DropdownMenuItem>
                                     ))}
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem onSelect={() => onSetLabel(member.character_id, null)}>
+                                     <DropdownMenuItem onSelect={() => onSetLabel(member.character_id, null)}>
                                         Clear Label
                                     </DropdownMenuItem>
                                 </DropdownMenuSubContent>

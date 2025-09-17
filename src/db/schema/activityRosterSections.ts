@@ -13,5 +13,6 @@ export const activityRosterSections = table('activity_roster_sections', {
     include_ranks?: number[];
     include_forum_groups?: number[];
     exclude_names?: string[];
+    alternative_characters?: boolean;
   }>(),
 });

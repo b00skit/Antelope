@@ -2,7 +2,7 @@
 'use server';
 
 import { db } from '@/db';
-import { activityRosters, users, factionMembersCache, factionMembersAbasCache, forumApiCache, activityRosterAccess, factionOrganizationMembership, activityRosterLabels } from '@/db/schema';
+import { activityRosters, users, factionMembersCache, factionMembersAbasCache, forumApiCache, activityRosterAccess, factionOrganizationMembership, activityRosterLabels, apiCacheAlternativeCharacters } from '@/db/schema';
 import { and, eq, or, inArray } from 'drizzle-orm';
 import config from '@config';
 import type { IronSession } from 'iron-session';
@@ -15,6 +15,7 @@ interface AbasData {
 }
 
 interface Member {
+    user_id: number;
     character_id: number;
     character_name: string;
     rank: number;
@@ -27,6 +28,8 @@ interface Member {
     forum_groups?: number[];
     assignmentTitle?: string | null;
     label?: string | null;
+    isPrimary?: boolean;
+    isAlternative?: boolean;
 }
 
 interface RosterFilters {
@@ -41,6 +44,7 @@ interface RosterFilters {
     alert_forum_users_missing?: boolean;
     show_assignment_titles?: boolean;
     allow_roster_snapshots?: boolean;
+    mark_alternative_characters?: boolean;
     abas_standards?: {
         by_rank?: Record<string, number>;
         by_name?: Record<string, number>;
@@ -321,6 +325,25 @@ export async function getRosterViewData(rosterId: number, session: IronSession<S
             showAssignmentTitles = !!(roster.faction.feature_flags?.units_divisions_enabled && filters.show_assignment_titles);
             canCreateSnapshot = canEdit && !!filters.allow_roster_snapshots;
             
+            if (filters.mark_alternative_characters) {
+                const altCache = await db.query.apiCacheAlternativeCharacters.findMany({
+                    where: eq(apiCacheAlternativeCharacters.faction_id, factionId),
+                });
+                const primaryCharMap = new Map(altCache.map(entry => [entry.user_id, entry.character_id]));
+
+                members = members.map(m => {
+                    const primaryCharId = primaryCharMap.get(m.user_id);
+                    if (primaryCharId) {
+                        return {
+                            ...m,
+                            isPrimary: m.character_id === primaryCharId,
+                            isAlternative: m.character_id !== primaryCharId,
+                        };
+                    }
+                    return { ...m, isPrimary: true, isAlternative: false };
+                });
+            }
+
             const isForumFilterActive = filters.forum_groups_included?.length || filters.forum_groups_excluded?.length || filters.forum_users_included?.length || filters.forum_users_excluded?.length || roster.sections.some(s => s.configuration_json?.include_forum_groups?.length);
 
             if (isForumFilterActive) {
@@ -384,6 +407,13 @@ export async function getRosterViewData(rosterId: number, session: IronSession<S
         });
         const assignmentMap = new Map(assignments.map(a => [a.character_id, a.title]));
         members = members.map(m => ({ ...m, assignmentTitle: assignmentMap.get(m.character_id) }));
+    }
+
+    const alternativeCharacters = members.filter(m => m.isAlternative);
+    for (const section of roster.sections) {
+        if (section.configuration_json?.alternative_characters === true) {
+            section.character_ids_json = alternativeCharacters.map(m => m.character_id);
+        }
     }
 
     return {
