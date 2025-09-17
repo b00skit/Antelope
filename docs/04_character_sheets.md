@@ -38,7 +38,7 @@
     ]
   }
 }
-- Create a faction_members_cache table that has the following columns and last_sync_timestamp:
+- Create an api_cache_factions table that has the following columns and last_sync_timestamp:
 {
   "data": {
     "id": 187,
@@ -77,7 +77,7 @@
 - Only do the implementation in phases, as provided by the developer. You may read the other phases for context but don't worry about implementation of other phases.
 
 ### Phase 1:
-- Upon loading the /character-sheets/[firstname]_[lastname] page, automatically fetch data from the api faction/{factionId}/character/{characterId}, the character id can be fetched from the faction_members_cache table. If the faction cache wasn't refreshed in the last 24 hours, an api call should be made to refresh the faction cache.
+- Upon loading the /character-sheets/[firstname]_[lastname] page, automatically fetch data from the api faction/{factionId}/character/{characterId}, the character id can be fetched from the api_cache_factions table. If the faction cache wasn't refreshed in the last 24 hours, an api call should be made to refresh the faction cache.
 - The page should load up some sort of character sheet of sorts, loading the following data from the api call:
 {
   "data": {

@@ -1,5 +1,3 @@
-
-
 import { notFound } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { getSession } from '@/lib/session';
@@ -10,6 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import { canUserManage } from '@/app/api/units-divisions/[cat1Id]/[cat2Id]/helpers';
 import { CharacterSheetClientPage } from '@/components/character-sheets/character-sheet-client-page';
+import config from '../../../../data/config.json';
 
 interface PageProps {
     params: {
@@ -74,13 +73,13 @@ async function getCharacterData(name: string) {
     }
 
     const now = new Date();
-    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const factionRefreshThreshold = now.getTime() - config.GTAW_API_REFRESH_MINUTES_FACTIONS * 60 * 1000;
     const cachedFaction = await db.query.factionMembersCache.findFirst({
         where: eq(factionMembersCache.faction_id, factionId)
     });
 
     let members = cachedFaction?.members || [];
-    if (!cachedFaction || !cachedFaction.last_sync_timestamp || new Date(cachedFaction.last_sync_timestamp) < oneDayAgo) {
+    if (!cachedFaction || !cachedFaction.last_sync_timestamp || new Date(cachedFaction.last_sync_timestamp).getTime() < factionRefreshThreshold) {
         const factionApiResponse = await fetch(`https://ucp.gta.world/api/faction/${factionId}`, {
             headers: { Authorization: `Bearer ${session.gtaw_access_token}` },
         });
@@ -155,7 +154,7 @@ async function getCharacterData(name: string) {
             const apiKey = selectedFaction.phpbb_api_key;
             const forumApiUrl = `${baseUrl}app.php/booskit/phpbbapi/user/username/${forumUsername}?key=${apiKey}`;
 
-            const forumApiResponse = await fetch(forumApiUrl, { next: { revalidate: 3600 } });
+            const forumApiResponse = await fetch(forumApiUrl, { next: { revalidate: config.FORUM_API_REFRESH_MINUTES * 60 } });
             if (forumApiResponse.ok) {
                 const data = await forumApiResponse.json();
                 if (data.user) {

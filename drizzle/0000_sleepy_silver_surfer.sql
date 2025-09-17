@@ -25,7 +25,7 @@ CREATE TABLE `factions` (
 	`phpbb_api_key` text
 );
 --> statement-breakpoint
-CREATE TABLE `faction_members` (
+CREATE TABLE `faction_users` (
 	`user_id` integer NOT NULL,
 	`faction_id` integer NOT NULL,
 	`rank` integer NOT NULL,
@@ -79,13 +79,13 @@ CREATE TABLE `activity_roster_sections` (
 	FOREIGN KEY (`activity_roster_id`) REFERENCES `activity_rosters`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
-CREATE TABLE `faction_members_cache` (
+CREATE TABLE `api_cache_factions` (
 	`faction_id` integer PRIMARY KEY NOT NULL,
 	`members` text,
 	`last_sync_timestamp` integer
 );
 --> statement-breakpoint
-CREATE TABLE `faction_members_abas_cache` (
+CREATE TABLE `api_cache_abas` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`character_id` integer NOT NULL,
 	`faction_id` integer NOT NULL,
@@ -94,8 +94,8 @@ CREATE TABLE `faction_members_abas_cache` (
 	`last_sync_timestamp` integer
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX `faction_members_abas_cache_character_id_faction_id_unique` ON `faction_members_abas_cache` (`character_id`,`faction_id`);--> statement-breakpoint
-CREATE TABLE `forum_api_cache` (
+CREATE UNIQUE INDEX `api_cache_abas_character_id_faction_id_unique` ON `api_cache_abas` (`character_id`,`faction_id`);--> statement-breakpoint
+CREATE TABLE `api_cache_forums` (
 	`activity_roster_id` integer PRIMARY KEY NOT NULL,
 	`data` text,
 	`last_sync_timestamp` integer,
