@@ -8,7 +8,7 @@ interface SnapshotPageProps {
     }
 }
 
-export default function ActivityRosterSnapshotPage({ params }: SnapshotPageProps) {
+export default function RosterSnapshotPage({ params }: SnapshotPageProps) {
     const snapshotId = parseInt(params.id, 10);
     if (isNaN(snapshotId)) {
         return notFound();

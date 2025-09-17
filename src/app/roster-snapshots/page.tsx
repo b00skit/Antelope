@@ -4,4 +4,3 @@ import { SnapshotsListPage } from '@/components/activity-rosters/snapshots-list-
 export default function RosterSnapshotsPage() {
     return <SnapshotsListPage />;
 }
-

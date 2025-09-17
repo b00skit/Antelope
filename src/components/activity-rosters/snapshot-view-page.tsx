@@ -39,7 +39,7 @@ export function SnapshotViewPage({ snapshotId }: SnapshotViewPageProps) {
                 setData(result);
             } catch (err: any) {
                 toast({ variant: 'destructive', title: 'Error', description: err.message });
-                router.push('/activity-rosters/snapshots');
+                router.push('/roster-snapshots');
             } finally {
                 setIsLoading(false);
             }

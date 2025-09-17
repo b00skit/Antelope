@@ -250,10 +250,10 @@ export function SidebarNav() {
             <SidebarMenuItem>
                 <SidebarMenuButton
                 asChild
-                isActive={isActive('/activity-rosters/snapshots')}
+                isActive={isActive('/roster-snapshots')}
                 tooltip="Roster Snapshots"
                 >
-                <Link href="/activity-rosters/snapshots">
+                <Link href="/roster-snapshots">
                     <Camera />
                     <span>Roster Snapshots</span>
                 </Link>

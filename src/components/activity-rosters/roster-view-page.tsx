@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Button } from '@/components/ui/button';
-import { Loader2, RefreshCw, Star } from 'lucide-react';
+import { Loader2, RefreshCw, Star, Camera } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { RosterContent } from './roster-content';
 import {
@@ -21,7 +21,6 @@ import { Label } from '@/components/ui/label';
 import { useFavorites } from '@/hooks/use-favorites';
 import { cn } from '@/lib/utils';
 import config from '@config';
-
 
 interface RosterViewPageProps {
     rosterId: number;
@@ -55,6 +54,7 @@ interface RosterData {
     missingForumUsers: string[];
     sections: Section[];
     rosterConfig: any;
+    canEdit: boolean;
 }
 
 const PasswordDialog = ({
@@ -97,6 +97,55 @@ const PasswordDialog = ({
     );
 };
 
+const SnapshotDialog = ({
+    isOpen,
+    onClose,
+    onSubmit,
+    isCreating
+}: {
+    isOpen: boolean;
+    onClose: () => void;
+    onSubmit: (name: string) => void;
+    isCreating: boolean;
+}) => {
+    const [name, setName] = useState('');
+
+    useEffect(() => {
+        if (isOpen) {
+            setName(`Snapshot - ${new Date().toLocaleString()}`);
+        }
+    }, [isOpen]);
+
+    const handleSubmit = () => {
+        onSubmit(name);
+    }
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Create Roster Snapshot</DialogTitle>
+                    <DialogDescription>
+                        This will save a permanent, point-in-time copy of the current roster view.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-2">
+                    <Label htmlFor="snapshot-name">Snapshot Name</Label>
+                    <Input id="snapshot-name" value={name} onChange={(e) => setName(e.target.value)} />
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={onClose}>Cancel</Button>
+                    <Button onClick={handleSubmit} disabled={isCreating}>
+                        {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Create Snapshot
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
+
 export function RosterViewPage({ rosterId }: RosterViewPageProps) {
     const [data, setData] = useState<RosterData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -105,6 +154,8 @@ export function RosterViewPage({ rosterId }: RosterViewPageProps) {
     const [isVerifying, setIsVerifying] = useState(false);
     const [lastSyncTime, setLastSyncTime] = useState<number | null>(null);
     const [showSlowLoadMessage, setShowSlowLoadMessage] = useState(false);
+    const [isSnapshotDialogOpen, setIsSnapshotDialogOpen] = useState(false);
+    const [isCreatingSnapshot, setIsCreatingSnapshot] = useState(false);
     const router = useRouter();
     const { toast } = useToast();
     const { favorites, toggleFavorite } = useFavorites();
@@ -197,6 +248,26 @@ export function RosterViewPage({ rosterId }: RosterViewPageProps) {
             router.push('/activity-rosters');
         }
     };
+    
+    const handleCreateSnapshot = async (name: string) => {
+        setIsCreatingSnapshot(true);
+        try {
+            const res = await fetch(`/api/rosters/${rosterId}/snapshots`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name }),
+            });
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error);
+            toast({ title: 'Success!', description: 'Snapshot created successfully.' });
+            setIsSnapshotDialogOpen(false);
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Error', description: err.message });
+        } finally {
+            setIsCreatingSnapshot(false);
+        }
+    };
+
 
     if (isLoading) {
         return (
@@ -230,11 +301,23 @@ export function RosterViewPage({ rosterId }: RosterViewPageProps) {
                 onSubmit={handlePasswordSubmit}
                 isVerifying={isVerifying}
             />
+            <SnapshotDialog 
+                isOpen={isSnapshotDialogOpen}
+                onClose={() => setIsSnapshotDialogOpen(false)}
+                onSubmit={handleCreateSnapshot}
+                isCreating={isCreatingSnapshot}
+            />
             <PageHeader
                 title={data.roster.name}
                 description={data.faction ? `Viewing roster for ${data.faction.name}` : ''}
                 actions={
                     <div className="flex gap-2">
+                         {data.canEdit && (
+                            <Button variant="secondary" onClick={() => setIsSnapshotDialogOpen(true)} disabled={requiresPassword}>
+                                <Camera />
+                                Create Snapshot
+                            </Button>
+                         )}
                          <Button
                             variant="outline"
                             size="icon"
@@ -251,7 +334,7 @@ export function RosterViewPage({ rosterId }: RosterViewPageProps) {
                     </div>
                 }
             />
-            {data.members && <RosterContent initialData={data} rosterId={rosterId} />}
+            {data.members && <RosterContent initialData={data} rosterId={rosterId} readOnly={!data.canEdit} />}
         </div>
     );
 }
