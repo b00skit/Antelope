@@ -14,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 
-import changelogData from '../../../data/changelog.json';
+import changelogData from '@data/changelog.json';
 
 // Types
 export type ChangelogItem = {

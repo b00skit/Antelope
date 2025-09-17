@@ -5,22 +5,8 @@
     {
       "idx": 0,
       "version": "6",
-      "when": 1757937789518,
-      "tag": "0000_sleepy_silver_surfer",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1758013131492,
-      "tag": "0001_good_mad_thinker",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1758014813528,
-      "tag": "0002_absurd_darwin",
+      "when": 1758091230360,
+      "tag": "0000_swift_firebird",
       "breakpoints": true
     }
   ]

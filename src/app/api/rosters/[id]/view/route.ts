@@ -6,6 +6,7 @@ import { getSession } from '@/lib/session';
 import { db } from '@/db';
 import { activityRosters, users, factionMembersCache, factionMembersAbasCache, forumApiCache, activityRosterAccess, factionOrganizationMembership } from '@/db/schema';
 import { and, eq, or, inArray } from 'drizzle-orm';
+import config from '@config';
 
 interface RouteParams {
     params: {
@@ -69,7 +70,7 @@ async function fetchForumData(roster: any, filters: RosterFilters) {
             const groupPromises = Array.from(allGroupIds).map(async (groupId) => {
                 try {
                     const url = `${baseUrl}app.php/booskit/phpbbapi/group/${groupId}?key=${apiKey}`;
-                    const res = await fetch(url, { next: { revalidate: 3600 } });
+                    const res = await fetch(url, { next: { revalidate: config.FORUM_API_REFRESH_MINUTES * 60 } });
                     if (!res.ok) {
                         console.warn(`[API Roster View] Failed to fetch forum group ${groupId}. Status: ${res.status}`);
                         return { groupId, members: [] };
@@ -115,7 +116,7 @@ async function fetchForumData(roster: any, filters: RosterFilters) {
             const userPromises = Array.from(userIds).map(async (userId) => {
                 try {
                     const url = `${baseUrl}app.php/booskit/phpbbapi/user/${userId}?key=${apiKey}`;
-                    const res = await fetch(url, { next: { revalidate: 3600 } });
+                    const res = await fetch(url, { next: { revalidate: config.FORUM_API_REFRESH_MINUTES * 60 } });
                     if (!res.ok) {
                         console.warn(`[API Roster View] Failed to fetch forum user ${userId}. Status: ${res.status}`);
                         return null;
@@ -229,14 +230,17 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
         const factionId = roster.factionId;
         const now = new Date();
-        const oneHourAgo = new Date(now.getTime() - 1 * 60 * 60 * 1000);
+        const factionRefreshThreshold = now.getTime() - config.GTAW_API_REFRESH_MINUTES_FACTIONS * 60 * 1000;
+        const abasRefreshThreshold = now.getTime() - config.GTAW_API_REFRESH_MINUTES_ABAS * 60 * 1000;
+        const membersRefreshThreshold = Math.min(factionRefreshThreshold, abasRefreshThreshold);
+        const forumRefreshThreshold = now.getTime() - config.FORUM_API_REFRESH_MINUTES * 60 * 1000;
         
         let members: Member[] = [];
         const cachedFaction = await db.query.factionMembersCache.findFirst({
             where: eq(factionMembersCache.faction_id, factionId)
         });
 
-        if (forceSync || !cachedFaction || !cachedFaction.last_sync_timestamp || new Date(cachedFaction.last_sync_timestamp) < oneHourAgo) {
+        if (forceSync || !cachedFaction || !cachedFaction.last_sync_timestamp || new Date(cachedFaction.last_sync_timestamp).getTime() < membersRefreshThreshold) {
             const [factionApiResponse, abasApiResponse] = await Promise.all([
                  fetch(`https://ucp.gta.world/api/faction/${factionId}`, {
                     headers: {
@@ -331,7 +335,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
                 if (isForumFilterActive) {
                     const cachedForumData = roster.forumCache;
-                    if (forceSync || !cachedForumData || !cachedForumData.last_sync_timestamp || new Date(cachedForumData.last_sync_timestamp) < oneHourAgo) {
+                    if (forceSync || !cachedForumData || !cachedForumData.last_sync_timestamp || new Date(cachedForumData.last_sync_timestamp).getTime() < forumRefreshThreshold) {
                         const forumData = await fetchForumData(roster, filters);
 
                         await db.insert(forumApiCache).values({

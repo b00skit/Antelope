@@ -10,6 +10,7 @@ import { useSession } from '@/hooks/use-session';
 import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
+import config from '@config';
 
 interface SyncStatus {
     membersLastSync: string | null;
@@ -76,11 +77,16 @@ export function SyncManagementClientPage() {
         }
     };
 
-    const isButtonDisabled = (lastSync: string | null) => {
+    const isButtonDisabled = (type: 'members' | 'abas' | 'forum', lastSync: string | null) => {
         if (!lastSync) return false;
-        const oneHourAgo = new Date();
-        oneHourAgo.setHours(oneHourAgo.getHours() - 1);
-        return new Date(lastSync) > oneHourAgo;
+        const refreshMinutes =
+            type === 'members'
+                ? config.GTAW_API_REFRESH_MINUTES_FACTIONS
+                : type === 'abas'
+                    ? config.GTAW_API_REFRESH_MINUTES_ABAS
+                    : config.FORUM_API_REFRESH_MINUTES;
+        const threshold = Date.now() - refreshMinutes * 60 * 1000;
+        return new Date(lastSync).getTime() > threshold;
     };
 
     const renderSyncCard = (
@@ -103,7 +109,7 @@ export function SyncManagementClientPage() {
                 </p>
                 <Button
                     onClick={() => handleSync(type)}
-                    disabled={syncing === type || isButtonDisabled(lastSync)}
+                    disabled={syncing === type || isButtonDisabled(type, lastSync)}
                 >
                     {syncing === type && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Sync Now

@@ -20,13 +20,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useFavorites } from '@/hooks/use-favorites';
 import { cn } from '@/lib/utils';
+import config from '@config';
 
 
 interface RosterViewPageProps {
     rosterId: number;
 }
 
-const COOLDOWN_HOURS = 1;
+const COOLDOWN_MINUTES = config.GTAW_API_REFRESH_MINUTES_FACTIONS;
 
 interface Member {
     character_id: number;
@@ -109,7 +110,7 @@ export function RosterViewPage({ rosterId }: RosterViewPageProps) {
 
     const isFavorited = favorites.some(f => f.activity_roster_id === rosterId);
     
-    const canSync = !lastSyncTime || (Date.now() - lastSyncTime > COOLDOWN_HOURS * 60 * 60 * 1000);
+    const canSync = !lastSyncTime || (Date.now() - lastSyncTime > COOLDOWN_MINUTES * 60 * 1000);
 
     const fetchData = async (forceSync = false) => {
         if (forceSync) {

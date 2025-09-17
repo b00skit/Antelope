@@ -47,7 +47,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
-import announcementsData from '../../../data/announcements.json';
+import announcementsData from '@data/announcements.json';
 import { FeedbackDialog } from '../dashboard/feedback-dialog';
 import {
     DropdownMenu,

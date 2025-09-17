@@ -13,5 +13,8 @@
     "BETA_CODE": null,
     "URL_GITHUB": "https://github.com/b00skit/faction-panel-plus",
     "URL_DISCORD": "https://discord.gg/rxfYd23TNz",
-    "URL_KOFI": "https://ko-fi.com/booskit"
+    "URL_KOFI": "https://ko-fi.com/booskit",
+    "GTAW_API_REFRESH_MINUTES_FACTIONS": 1440,
+    "GTAW_API_REFRESH_MINUTES_ABAS": 1440,
+    "FORUM_API_REFRESH_MINUTES": 1440
 }

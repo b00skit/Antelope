@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { init } from '@socialgouv/matomo-next';
 import { usePathname, useSearchParams } from 'next/navigation';
-import analyticsConfig from '../../data/analytics.json';
+import analyticsConfig from '@data/analytics.json';
 
 export function Matomo() {
   const pathname = usePathname();

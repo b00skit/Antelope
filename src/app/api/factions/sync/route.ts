@@ -5,6 +5,7 @@ import { db } from '@/db';
 import { users, factionMembers, factions } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import type { IronSession } from 'iron-session';
+import config from '@config';
 
 async function syncFactions(session: IronSession<SessionData>) {
     if (!session.isLoggedIn || !session.gtaw_access_token) {
@@ -30,10 +31,10 @@ async function syncFactions(session: IronSession<SessionData>) {
     }
 
     const now = new Date();
-    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const factionRefreshThreshold = now.getTime() - config.GTAW_API_REFRESH_MINUTES_FACTIONS * 60 * 1000;
 
-    // Sync if last_sync_timestamp is null or older than 24 hours
-    if (user.last_sync_timestamp && new Date(user.last_sync_timestamp) > oneDayAgo) {
+    // Sync if last_sync_timestamp is null or older than the configured refresh window
+    if (user.last_sync_timestamp && new Date(user.last_sync_timestamp).getTime() > factionRefreshThreshold) {
         return { success: true, message: 'Faction data is up to date.' };
     }
 

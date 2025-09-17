@@ -2,7 +2,7 @@ import { table, int, boolean, primaryKey } from './helpers';
 import { users } from './users';
 import { factions } from './factions';
 
-export const factionMembers = table('faction_members', {
+export const factionMembers = table('faction_users', {
   userId: int('user_id').notNull().references(() => users.id),
   factionId: int('faction_id').notNull().references(() => factions.id),
   rank: int('rank').notNull(),

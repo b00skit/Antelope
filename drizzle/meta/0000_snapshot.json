@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "0bba565c-fbba-4f41-89f1-ffbf0bd2a55b",
+  "id": "44fae011-81d4-4d07-abcd-76871ff6dfa5",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "users": {
@@ -186,8 +186,8 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "faction_members": {
-      "name": "faction_members",
+    "faction_users": {
+      "name": "faction_users",
       "columns": {
         "user_id": {
           "name": "user_id",
@@ -221,9 +221,9 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "faction_members_user_id_users_id_fk": {
-          "name": "faction_members_user_id_users_id_fk",
-          "tableFrom": "faction_members",
+        "faction_users_user_id_users_id_fk": {
+          "name": "faction_users_user_id_users_id_fk",
+          "tableFrom": "faction_users",
           "tableTo": "users",
           "columnsFrom": [
             "user_id"
@@ -234,9 +234,9 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "faction_members_faction_id_factions_id_fk": {
-          "name": "faction_members_faction_id_factions_id_fk",
-          "tableFrom": "faction_members",
+        "faction_users_faction_id_factions_id_fk": {
+          "name": "faction_users_faction_id_factions_id_fk",
+          "tableFrom": "faction_users",
           "tableTo": "factions",
           "columnsFrom": [
             "faction_id"
@@ -249,12 +249,12 @@
         }
       },
       "compositePrimaryKeys": {
-        "faction_members_user_id_faction_id_pk": {
+        "faction_users_user_id_faction_id_pk": {
           "columns": [
             "user_id",
             "faction_id"
           ],
-          "name": "faction_members_user_id_faction_id_pk"
+          "name": "faction_users_user_id_faction_id_pk"
         }
       },
       "uniqueConstraints": {},
@@ -301,6 +301,13 @@
         },
         "password": {
           "name": "password",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "access_json": {
+          "name": "access_json",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
@@ -581,8 +588,8 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "faction_members_cache": {
-      "name": "faction_members_cache",
+    "api_cache_factions": {
+      "name": "api_cache_factions",
       "columns": {
         "faction_id": {
           "name": "faction_id",
@@ -612,8 +619,8 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "faction_members_abas_cache": {
-      "name": "faction_members_abas_cache",
+    "api_cache_abas": {
+      "name": "api_cache_abas",
       "columns": {
         "id": {
           "name": "id",
@@ -659,8 +666,8 @@
         }
       },
       "indexes": {
-        "faction_members_abas_cache_character_id_faction_id_unique": {
-          "name": "faction_members_abas_cache_character_id_faction_id_unique",
+        "api_cache_abas_character_id_faction_id_unique": {
+          "name": "api_cache_abas_character_id_faction_id_unique",
           "columns": [
             "character_id",
             "faction_id"
@@ -673,8 +680,8 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "forum_api_cache": {
-      "name": "forum_api_cache",
+    "api_cache_forums": {
+      "name": "api_cache_forums",
       "columns": {
         "activity_roster_id": {
           "name": "activity_roster_id",
@@ -700,9 +707,9 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "forum_api_cache_activity_roster_id_activity_rosters_id_fk": {
-          "name": "forum_api_cache_activity_roster_id_activity_rosters_id_fk",
-          "tableFrom": "forum_api_cache",
+        "api_cache_forums_activity_roster_id_activity_rosters_id_fk": {
+          "name": "api_cache_forums_activity_roster_id_activity_rosters_id_fk",
+          "tableFrom": "api_cache_forums",
           "tableTo": "activity_rosters",
           "columnsFrom": [
             "activity_roster_id"
@@ -1302,6 +1309,92 @@
       },
       "indexes": {},
       "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "faction_blocked_users": {
+      "name": "faction_blocked_users",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "faction_id": {
+          "name": "faction_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "blocked_by_user_id": {
+          "name": "blocked_by_user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(strftime('%s', 'now'))"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "faction_blocked_users_faction_id_factions_id_fk": {
+          "name": "faction_blocked_users_faction_id_factions_id_fk",
+          "tableFrom": "faction_blocked_users",
+          "tableTo": "factions",
+          "columnsFrom": [
+            "faction_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "faction_blocked_users_user_id_users_id_fk": {
+          "name": "faction_blocked_users_user_id_users_id_fk",
+          "tableFrom": "faction_blocked_users",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "faction_blocked_users_blocked_by_user_id_users_id_fk": {
+          "name": "faction_blocked_users_blocked_by_user_id_users_id_fk",
+          "tableFrom": "faction_blocked_users",
+          "tableTo": "users",
+          "columnsFrom": [
+            "blocked_by_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}
