@@ -218,7 +218,9 @@ export async function getRosterViewData(rosterId: number, session: IronSession<S
         where: eq(factionMembersCache.faction_id, factionId)
     });
 
-    if (forceSync || !cachedFaction || !cachedFaction.last_sync_timestamp || new Date(cachedFaction.last_sync_timestamp).getTime() < membersRefreshThreshold) {
+    const needsSync = forceSync || !cachedFaction || !cachedFaction.last_sync_timestamp || new Date(cachedFaction.last_sync_timestamp).getTime() < membersRefreshThreshold;
+
+    if (needsSync) {
         const [factionApiResponse, abasApiResponse] = await Promise.all([
              fetch(`https://ucp.gta.world/api/faction/${factionId}`, {
                 headers: {
@@ -326,6 +328,7 @@ export async function getRosterViewData(rosterId: number, session: IronSession<S
             canCreateSnapshot = canEdit && !!filters.allow_roster_snapshots;
             
             if (filters.mark_alternative_characters) {
+                // Re-fetch altCache *after* a potential sync to get the latest data.
                 const altCache = await db.query.apiCacheAlternativeCharacters.findMany({
                     where: eq(apiCacheAlternativeCharacters.faction_id, factionId),
                 });
