@@ -1,3 +1,4 @@
+
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
@@ -10,6 +11,7 @@ interface Member {
     character_name: string;
     user_id: number;
     last_online: string | null;
+    last_duty: string | null;
 }
 
 export async function GET(request: NextRequest) {
@@ -51,11 +53,12 @@ export async function GET(request: NextRequest) {
         
         const allMembers: Member[] = membersCache.members;
 
-        const csvHeader = "Character ID,Name,User ID,Alternative Character,ABAS,Last Logged In\n";
+        const csvHeader = "Character ID,Name,User ID,Alternative Character,ABAS,Last Logged In,Last Duty\n";
 
         const csvRows = allMembers.map(member => {
             const abas = abasMap.get(member.character_id) ?? '0.00';
             const lastOnline = member.last_online ? new Date(member.last_online).toLocaleString() : 'N/A';
+            const lastDuty = member.last_duty ? new Date(member.last_duty).toLocaleString() : 'N/A';
             
             let altStatus = 'N/A';
             const altInfo = altMap.get(member.user_id);
@@ -76,7 +79,8 @@ export async function GET(request: NextRequest) {
                 member.user_id,
                 altStatus,
                 abas,
-                lastOnline
+                lastOnline,
+                lastDuty
             ].join(',');
         });
         
