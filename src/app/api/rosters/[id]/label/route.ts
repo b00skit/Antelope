@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { activityRosters, activityRosterLabels } from '@/db/schema';
+import { activityRosters, activityRosterLabels, factions, factionMembers } from '@/db/schema';
 import { and, eq } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -42,16 +42,28 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     try {
         const roster = await db.query.activityRosters.findFirst({
-            where: eq(activityRosters.id, rosterId)
+            where: eq(activityRosters.id, rosterId),
+            with: {
+                faction: {
+                    with: {
+                        factionMembers: {
+                            where: eq(factionMembers.userId, session.userId)
+                        }
+                    }
+                }
+            }
         });
 
         if (!roster) {
             return NextResponse.json({ error: 'Roster not found.' }, { status: 404 });
         }
         
+        const membership = roster.faction.factionMembers[0];
         const hasAccess = roster.created_by === session.userId || roster.access_json?.includes(session.userId);
-        if (!hasAccess) {
-            return NextResponse.json({ error: 'You do not have permission to edit this roster.' }, { status: 403 });
+        const canSupervise = membership && membership.rank >= (roster.faction.supervisor_rank ?? 10);
+
+        if (!hasAccess && !canSupervise) {
+            return NextResponse.json({ error: 'You do not have permission to edit labels on this roster.' }, { status: 403 });
         }
         
         const existingLabel = await db.query.activityRosterLabels.findFirst({

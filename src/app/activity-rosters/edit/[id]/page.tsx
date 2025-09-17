@@ -76,6 +76,11 @@ const jsonExample = `{
     "by_name": {
       "John_Doe": 10.0
     }
+  },
+  "labels": {
+    "red": "High Priority",
+    "blue": "Training",
+    "green": "Field Training Officer"
   }
 }`;
 

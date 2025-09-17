@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { activityRosters, users, factionMembersCache, factionMembersAbasCache, forumApiCache, activityRosterAccess, factionOrganizationMembership } from '@/db/schema';
+import { activityRosters, users, factionMembersCache, factionMembersAbasCache, forumApiCache, activityRosterAccess, factionOrganizationMembership, activityRosterLabels } from '@/db/schema';
 import { and, eq, or, inArray } from 'drizzle-orm';
 import config from '@config';
 
@@ -31,6 +31,7 @@ interface Member {
     total_abas?: number | null;
     forum_groups?: number[];
     assignmentTitle?: string | null;
+    label?: string | null;
 }
 
 interface RosterFilters {
@@ -48,6 +49,7 @@ interface RosterFilters {
         by_rank?: Record<string, number>;
         by_name?: Record<string, number>;
     };
+    labels?: Record<string, string>;
 }
 
 async function fetchForumData(roster: any, filters: RosterFilters) {
@@ -186,6 +188,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
                 faction: true,
                 forumCache: true,
                 sections: true,
+                labels: true,
             }
         });
 
@@ -302,34 +305,44 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
         const memberIds = members.map(m => m.character_id);
         if (memberIds.length > 0) {
-            const abasCache = await db.query.factionMembersAbasCache.findMany({
-                where: and(
-                    eq(factionMembersAbasCache.faction_id, factionId),
-                    inArray(factionMembersAbasCache.character_id, memberIds)
-                )
-            });
+            const [abasCache, labels] = await Promise.all([
+                db.query.factionMembersAbasCache.findMany({
+                    where: and(
+                        eq(factionMembersAbasCache.faction_id, factionId),
+                        inArray(factionMembersAbasCache.character_id, memberIds)
+                    )
+                }),
+                db.query.activityRosterLabels.findMany({
+                    where: and(
+                        eq(activityRosterLabels.activity_roster_id, rosterId),
+                        inArray(activityRosterLabels.character_id, memberIds)
+                    )
+                })
+            ]);
 
             const abasMap = new Map(abasCache.map(a => [a.character_id, { abas: a.abas, last_sync: a.last_sync_timestamp, total_abas: a.total_abas }]));
+            const labelMap = new Map(labels.map(l => [l.character_id, l.color]));
 
             members = members.map(member => ({
                 ...member,
                 abas: abasMap.get(member.character_id)?.abas,
                 abas_last_sync: abasMap.get(member.character_id)?.last_sync,
                 total_abas: abasMap.get(member.character_id)?.total_abas,
+                label: labelMap.get(member.character_id),
             }));
         }
 
         let missingForumUsers: string[] = [];
         let includedUsernames = new Set<string>();
         let excludedUsernames = new Set<string>();
-        let rosterAbasStandards = {};
+        let rosterConfig: RosterFilters = {};
         let usernameToGroupsMap = new Map<string, number[]>();
         let showAssignmentTitles = false;
 
         if (roster.roster_setup_json) {
             try {
                 const filters: RosterFilters = JSON.parse(roster.roster_setup_json);
-                rosterAbasStandards = filters.abas_standards || {};
+                rosterConfig = filters;
                 showAssignmentTitles = !!(roster.faction.feature_flags?.units_divisions_enabled && filters.show_assignment_titles);
                 const isForumFilterActive = filters.forum_groups_included?.length || filters.forum_groups_excluded?.length || filters.forum_users_included?.length || filters.forum_users_excluded?.length || roster.sections.some(s => s.configuration_json?.include_forum_groups?.length);
 
@@ -410,7 +423,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
                 order: s.order ?? 0,
                 configuration_json: s.configuration_json,
             })).sort((a, b) => a.order - b.order),
-            rosterAbasStandards,
+            rosterConfig,
         });
 
     } catch (error) {
