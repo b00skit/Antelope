@@ -68,6 +68,7 @@ const jsonExample = `{
   "forum_users_excluded": [45],
   "alert_forum_users_missing": true,
   "show_assignment_titles": true,
+  "allow_roster_snapshots": true,
   "abas_standards": {
     "by_rank": {
       "10": 5.0,

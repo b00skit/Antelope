@@ -55,6 +55,7 @@ interface RosterData {
     sections: Section[];
     rosterConfig: any;
     canEdit: boolean;
+    canCreateSnapshot: boolean;
 }
 
 const PasswordDialog = ({
@@ -312,7 +313,7 @@ export function RosterViewPage({ rosterId }: RosterViewPageProps) {
                 description={data.faction ? `Viewing roster for ${data.faction.name}` : ''}
                 actions={
                     <div className="flex gap-2">
-                         {data.canEdit && (
+                         {data.canCreateSnapshot && (
                             <Button variant="secondary" onClick={() => setIsSnapshotDialogOpen(true)} disabled={requiresPassword}>
                                 <Camera />
                                 Create Snapshot

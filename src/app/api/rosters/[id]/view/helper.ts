@@ -39,6 +39,7 @@ interface RosterFilters {
     forum_users_excluded?: number[];
     alert_forum_users_missing?: boolean;
     show_assignment_titles?: boolean;
+    allow_roster_snapshots?: boolean;
     abas_standards?: {
         by_rank?: Record<string, number>;
         by_name?: Record<string, number>;
@@ -307,12 +308,16 @@ export async function getRosterViewData(rosterId: number, session: IronSession<S
     let rosterConfig: RosterFilters = {};
     let usernameToGroupsMap = new Map<string, number[]>();
     let showAssignmentTitles = false;
+    let canEdit = roster.created_by === session.userId || roster.access_json?.includes(session.userId!);
+    let canCreateSnapshot = false;
 
     if (roster.roster_setup_json) {
         try {
             const filters: RosterFilters = JSON.parse(roster.roster_setup_json);
             rosterConfig = filters;
             showAssignmentTitles = !!(roster.faction.feature_flags?.units_divisions_enabled && filters.show_assignment_titles);
+            canCreateSnapshot = canEdit && !!filters.allow_roster_snapshots;
+            
             const isForumFilterActive = filters.forum_groups_included?.length || filters.forum_groups_excluded?.length || filters.forum_users_included?.length || filters.forum_users_excluded?.length || roster.sections.some(s => s.configuration_json?.include_forum_groups?.length);
 
             if (isForumFilterActive) {
@@ -392,5 +397,7 @@ export async function getRosterViewData(rosterId: number, session: IronSession<S
             configuration_json: s.configuration_json,
         })).sort((a, b) => a.order - b.order),
         rosterConfig,
+        canEdit,
+        canCreateSnapshot,
     };
 }
