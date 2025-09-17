@@ -14,14 +14,24 @@ interface Member {
     last_duty: string | null;
 }
 
-const formatTimestamp = (timestamp: string | null): string => {
+const formatDate = (timestamp: string | null): string => {
     if (!timestamp) return 'N/A';
     try {
-        return new Date(timestamp).toLocaleString();
+        return new Date(timestamp).toLocaleDateString();
     } catch (e) {
         return 'Invalid Date';
     }
 };
+
+const formatTime = (timestamp: string | null): string => {
+    if (!timestamp) return 'N/A';
+    try {
+        return new Date(timestamp).toLocaleTimeString();
+    } catch (e) {
+        return 'Invalid Time';
+    }
+};
+
 
 export async function GET(request: NextRequest) {
     const cookieStore = await cookies();
@@ -62,12 +72,14 @@ export async function GET(request: NextRequest) {
         
         const allMembers: Member[] = membersCache.members;
 
-        const csvHeader = "Character ID,Name,User ID,Alternative Character,ABAS,Last Logged In,Last Duty\n";
+        const csvHeader = "Character ID,Name,User ID,Alternative Character,ABAS,Last Logged In - Date,Last Logged In - Time,Last Duty - Date,Last Duty - Time\n";
 
         const csvRows = allMembers.map(member => {
             const abas = abasMap.get(member.character_id) ?? '0.00';
-            const lastOnline = formatTimestamp(member.last_online);
-            const lastDuty = formatTimestamp(member.last_duty);
+            const lastOnlineDate = formatDate(member.last_online);
+            const lastOnlineTime = formatTime(member.last_online);
+            const lastDutyDate = formatDate(member.last_duty);
+            const lastDutyTime = formatTime(member.last_duty);
             
             let altStatus = 'N/A';
             const altInfo = altMap.get(member.user_id);
@@ -88,8 +100,10 @@ export async function GET(request: NextRequest) {
                 member.user_id,
                 altStatus,
                 abas,
-                lastOnline,
-                lastDuty
+                lastOnlineDate,
+                lastOnlineTime,
+                lastDutyDate,
+                lastDutyTime,
             ].join(',');
         });
         
