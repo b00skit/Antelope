@@ -46,6 +46,8 @@ interface Member {
     abas?: string | null;
     assignmentTitle?: string | null;
     label?: string | null;
+    isPrimary?: boolean;
+    isAlternative?: boolean;
     // Added for forum integration
     forum_groups?: number[];
 }
@@ -187,6 +189,8 @@ export function RosterContent({ initialData, rosterId, readOnly = false }: Roste
             return false;
         }
     }, [initialData.members]);
+    
+    const markAlternativeCharacters = React.useMemo(() => initialData.rosterConfig?.mark_alternative_characters ?? false, [initialData.rosterConfig]);
 
     const getAbasClass = (member: Member): string => {
         const abasValue = parseFloat(member.abas || '0');
@@ -510,10 +514,11 @@ export function RosterContent({ initialData, rosterId, readOnly = false }: Roste
                             getAbasClass={getAbasClass}
                             showAssignmentTitles={showAssignmentTitles}
                             selectedMemberIds={selectedMemberIds}
-                            onToggleSelection={handleToggleSelection}
+                            onToggleSelection={onToggleSelection}
                             labels={labels}
                             onSetLabel={handleSetLabel}
                             readOnly={readOnly}
+                            markAlts={markAlternativeCharacters}
                         />
                     );
                 })}
@@ -527,10 +532,11 @@ export function RosterContent({ initialData, rosterId, readOnly = false }: Roste
                     getAbasClass={getAbasClass}
                     showAssignmentTitles={showAssignmentTitles}
                     selectedMemberIds={selectedMemberIds}
-                    onToggleSelection={handleToggleSelection}
+                    onToggleSelection={onToggleSelection}
                     labels={labels}
                     onSetLabel={handleSetLabel}
                     readOnly={readOnly}
+                    markAlts={markAlternativeCharacters}
                 />
             </div>
              <SectionDialog
