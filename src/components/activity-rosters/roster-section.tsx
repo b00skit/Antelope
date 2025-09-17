@@ -7,7 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { MoreVertical, GripVertical, Pencil, Trash2, User } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -59,6 +58,7 @@ interface RosterSectionProps {
     onToggleSelection: (characterId: number) => void;
     labels: Record<string, string>;
     onSetLabel: (characterId: number, color: string | null) => void;
+    readOnly?: boolean;
 }
 
 
@@ -78,11 +78,13 @@ export function RosterSection({
     onToggleSelection,
     labels,
     onSetLabel,
+    readOnly = false,
 }: RosterSectionProps) {
     const ref = useRef<HTMLDivElement>(null);
 
     const [, drop] = useDrop({
         accept: ItemTypes.MEMBER,
+        canDrop: () => !readOnly,
         drop: (item: { characterId: number, sourceSectionId: number | 'unassigned' }) => {
             onMoveMember(item.characterId, item.sourceSectionId, section.id);
         },
@@ -91,14 +93,15 @@ export function RosterSection({
     const [{ isDragging }, drag, preview] = useDrag({
         type: ItemTypes.SECTION,
         item: { index },
+        canDrag: !isUnassigned && !readOnly,
         collect: (monitor) => ({
             isDragging: monitor.isDragging(),
         }),
-        canDrag: !isUnassigned,
     });
     
     const [, dropReorder] = useDrop({
         accept: ItemTypes.SECTION,
+        canDrop: () => !readOnly,
         hover: (item: { index: number }) => {
             if (!ref.current || item.index === index || typeof index === 'undefined' || !onReorder) return;
             onReorder(item.index, index);
@@ -131,7 +134,7 @@ export function RosterSection({
         <Card ref={drop}>
             <CardHeader className="flex flex-row items-start justify-between">
                 <div className="flex items-center gap-2">
-                    {!isUnassigned && (
+                    {!isUnassigned && !readOnly && (
                         <div ref={ref} className="cursor-move touch-none">
                             <GripVertical className="h-5 w-5 text-muted-foreground" />
                         </div>
@@ -144,7 +147,7 @@ export function RosterSection({
                         {section.description && <CardDescription>{section.description}</CardDescription>}
                     </div>
                 </div>
-                {!isUnassigned && onEdit && onDelete && (
+                {!isUnassigned && onEdit && onDelete && !readOnly && (
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon">
@@ -169,6 +172,7 @@ export function RosterSection({
                                         onCheckedChange={handleSelectAll}
                                         aria-label="Select all members in this section"
                                         data-state={isPartiallySelected ? 'indeterminate' : isAllSelected ? 'checked' : 'unchecked'}
+                                        disabled={readOnly}
                                     />
                                 </TableHead>
                                 <TableHead className="w-1/3">Name</TableHead>
@@ -193,6 +197,7 @@ export function RosterSection({
                                     onToggleSelection={onToggleSelection}
                                     labels={labels}
                                     onSetLabel={onSetLabel}
+                                    readOnly={readOnly}
                                 />
                             ))}
                         </TableBody>

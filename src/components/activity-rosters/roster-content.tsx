@@ -30,7 +30,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Skeleton } from '../ui/skeleton';
 import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -83,6 +82,7 @@ interface RosterData {
 interface RosterContentProps {
     initialData: RosterData;
     rosterId: number;
+    readOnly?: boolean;
 }
 
 // Dialog for creating/editing sections
@@ -163,7 +163,7 @@ const SectionDialog = ({
 
 
 // Main Roster Content Component
-export function RosterContent({ initialData, rosterId }: RosterContentProps) {
+export function RosterContent({ initialData, rosterId, readOnly = false }: RosterContentProps) {
     const [sections, setSections] = useState<Section[]>((initialData.sections || []).sort((a,b) => a.order - b.order));
     const [members, setMembers] = useState<Member[]>(initialData.members);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -399,7 +399,7 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
             const newSections = sections.map(s => {
                 let ids = (s.character_ids_json || []).filter(id => !characterIds.includes(id));
                 if (s.id === destinationSectionId) {
-                    ids = [...ids, ...characterIds];
+                    ids = [...new Set([...ids, ...characterIds])];
                 }
                 return { ...s, character_ids_json: ids };
             });
@@ -463,16 +463,18 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
                 )}
                 
                 <div className="space-y-4">
-                    <div className="flex flex-wrap gap-2 items-center">
-                        <Button variant="outline" onClick={() => { setEditingSection(null); setIsDialogOpen(true); }}>
-                            <PlusCircle />
-                            Add Section
-                        </Button>
-                        <Button variant="secondary" onClick={handleAutoFilter} disabled={isFiltering}>
-                            {isFiltering ? <Loader2 className="animate-spin" /> : <Filter />}
-                            Auto-Filter Roster
-                        </Button>
-                    </div>
+                    {!readOnly && (
+                        <div className="flex flex-wrap gap-2 items-center">
+                            <Button variant="outline" onClick={() => { setEditingSection(null); setIsDialogOpen(true); }}>
+                                <PlusCircle />
+                                Add Section
+                            </Button>
+                            <Button variant="secondary" onClick={handleAutoFilter} disabled={isFiltering}>
+                                {isFiltering ? <Loader2 className="animate-spin" /> : <Filter />}
+                                Auto-Filter Roster
+                            </Button>
+                        </div>
+                    )}
                      {Object.keys(labels).length > 0 && (
                         <div className="flex items-center gap-2 flex-wrap">
                              <Badge variant={!labelFilter ? 'default' : 'secondary'} className="cursor-pointer" onClick={() => setLabelFilter(null)}>All</Badge>
@@ -508,9 +510,10 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
                             getAbasClass={getAbasClass}
                             showAssignmentTitles={showAssignmentTitles}
                             selectedMemberIds={selectedMemberIds}
-                            onToggleSelection={handleToggleSelection}
+                            onToggleSelection={onToggleSelection}
                             labels={labels}
                             onSetLabel={handleSetLabel}
+                            readOnly={readOnly}
                         />
                     );
                 })}
@@ -524,9 +527,10 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
                     getAbasClass={getAbasClass}
                     showAssignmentTitles={showAssignmentTitles}
                     selectedMemberIds={selectedMemberIds}
-                    onToggleSelection={handleToggleSelection}
+                    onToggleSelection={onToggleSelection}
                     labels={labels}
                     onSetLabel={handleSetLabel}
+                    readOnly={readOnly}
                 />
             </div>
              <SectionDialog
@@ -536,7 +540,7 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
                 section={editingSection}
             />
             <AnimatePresence>
-                {selectedMemberIds.size > 0 && (
+                {!readOnly && selectedMemberIds.size > 0 && (
                     <motion.div
                         initial={{ y: 100, opacity: 0 }}
                         animate={{ y: 0, opacity: 1 }}

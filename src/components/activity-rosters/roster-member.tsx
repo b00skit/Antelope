@@ -53,6 +53,7 @@ interface RosterMemberProps {
     onToggleSelection: (characterId: number) => void;
     labels: Record<string, string>;
     onSetLabel: (characterId: number, color: string | null) => void;
+    readOnly?: boolean;
 }
 
 const formatTimestamp = (timestamp: string | null) => {
@@ -72,11 +73,13 @@ export function RosterMember({
     isSelected, 
     onToggleSelection,
     labels,
-    onSetLabel
+    onSetLabel,
+    readOnly = false,
 }: RosterMemberProps) {
     const [{ isDragging }, drag] = useDrag({
         type: ItemTypes.MEMBER,
         item: { characterId: member.character_id, sourceSectionId },
+        canDrag: !readOnly,
         collect: (monitor) => ({
             isDragging: monitor.isDragging(),
         }),
@@ -120,7 +123,7 @@ export function RosterMember({
                 opacity: isDragging ? 0.5 : 1,
                 ...getLabelStyles(),
             }} 
-            className="cursor-move" 
+            className={cn(!readOnly && 'cursor-move')} 
             data-state={isSelected ? 'selected' : undefined}
         >
              <TableCell>
@@ -128,6 +131,7 @@ export function RosterMember({
                     checked={isSelected}
                     onCheckedChange={() => onToggleSelection(member.character_id)}
                     aria-label={`Select ${member.character_name}`}
+                    disabled={readOnly}
                 />
             </TableCell>
             <TableCell>
@@ -142,49 +146,51 @@ export function RosterMember({
             <TableCell>{formatTimestamp(member.last_duty)}</TableCell>
             <TableCell className={abasClass}>{member.abas ?? 'N/A'}</TableCell>
             <TableCell className="text-right">
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreVertical className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                        <DropdownMenuSub>
-                            <DropdownMenuSubTrigger>
-                                <Move className="mr-2" /> Move To
-                            </DropdownMenuSubTrigger>
-                            <DropdownMenuSubContent>
-                                {allSections.filter(s => s.id !== sourceSectionId).map(section => (
-                                    <DropdownMenuItem key={section.id} onSelect={() => onMoveMember(member.character_id, sourceSectionId, section.id)}>
-                                        {section.name}
+                {!readOnly && (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreVertical className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            <DropdownMenuSub>
+                                <DropdownMenuSubTrigger>
+                                    <Move className="mr-2" /> Move To
+                                </DropdownMenuSubTrigger>
+                                <DropdownMenuSubContent>
+                                    {allSections.filter(s => s.id !== sourceSectionId).map(section => (
+                                        <DropdownMenuItem key={section.id} onSelect={() => onMoveMember(member.character_id, sourceSectionId, section.id)}>
+                                            {section.name}
+                                        </DropdownMenuItem>
+                                    ))}
+                                    {sourceSectionId !== 'unassigned' && (
+                                        <DropdownMenuItem onSelect={() => onMoveMember(member.character_id, sourceSectionId, 'unassigned')}>
+                                            Unassigned
+                                        </DropdownMenuItem>
+                                    )}
+                                </DropdownMenuSubContent>
+                            </DropdownMenuSub>
+                            <DropdownMenuSub>
+                                <DropdownMenuSubTrigger>
+                                    <Tag className="mr-2" /> Set Label
+                                </DropdownMenuSubTrigger>
+                                <DropdownMenuSubContent>
+                                    {Object.entries(labels).map(([color, title]) => (
+                                        <DropdownMenuItem key={color} onSelect={() => onSetLabel(member.character_id, color)}>
+                                            <span className={cn('mr-2 h-2 w-2 rounded-full', `bg-${color}-500`)} />
+                                            {title}
+                                        </DropdownMenuItem>
+                                    ))}
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onSelect={() => onSetLabel(member.character_id, null)}>
+                                        Clear Label
                                     </DropdownMenuItem>
-                                ))}
-                                {sourceSectionId !== 'unassigned' && (
-                                     <DropdownMenuItem onSelect={() => onMoveMember(member.character_id, sourceSectionId, 'unassigned')}>
-                                        Unassigned
-                                    </DropdownMenuItem>
-                                )}
-                            </DropdownMenuSubContent>
-                        </DropdownMenuSub>
-                        <DropdownMenuSub>
-                            <DropdownMenuSubTrigger>
-                                <Tag className="mr-2" /> Set Label
-                            </DropdownMenuSubTrigger>
-                            <DropdownMenuSubContent>
-                                {Object.entries(labels).map(([color, title]) => (
-                                    <DropdownMenuItem key={color} onSelect={() => onSetLabel(member.character_id, color)}>
-                                         <span className={cn('mr-2 h-2 w-2 rounded-full', `bg-${color}-500`)} />
-                                        {title}
-                                    </DropdownMenuItem>
-                                ))}
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onSelect={() => onSetLabel(member.character_id, null)}>
-                                    Clear Label
-                                </DropdownMenuItem>
-                            </DropdownMenuSubContent>
-                        </DropdownMenuSub>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                                </DropdownMenuSubContent>
+                            </DropdownMenuSub>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                )}
             </TableCell>
         </TableRow>
     );

@@ -30,6 +30,7 @@ import {
   Building,
   Building2,
   RefreshCw,
+  Camera,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useState, useEffect } from 'react';
@@ -241,6 +242,20 @@ export function SidebarNav() {
                 <Link href="/activity-rosters">
                     <ClipboardList />
                     <span>Activity Rosters</span>
+                </Link>
+                </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
+           {showActivityRosters && (
+            <SidebarMenuItem>
+                <SidebarMenuButton
+                asChild
+                isActive={isActive('/activity-rosters/snapshots')}
+                tooltip="Roster Snapshots"
+                >
+                <Link href="/activity-rosters/snapshots">
+                    <Camera />
+                    <span>Roster Snapshots</span>
                 </Link>
                 </SidebarMenuButton>
             </SidebarMenuItem>
