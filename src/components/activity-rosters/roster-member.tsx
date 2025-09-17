@@ -8,7 +8,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { Checkbox } from '../ui/checkbox';
-import { MoreVertical, Move } from 'lucide-react';
+import { MoreVertical, Move, Tag } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -17,6 +17,7 @@ import {
     DropdownMenuSubContent,
     DropdownMenuSubTrigger,
     DropdownMenuTrigger,
+    DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '../ui/button';
 
@@ -33,6 +34,7 @@ interface Member {
     last_duty: string | null;
     abas?: string | null;
     assignmentTitle?: string | null;
+    label?: string | null;
 }
 
 interface Section {
@@ -49,6 +51,8 @@ interface RosterMemberProps {
     showAssignmentTitles: boolean;
     isSelected: boolean;
     onToggleSelection: (characterId: number) => void;
+    labels: Record<string, string>;
+    onSetLabel: (characterId: number, color: string | null) => void;
 }
 
 const formatTimestamp = (timestamp: string | null) => {
@@ -58,7 +62,18 @@ const formatTimestamp = (timestamp: string | null) => {
     return `${formatDistanceToNow(date)} ago`;
 };
 
-export function RosterMember({ member, sourceSectionId, allSections, onMoveMember, abasClass, showAssignmentTitles, isSelected, onToggleSelection }: RosterMemberProps) {
+export function RosterMember({ 
+    member, 
+    sourceSectionId, 
+    allSections, 
+    onMoveMember, 
+    abasClass, 
+    showAssignmentTitles, 
+    isSelected, 
+    onToggleSelection,
+    labels,
+    onSetLabel
+}: RosterMemberProps) {
     const [{ isDragging }, drag] = useDrag({
         type: ItemTypes.MEMBER,
         item: { characterId: member.character_id, sourceSectionId },
@@ -67,8 +82,47 @@ export function RosterMember({ member, sourceSectionId, allSections, onMoveMembe
         }),
     });
 
+    const getLabelStyles = () => {
+        if (!member.label) return {};
+        // Note: TailwindCSS needs to be able to see full class names to purge CSS correctly.
+        // This dynamic style approach is necessary here.
+        const colorMap: Record<string, { border: string, bg: string }> = {
+            red: { border: 'hsl(0, 72%, 51%)', bg: 'hsla(0, 72%, 51%, 0.1)' },
+            orange: { border: 'hsl(25, 95%, 53%)', bg: 'hsla(25, 95%, 53%, 0.1)' },
+            amber: { border: 'hsl(48, 96%, 53%)', bg: 'hsla(48, 96%, 53%, 0.1)' },
+            yellow: { border: 'hsl(60, 95%, 50%)', bg: 'hsla(60, 95%, 50%, 0.1)' },
+            lime: { border: 'hsl(84, 81%, 48%)', bg: 'hsla(84, 81%, 48%, 0.1)' },
+            green: { border: 'hsl(142, 71%, 45%)', bg: 'hsla(142, 71%, 45%, 0.1)' },
+            emerald: { border: 'hsl(145, 63%, 42%)', bg: 'hsla(145, 63%, 42%, 0.1)' },
+            teal: { border: 'hsl(170, 80%, 40%)', bg: 'hsla(170, 80%, 40%, 0.1)' },
+            cyan: { border: 'hsl(190, 95%, 53%)', bg: 'hsla(190, 95%, 53%, 0.1)' },
+            sky: { border: 'hsl(197, 88%, 53%)', bg: 'hsla(197, 88%, 53%, 0.1)' },
+            blue: { border: 'hsl(221, 83%, 53%)', bg: 'hsla(221, 83%, 53%, 0.1)' },
+            indigo: { border: 'hsl(243, 75%, 60%)', bg: 'hsla(243, 75%, 60%, 0.1)' },
+            violet: { border: 'hsl(262, 84%, 60%)', bg: 'hsla(262, 84%, 60%, 0.1)' },
+            purple: { border: 'hsl(271, 76%, 53%)', bg: 'hsla(271, 76%, 53%, 0.1)' },
+            fuchsia: { border: 'hsl(291, 76%, 53%)', bg: 'hsla(291, 76%, 53%, 0.1)' },
+            pink: { border: 'hsl(322, 84%, 60%)', bg: 'hsla(322, 84%, 60%, 0.1)' },
+            rose: { border: 'hsl(347, 84%, 60%)', bg: 'hsla(347, 84%, 60%, 0.1)' },
+        };
+        const color = colorMap[member.label];
+        if (!color) return {};
+        return {
+            borderLeft: `3px solid ${color.border}`,
+            backgroundColor: color.bg,
+        };
+    };
+
     return (
-        <TableRow ref={drag} style={{ opacity: isDragging ? 0.5 : 1 }} className="cursor-move" data-state={isSelected ? 'selected' : undefined}>
+        <TableRow 
+            ref={drag} 
+            style={{ 
+                opacity: isDragging ? 0.5 : 1,
+                ...getLabelStyles(),
+            }} 
+            className="cursor-move" 
+            data-state={isSelected ? 'selected' : undefined}
+        >
              <TableCell>
                 <Checkbox
                     checked={isSelected}
@@ -110,6 +164,23 @@ export function RosterMember({ member, sourceSectionId, allSections, onMoveMembe
                                         Unassigned
                                     </DropdownMenuItem>
                                 )}
+                            </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                        <DropdownMenuSub>
+                            <DropdownMenuSubTrigger>
+                                <Tag className="mr-2" /> Set Label
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuSubContent>
+                                {Object.entries(labels).map(([color, title]) => (
+                                    <DropdownMenuItem key={color} onSelect={() => onSetLabel(member.character_id, color)}>
+                                         <span className={cn('mr-2 h-2 w-2 rounded-full', `bg-${color}-500`)} />
+                                        {title}
+                                    </DropdownMenuItem>
+                                ))}
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onSelect={() => onSetLabel(member.character_id, null)}>
+                                    Clear Label
+                                </DropdownMenuItem>
                             </DropdownMenuSubContent>
                         </DropdownMenuSub>
                     </DropdownMenuContent>

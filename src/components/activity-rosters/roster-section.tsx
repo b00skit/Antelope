@@ -34,6 +34,7 @@ interface Member {
     last_duty: string | null;
     abas?: string | null;
     assignmentTitle?: string | null;
+    label?: string | null;
 }
 
 interface Section {
@@ -56,6 +57,8 @@ interface RosterSectionProps {
     showAssignmentTitles?: boolean;
     selectedMemberIds: Set<number>;
     onToggleSelection: (characterId: number) => void;
+    labels: Record<string, string>;
+    onSetLabel: (characterId: number, color: string | null) => void;
 }
 
 
@@ -72,7 +75,9 @@ export function RosterSection({
     index,
     showAssignmentTitles = false,
     selectedMemberIds,
-    onToggleSelection
+    onToggleSelection,
+    labels,
+    onSetLabel,
 }: RosterSectionProps) {
     const ref = useRef<HTMLDivElement>(null);
 
@@ -186,6 +191,8 @@ export function RosterSection({
                                     showAssignmentTitles={showAssignmentTitles}
                                     isSelected={selectedMemberIds.has(member.character_id)}
                                     onToggleSelection={onToggleSelection}
+                                    labels={labels}
+                                    onSetLabel={onSetLabel}
                                 />
                             ))}
                         </TableBody>

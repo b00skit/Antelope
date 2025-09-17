@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, PlusCircle, MoreVertical, Pencil, Trash2, Filter, Loader2, Move } from 'lucide-react';
+import { AlertTriangle, PlusCircle, MoreVertical, Pencil, Trash2, Filter, Loader2, Move, Tag } from 'lucide-react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { RosterSection } from './roster-section';
@@ -22,6 +22,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,6 +33,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '../ui/skeleton';
 import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '@/lib/utils';
+import { Badge } from '../ui/badge';
 
 // Interfaces matching the API response
 interface Member {
@@ -40,6 +46,7 @@ interface Member {
     last_duty: string | null;
     abas?: string | null;
     assignmentTitle?: string | null;
+    label?: string | null;
     // Added for forum integration
     forum_groups?: number[];
 }
@@ -59,13 +66,18 @@ interface Section {
     configuration_json: SectionConfig | null;
 }
 
+interface RosterConfig {
+    labels?: Record<string, string>;
+    [key: string]: any;
+}
+
 interface RosterData {
     roster: { id: number; name: string };
     faction: { id: number; name: string; supervisor_rank: number; minimum_abas: number; minimum_supervisor_abas: number; };
     members: Member[];
     missingForumUsers: string[];
     sections: Section[];
-    rosterAbasStandards: any;
+    rosterConfig: RosterConfig;
 }
 
 interface RosterContentProps {
@@ -158,10 +170,16 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
     const [editingSection, setEditingSection] = useState<Section | null>(null);
     const [isFiltering, setIsFiltering] = useState(false);
     const [selectedMemberIds, setSelectedMemberIds] = useState<Set<number>>(new Set());
+    const [labelFilter, setLabelFilter] = useState<string | null>(null);
     const { toast } = useToast();
 
     const assignedMemberIds = new Set(sections.flatMap(s => s.character_ids_json));
-    const unassignedMembers = members.filter(m => !assignedMemberIds.has(m.character_id));
+    const filteredMembers = React.useMemo(() => {
+        return labelFilter ? members.filter(m => m.label === labelFilter) : members;
+    }, [members, labelFilter]);
+
+    const unassignedMembers = filteredMembers.filter(m => !assignedMemberIds.has(m.character_id));
+    
     const showAssignmentTitles = React.useMemo(() => {
         try {
             return initialData.members.some(m => m.assignmentTitle);
@@ -172,7 +190,7 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
 
     const getAbasClass = (member: Member): string => {
         const abasValue = parseFloat(member.abas || '0');
-        const rosterStandards = initialData.rosterAbasStandards || {};
+        const rosterStandards = initialData.rosterConfig?.abas_standards || {};
 
         if (rosterStandards.by_name && rosterStandards.by_name[member.character_name] !== undefined) {
             if (abasValue < rosterStandards.by_name[member.character_name]) return "text-red-500 font-bold";
@@ -391,8 +409,46 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
              toast({ variant: 'destructive', title: 'Error', description: err.message });
         }
     };
-    
 
+    const handleSetLabel = async (characterId: number, color: string | null) => {
+        const originalMembers = [...members];
+        setMembers(prev => prev.map(m => m.character_id === characterId ? { ...m, label: color } : m));
+
+        try {
+            const res = await fetch(`/api/rosters/${rosterId}/label`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ characterId, color }),
+            });
+            if (!res.ok) throw new Error('Failed to set label.');
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Error', description: err.message });
+            setMembers(originalMembers);
+        }
+    };
+    
+    const handleBulkSetLabel = async (color: string | null) => {
+        const characterIds = Array.from(selectedMemberIds);
+        const originalMembers = [...members];
+        setMembers(prev => prev.map(m => characterIds.includes(m.character_id) ? { ...m, label: color } : m));
+        setSelectedMemberIds(new Set());
+
+        try {
+            const res = await fetch(`/api/rosters/${rosterId}/bulk-label`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ characterIds, color }),
+            });
+             if (!res.ok) throw new Error('Failed to set labels.');
+             toast({ title: 'Success', description: `Labels updated for ${characterIds.length} members.`});
+        } catch (err: any) {
+             toast({ variant: 'destructive', title: 'Error', description: err.message });
+             setMembers(originalMembers);
+        }
+    }
+
+    const labels = initialData.rosterConfig?.labels || {};
+    
     return (
         <DndProvider backend={HTML5Backend}>
             <div className="space-y-6">
@@ -406,7 +462,7 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
                     </Alert>
                 )}
                 
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2 items-center">
                      <Button variant="outline" onClick={() => { setEditingSection(null); setIsDialogOpen(true); }}>
                         <PlusCircle />
                         Add Section
@@ -415,10 +471,26 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
                         {isFiltering ? <Loader2 className="animate-spin" /> : <Filter />}
                         Auto-Filter Roster
                     </Button>
+                     {Object.keys(labels).length > 0 && (
+                        <div className="flex items-center gap-2">
+                             <Badge variant={!labelFilter ? 'default' : 'secondary'} className="cursor-pointer" onClick={() => setLabelFilter(null)}>All</Badge>
+                            {Object.entries(labels).map(([color, title]) => (
+                                <Badge
+                                    key={color}
+                                    variant={labelFilter === color ? 'default' : 'secondary'}
+                                    className="cursor-pointer"
+                                    onClick={() => setLabelFilter(labelFilter === color ? null : color)}
+                                >
+                                    <span className={cn('mr-2 h-2 w-2 rounded-full', `bg-${color}-500`)} />
+                                    {title}
+                                </Badge>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {sections.map((section, index) => {
-                    const sectionMembers = members.filter(m => section.character_ids_json.includes(m.character_id));
+                    const sectionMembers = filteredMembers.filter(m => section.character_ids_json.includes(m.character_id));
                     return (
                         <RosterSection
                             key={section.id}
@@ -434,6 +506,8 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
                             showAssignmentTitles={showAssignmentTitles}
                             selectedMemberIds={selectedMemberIds}
                             onToggleSelection={handleToggleSelection}
+                            labels={labels}
+                            onSetLabel={handleSetLabel}
                         />
                     );
                 })}
@@ -448,6 +522,8 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
                     showAssignmentTitles={showAssignmentTitles}
                     selectedMemberIds={selectedMemberIds}
                     onToggleSelection={handleToggleSelection}
+                    labels={labels}
+                    onSetLabel={handleSetLabel}
                 />
             </div>
              <SectionDialog
@@ -481,6 +557,26 @@ export function RosterContent({ initialData, rosterId }: RosterContentProps) {
                                 ))}
                                  <DropdownMenuItem onSelect={() => handleBulkMove('unassigned')}>
                                     Unassigned
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                         </DropdownMenu>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline">
+                                    <Tag className="mr-2 h-4 w-4" />
+                                    Set Label
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                {Object.entries(labels).map(([color, title]) => (
+                                    <DropdownMenuItem key={color} onSelect={() => handleBulkSetLabel(color)}>
+                                        <span className={cn('mr-2 h-2 w-2 rounded-full', `bg-${color}-500`)} />
+                                        {title}
+                                    </DropdownMenuItem>
+                                ))}
+                                <DropdownMenuSeparator />
+                                 <DropdownMenuItem onSelect={() => handleBulkSetLabel(null)}>
+                                    Clear Label
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                          </DropdownMenu>

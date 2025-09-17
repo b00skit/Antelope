@@ -37,6 +37,7 @@ interface Member {
     last_online: string | null;
     last_duty: string | null;
     abas?: string | null;
+    label?: string | null;
 }
 
 interface Section {
@@ -53,7 +54,7 @@ interface RosterData {
     members: Member[];
     missingForumUsers: string[];
     sections: Section[];
-    rosterAbasStandards: any;
+    rosterConfig: any;
 }
 
 const PasswordDialog = ({
