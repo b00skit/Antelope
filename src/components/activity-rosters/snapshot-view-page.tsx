@@ -70,7 +70,11 @@ export function SnapshotViewPage({ snapshotId }: SnapshotViewPageProps) {
                 title={data.roster.name}
                 description={`Viewing a snapshot of this roster.`}
             />
-            <RosterContent initialData={data} rosterId={data.roster.id} readOnly />
+            <RosterContent 
+                initialData={data} 
+                rosterId={data.roster.id} 
+                readOnly
+            />
         </div>
     )
 }
