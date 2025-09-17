@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import FullScreenMessage from '@/components/layout/maintenance-page';
-import configData from '../../../data/config.json';
+import configData from '@config';
 import { useToast } from '@/hooks/use-toast';
 
 async function clearCaches() {

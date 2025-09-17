@@ -8,7 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import { canUserManage } from '@/app/api/units-divisions/[cat1Id]/[cat2Id]/helpers';
 import { CharacterSheetClientPage } from '@/components/character-sheets/character-sheet-client-page';
-import config from '../../../../data/config.json';
+import config from '@config';
 
 interface PageProps {
     params: {

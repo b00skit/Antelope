@@ -5,7 +5,7 @@ import { db } from '@/db';
 import { users, factionMembers, factions } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import type { IronSession } from 'iron-session';
-import config from '../../../../../data/config.json';
+import config from '@config';
 
 async function syncFactions(session: IronSession<SessionData>) {
     if (!session.isLoggedIn || !session.gtaw_access_token) {

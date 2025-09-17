@@ -6,7 +6,7 @@ import { getSession } from '@/lib/session';
 import { db } from '@/db';
 import { activityRosters, users, factionMembersCache, factionMembersAbasCache, forumApiCache, activityRosterAccess, factionOrganizationMembership } from '@/db/schema';
 import { and, eq, or, inArray } from 'drizzle-orm';
-import config from '../../../../../data/config.json';
+import config from '@config';
 
 interface RouteParams {
     params: {

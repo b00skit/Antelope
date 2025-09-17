@@ -1,1 +1,0 @@
-ALTER TABLE `activity_rosters` ADD `access_json` text;

@@ -10,7 +10,7 @@ import { useSession } from '@/hooks/use-session';
 import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
-import config from '../../../data/config.json';
+import config from '@config';
 
 interface SyncStatus {
     membersLastSync: string | null;

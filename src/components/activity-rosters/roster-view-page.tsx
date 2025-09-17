@@ -20,7 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useFavorites } from '@/hooks/use-favorites';
 import { cn } from '@/lib/utils';
-import config from '../../../data/config.json';
+import config from '@config';
 
 
 interface RosterViewPageProps {
