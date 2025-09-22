@@ -5,7 +5,6 @@ import { getSession } from '@/lib/session';
 import { db } from '@/db';
 import { users, apiForumSyncableGroups, forumApiCache } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-import config from '@config';
 
 interface Diff {
     added: any[];
@@ -72,27 +71,38 @@ export async function GET(request: NextRequest) {
             const cachedGroup = cachedGroupsMap.get(liveGroup.group_id);
             const liveUsernames = new Set(liveGroup.members.map((m: any) => m.username));
 
-            if (!cachedGroup) {
-                if (liveUsernames.size > 0) {
-                     diff.added.push({ 
+            if (!cachedGroup || !cachedGroup.data) {
+                liveUsernames.forEach(username => {
+                    diff.added.push({
+                        type: 'added',
                         group_name: liveGroup.name,
-                        change_summary: `Syncing ${liveUsernames.size} members.`,
-                        members: Array.from(liveUsernames)
+                        character_name: username,
+                        change_summary: `Will be added to syncable group.`
                     });
-                }
+                });
             } else {
                 const cachedUsernames = new Set((cachedGroup.data?.members || []).map((m: any) => m.username));
+                
                 const addedMembers = [...liveUsernames].filter(u => !cachedUsernames.has(u));
                 const removedMembers = [...cachedUsernames].filter(u => !liveUsernames.has(u));
 
-                if (addedMembers.length > 0 || removedMembers.length > 0) {
-                     diff.updated.push({ 
-                        group_name: liveGroup.name, 
-                        change_summary: `+${addedMembers.length} added, -${removedMembers.length} removed.`,
-                        added: addedMembers,
-                        removed: removedMembers,
+                addedMembers.forEach(username => {
+                     diff.added.push({
+                        type: 'added',
+                        group_name: liveGroup.name,
+                        character_name: username,
+                        change_summary: `Will be added to syncable group.`
                     });
-                }
+                });
+                
+                removedMembers.forEach(username => {
+                     diff.removed.push({
+                        type: 'removed',
+                        group_name: liveGroup.name,
+                        character_name: username,
+                        change_summary: `Will be removed from syncable group.`
+                    });
+                });
             }
         }
         

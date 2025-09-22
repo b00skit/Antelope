@@ -34,33 +34,6 @@ const SyncCardSkeleton = () => (
     </Card>
 );
 
-const ForumDiffDetails = ({ item }: { item: any }) => {
-    if (item.type === 'added') {
-      return (
-        <ul className="list-disc list-inside text-xs">
-          {item.members.map((m: string, i: number) => <li key={i}>{m}</li>)}
-        </ul>
-      );
-    }
-    if (item.type === 'updated') {
-      return (
-        <div className="text-xs">
-          {item.added.length > 0 && (
-            <div className="text-green-500">
-              <strong>Added:</strong> {item.added.join(', ')}
-            </div>
-          )}
-          {item.removed.length > 0 && (
-            <div className="text-red-500">
-              <strong>Removed:</strong> {item.removed.join(', ')}
-            </div>
-          )}
-        </div>
-      );
-    }
-    return null;
-  };
-
 const DiffTable = ({ diff, type }: { diff: any, type: 'members' | 'abas' | 'forum' }) => {
     if (!diff) return null;
     
@@ -74,13 +47,15 @@ const DiffTable = ({ diff, type }: { diff: any, type: 'members' | 'abas' | 'foru
         return <p className="text-sm text-center text-muted-foreground p-4">No changes detected.</p>
     }
 
-    const headTitle = type === 'members' || type === 'abas' ? 'Character' : 'Group';
+    const headTitle = type === 'members' || type === 'abas' ? 'Character' : 'Member';
+    const showGroup = type === 'forum';
 
     return (
         <Table>
             <TableHeader>
                 <TableRow>
                     <TableHead>Status</TableHead>
+                    {showGroup && <TableHead>Group</TableHead>}
                     <TableHead>{headTitle}</TableHead>
                     <TableHead>Change</TableHead>
                 </TableRow>
@@ -93,6 +68,7 @@ const DiffTable = ({ diff, type }: { diff: any, type: 'members' | 'abas' | 'foru
                             {item.type === 'updated' && <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/50"><ArrowRight className="mr-1" /> Updated</Badge>}
                             {item.type === 'removed' && <Badge variant="destructive"><X className="mr-1" /> Removed</Badge>}
                         </TableCell>
+                         {showGroup && <TableCell>{item.group_name}</TableCell>}
                         <TableCell>{item.character_name || item.group_name}</TableCell>
                         <TableCell>
                             {type === 'members' && item.type === 'updated' && (
@@ -103,10 +79,7 @@ const DiffTable = ({ diff, type }: { diff: any, type: 'members' | 'abas' | 'foru
                                 <span className="text-muted-foreground">{item.old_abas} &rarr; <span className="font-semibold text-foreground">{item.new_abas}</span></span>
                              )}
                               {type === 'forum' && (
-                                 <div>
-                                    <p className="font-semibold">{item.change_summary}</p>
-                                    <ForumDiffDetails item={item} />
-                                </div>
+                                <p className="text-sm">{item.change_summary}</p>
                               )}
                         </TableCell>
                     </TableRow>
