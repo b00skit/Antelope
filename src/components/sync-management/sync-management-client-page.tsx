@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { PageHeader } from '@/components/dashboard/page-header';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle, Loader2, RefreshCw, Users, Activity, MessageSquare, Check, X, ArrowRight, Save, Trash2, ArrowLeft } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
