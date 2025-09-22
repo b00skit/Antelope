@@ -1,16 +1,19 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, Loader2, RefreshCw, Users, Activity, MessageSquare } from 'lucide-react';
+import { AlertTriangle, Loader2, RefreshCw, Users, Activity, MessageSquare, Check, X, ArrowRight, Save, Trash2, ArrowLeft } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSession } from '@/hooks/use-session';
 import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import config from '@config';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
+import { Badge } from '../ui/badge';
 
 interface SyncStatus {
     membersLastSync: string | null;
@@ -32,12 +35,59 @@ const SyncCardSkeleton = () => (
     </Card>
 );
 
+const DiffTable = ({ diff, type }: { diff: any, type: 'members' | 'abas' }) => {
+    if (!diff) return null;
+
+    const allChanges = [
+        ...diff.added.map((item: any) => ({ ...item, type: 'added' })),
+        ...diff.updated.map((item: any) => ({ ...item, type: 'updated' })),
+        ...diff.removed.map((item: any) => ({ ...item, type: 'removed' })),
+    ];
+    
+    if (allChanges.length === 0) {
+        return <p className="text-sm text-center text-muted-foreground p-4">No changes detected.</p>
+    }
+
+    return (
+        <Table>
+            <TableHeader>
+                <TableRow>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Character</TableHead>
+                    <TableHead>Change</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {allChanges.map((item, index) => (
+                    <TableRow key={index}>
+                        <TableCell>
+                            {item.type === 'added' && <Badge variant="secondary" className="bg-green-500/10 text-green-500 border-green-500/50"><Check className="mr-1" /> Added</Badge>}
+                            {item.type === 'updated' && <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/50"><ArrowRight className="mr-1" /> Updated</Badge>}
+                            {item.type === 'removed' && <Badge variant="destructive"><X className="mr-1" /> Removed</Badge>}
+                        </TableCell>
+                        <TableCell>{item.character_name}</TableCell>
+                        <TableCell>
+                            {type === 'members' && item.type === 'updated' && (
+                                <span className="text-muted-foreground">{item.old_rank_name} &rarr; <span className="font-semibold text-foreground">{item.rank_name}</span></span>
+                            )}
+                             {type === 'members' && item.type !== 'updated' && item.rank_name}
+                             {type === 'abas' && (
+                                <span className="text-muted-foreground">{item.old_abas} &rarr; <span className="font-semibold text-foreground">{item.new_abas}</span></span>
+                             )}
+                        </TableCell>
+                    </TableRow>
+                ))}
+            </TableBody>
+        </Table>
+    );
+};
 
 export function SyncManagementClientPage() {
     const { session } = useSession();
     const [status, setStatus] = useState<SyncStatus | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [syncing, setSyncing] = useState<string | null>(null);
+    const [previewing, setPreviewing] = useState< 'members' | 'abas' | 'forum' | null>(null);
+    const [previewData, setPreviewData] = useState<any | null>(null);
     const [error, setError] = useState<string | null>(null);
     const { toast } = useToast();
 
@@ -62,61 +112,90 @@ export function SyncManagementClientPage() {
         }
     }, [session]);
 
-    const handleSync = async (type: 'members' | 'abas' | 'forum') => {
-        setSyncing(type);
+    const handlePreview = async (type: 'members' | 'abas' | 'forum') => {
+        setPreviewing(type);
+        setError(null);
         try {
-            const res = await fetch(`/api/sync-management/trigger/${type}`, { method: 'POST' });
+            const res = await fetch(`/api/sync-management/preview/${type}`);
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+            setPreviewData(data);
+        } catch (err: any) {
+            setError(err.message);
+            setPreviewing(null);
+        }
+    };
+    
+    const handleConfirm = async () => {
+        if (!previewing) return;
+        
+        setIsLoading(true); // Reuse isLoading for confirm action
+        try {
+            const res = await fetch(`/api/sync-management/trigger/${previewing}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(previewData.sourceData), // Send the source data to be saved
+            });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
             toast({ title: 'Success', description: data.message });
+            setPreviewing(null);
+            setPreviewData(null);
             await fetchStatus();
         } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Sync Failed', description: err.message });
+             toast({ variant: 'destructive', title: 'Sync Failed', description: err.message });
         } finally {
-            setSyncing(null);
+            setIsLoading(false);
         }
-    };
+    }
+    
+    const handleDiscard = () => {
+        setPreviewing(null);
+        setPreviewData(null);
+        setError(null);
+    }
 
-    const isButtonDisabled = (type: 'members' | 'abas' | 'forum', lastSync: string | null) => {
-        if (!lastSync) return false;
-        const refreshMinutes =
-            type === 'members'
-                ? config.GTAW_API_REFRESH_MINUTES_FACTIONS
-                : type === 'abas'
-                    ? config.GTAW_API_REFRESH_MINUTES_ABAS
-                    : config.FORUM_API_REFRESH_MINUTES;
-        const threshold = Date.now() - refreshMinutes * 60 * 1000;
-        return new Date(lastSync).getTime() > threshold;
-    };
-
-    const renderSyncCard = (
-        type: 'members' | 'abas' | 'forum',
-        title: string,
-        description: string,
-        icon: React.ReactNode,
-        lastSync: string | null,
-    ) => (
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    {icon} {title}
-                </CardTitle>
-                <CardDescription>{description}</CardDescription>
-            </CardHeader>
-            <CardContent className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                    Last synced: {lastSync ? `${formatDistanceToNow(new Date(lastSync))} ago` : 'Never'}
-                </p>
-                <Button
-                    onClick={() => handleSync(type)}
-                    disabled={syncing === type || isButtonDisabled(type, lastSync)}
-                >
-                    {syncing === type && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Sync Now
-                </Button>
-            </CardContent>
-        </Card>
-    );
+    if (previewing) {
+        return (
+             <div className="container mx-auto p-4 md:p-6 lg:p-8">
+                 <Button variant="outline" onClick={handleDiscard} className="mb-4">
+                     <ArrowLeft className="mr-2" />
+                     Back to Sync Management
+                 </Button>
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>Sync Preview: {previewing.charAt(0).toUpperCase() + previewing.slice(1)}</CardTitle>
+                        <CardDescription>Review the changes below before confirming the sync.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {isLoading && !previewData ? (
+                            <div className="flex justify-center items-center h-48">
+                                <Loader2 className="animate-spin" />
+                            </div>
+                        ) : error ? (
+                            <Alert variant="destructive">
+                                <AlertTriangle />
+                                <AlertTitle>Preview Failed</AlertTitle>
+                                <AlertDescription>{error}</AlertDescription>
+                            </Alert>
+                        ) : (
+                            <DiffTable diff={previewData} type={previewing as 'members' | 'abas'} />
+                        )}
+                    </CardContent>
+                    <CardFooter className="flex justify-end gap-2">
+                        <Button variant="outline" onClick={handleDiscard}>
+                            <X className="mr-2" />
+                            Discard
+                        </Button>
+                        <Button onClick={handleConfirm} disabled={isLoading || error || !previewData}>
+                            <Save className="mr-2" />
+                            Confirm & Save
+                        </Button>
+                    </CardFooter>
+                 </Card>
+             </div>
+        )
+    }
 
     return (
         <div className="container mx-auto p-4 md:p-6 lg:p-8">
@@ -125,42 +204,45 @@ export function SyncManagementClientPage() {
                 description="View sync statuses and manually trigger data synchronization from GTA:World."
             />
 
-            {error && (
-                <Alert variant="destructive" className="mb-4">
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>Error</AlertTitle>
-                    <AlertDescription>{error}</AlertDescription>
-                </Alert>
-            )}
-
             <div className="space-y-6">
-                {isLoading ? (
+                {isLoading && !status ? (
                     <>
                         <SyncCardSkeleton />
                         <SyncCardSkeleton />
                     </>
                 ) : status ? (
                     <>
-                        {renderSyncCard(
-                            'members',
-                            'Faction Members',
-                            'Syncs the full member list, ranks, and status from the GTA:W UCP.',
-                            <Users className="h-5 w-5" />,
-                            status.membersLastSync
-                        )}
-                        {renderSyncCard(
-                            'abas',
-                            'Character ABAS',
-                            'Updates the weekly ABAS for all characters in the faction.',
-                            <Activity className="h-5 w-5" />,
-                            status.abasLastSync
-                        )}
-                        {status.isForumEnabled && renderSyncCard(
-                            'forum',
-                            'Forum Data Cache',
-                            'Refreshes cached data from your phpBB forum for roster filtering.',
-                            <MessageSquare className="h-5 w-5" />,
-                            status.forumLastSync
+                         <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2"><Users /> Faction Members</CardTitle>
+                                <CardDescription>Syncs the full member list, ranks, and status from the GTA:W UCP.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="flex items-center justify-between">
+                                <p className="text-sm text-muted-foreground">Last synced: {status.membersLastSync ? `${formatDistanceToNow(new Date(status.membersLastSync))} ago` : 'Never'}</p>
+                                <Button onClick={() => handlePreview('members')}>Preview Sync</Button>
+                            </CardContent>
+                        </Card>
+                         <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2"><Activity /> Character ABAS</CardTitle>
+                                <CardDescription>Updates the weekly ABAS for all characters in the faction.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="flex items-center justify-between">
+                                <p className="text-sm text-muted-foreground">Last synced: {status.abasLastSync ? `${formatDistanceToNow(new Date(status.abasLastSync))} ago` : 'Never'}</p>
+                                <Button onClick={() => handlePreview('abas')}>Preview Sync</Button>
+                            </CardContent>
+                        </Card>
+                        {status.isForumEnabled && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2"><MessageSquare /> Forum Data Cache</CardTitle>
+                                    <CardDescription>Refreshes cached data from your phpBB forum for roster filtering.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="flex items-center justify-between">
+                                    <p className="text-sm text-muted-foreground">Last synced: {status.forumLastSync ? `${formatDistanceToNow(new Date(status.forumLastSync))} ago` : 'Never'}</p>
+                                    <Button onClick={() => handlePreview('forum')}>Preview Sync</Button>
+                                </CardContent>
+                            </Card>
                         )}
                     </>
                 ) : null}

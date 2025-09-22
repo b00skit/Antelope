@@ -13,6 +13,9 @@ export async function POST(request: NextRequest) {
     if (!session.isLoggedIn || !session.userId || !session.gtaw_access_token) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    
+    // The source data is now sent from the client after preview
+    const members = await request.json();
 
     try {
         const user = await db.query.users.findFirst({
@@ -25,18 +28,6 @@ export async function POST(request: NextRequest) {
         }
         const factionId = user.selectedFaction.id;
         
-        const factionApiResponse = await fetch(`https://ucp.gta.world/api/faction/${factionId}`, {
-            headers: { Authorization: `Bearer ${session.gtaw_access_token}` },
-        });
-
-        if (!factionApiResponse.ok) {
-            if (factionApiResponse.status === 401) return NextResponse.json({ error: 'GTA:World session expired. Please log in again.', reauth: true }, { status: 401 });
-            return NextResponse.json({ error: 'Failed to fetch member data from GTA:World API.' }, { status: 502 });
-        }
-        
-        const gtawFactionData = await factionApiResponse.json();
-        const members = gtawFactionData.data.members;
-
         await db.insert(factionMembersCache)
             .values({ faction_id: factionId, members, last_sync_timestamp: new Date() })
             .onConflictDoUpdate({
