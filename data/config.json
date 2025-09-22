@@ -1,5 +1,5 @@
 {
-    "SITE_LIVE": true,
+    "SITE_LIVE": false,
     "SITE_NAME": "Antelope",
     "SITE_VERSION": "1.0.0",
     "CACHE_VERSION": "cookie-apxn-2",
