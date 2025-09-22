@@ -99,18 +99,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             return NextResponse.json({ error: 'You do not have permission to modify these settings.' }, { status: 403 });
         }
         
-        await db.transaction(async (tx) => {
-            await tx.delete(apiForumSyncableGroups).where(eq(apiForumSyncableGroups.faction_id, factionId));
+        db.transaction((tx) => {
+            tx.delete(apiForumSyncableGroups).where(eq(apiForumSyncableGroups.faction_id, factionId)).run();
             
             if (parsed.data.groups.length > 0) {
-                await tx.insert(apiForumSyncableGroups).values(
+                tx.insert(apiForumSyncableGroups).values(
                     parsed.data.groups.map(group => ({
                         faction_id: factionId,
                         group_id: group.id,
                         name: group.name,
                         created_by: session.userId!,
                     }))
-                );
+                ).run();
             }
         });
         
