@@ -6,12 +6,11 @@ import { PageHeader } from '@/components/dashboard/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle, Loader2, RefreshCw, Users, Activity, MessageSquare, Check, X, ArrowRight, Save, Trash2, ArrowLeft } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from '../ui/skeleton';
 import { useSession } from '@/hooks/use-session';
 import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
-import config from '@config';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Badge } from '../ui/badge';
 
@@ -86,6 +85,7 @@ export function SyncManagementClientPage() {
     const { session } = useSession();
     const [status, setStatus] = useState<SyncStatus | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isPreviewLoading, setIsPreviewLoading] = useState(false);
     const [previewing, setPreviewing] = useState< 'members' | 'abas' | 'forum' | null>(null);
     const [previewData, setPreviewData] = useState<any | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -114,7 +114,9 @@ export function SyncManagementClientPage() {
 
     const handlePreview = async (type: 'members' | 'abas' | 'forum') => {
         setPreviewing(type);
+        setIsPreviewLoading(true);
         setError(null);
+        setPreviewData(null);
         try {
             const res = await fetch(`/api/sync-management/preview/${type}`);
             const data = await res.json();
@@ -122,19 +124,20 @@ export function SyncManagementClientPage() {
             setPreviewData(data);
         } catch (err: any) {
             setError(err.message);
-            setPreviewing(null);
+        } finally {
+            setIsPreviewLoading(false);
         }
     };
     
     const handleConfirm = async () => {
-        if (!previewing) return;
+        if (!previewing || !previewData) return;
         
-        setIsLoading(true); // Reuse isLoading for confirm action
+        setIsLoading(true);
         try {
             const res = await fetch(`/api/sync-management/trigger/${previewing}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(previewData.sourceData), // Send the source data to be saved
+                body: JSON.stringify(previewData.sourceData),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
@@ -168,7 +171,7 @@ export function SyncManagementClientPage() {
                         <CardDescription>Review the changes below before confirming the sync.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {isLoading && !previewData ? (
+                        {isPreviewLoading ? (
                             <div className="flex justify-center items-center h-48">
                                 <Loader2 className="animate-spin" />
                             </div>
@@ -187,7 +190,8 @@ export function SyncManagementClientPage() {
                             <X className="mr-2" />
                             Discard
                         </Button>
-                        <Button onClick={handleConfirm} disabled={isLoading || error || !previewData}>
+                        <Button onClick={handleConfirm} disabled={isLoading || isPreviewLoading || error || !previewData}>
+                            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             <Save className="mr-2" />
                             Confirm & Save
                         </Button>
