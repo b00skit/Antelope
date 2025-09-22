@@ -34,8 +34,25 @@ const SyncCardSkeleton = () => (
     </Card>
 );
 
-const DiffTable = ({ diff, type }: { diff: any, type: 'members' | 'abas' }) => {
+const DiffTable = ({ diff, type }: { diff: any, type: 'members' | 'abas' | 'forum' }) => {
     if (!diff) return null;
+
+    if (type === 'forum') {
+        if (!diff.rostersToReset || diff.rostersToReset.length === 0) {
+            return <p className="text-sm text-center text-muted-foreground p-4">No rosters with forum configurations found to sync.</p>;
+        }
+        return (
+            <div>
+                <p className="text-sm text-muted-foreground mb-4">Confirming this sync will clear the cached forum data for the following rosters, forcing a re-fetch on their next view:</p>
+                <ul>
+                    {diff.rostersToReset.map((roster: any) => (
+                        <li key={roster.id} className="text-sm p-2 border-b">{roster.name}</li>
+                    ))}
+                </ul>
+            </div>
+        );
+    }
+
 
     const allChanges = [
         ...diff.added.map((item: any) => ({ ...item, type: 'added' })),
@@ -182,7 +199,7 @@ export function SyncManagementClientPage() {
                                 <AlertDescription>{error}</AlertDescription>
                             </Alert>
                         ) : (
-                            <DiffTable diff={previewData} type={previewing as 'members' | 'abas'} />
+                            <DiffTable diff={previewData} type={previewing} />
                         )}
                     </CardContent>
                     <CardFooter className="flex justify-end gap-2">
