@@ -23,11 +23,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         return NextResponse.json({ error: 'Invalid roster ID.' }, { status: 400 });
     }
 
-    const { searchParams } = new URL(request.url);
-    const forceSync = searchParams.get('forceSync') === 'true';
-
     try {
-        const result = await getRosterViewData(rosterId, session, forceSync);
+        const result = await getRosterViewData(rosterId, session);
 
         if ('error' in result) {
             const status = result.reauth ? 401 : result.requiresPassword ? 403 : 500;

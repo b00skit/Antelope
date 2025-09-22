@@ -124,12 +124,6 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
         
-        const syncResult = await syncFactions(session);
-
-        if (!syncResult.success) {
-            return NextResponse.json(syncResult, { status: 500 });
-        }
-        
         const user = await db.query.users.findFirst({
             where: eq(users.id, session.userId!),
         });
