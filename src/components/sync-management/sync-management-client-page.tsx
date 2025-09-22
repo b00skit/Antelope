@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, Loader2, RefreshCw, Users, Activity, MessageSquare, Check, X, ArrowRight, Save, Trash2, ArrowLeft } from 'lucide-react';
+import { AlertTriangle, Loader2, RefreshCw, Users, Activity, MessageSquare, Check, X, ArrowRight, Save, ArrowLeft } from 'lucide-react';
 import { Skeleton } from '../ui/skeleton';
 import { useSession } from '@/hooks/use-session';
 import { Button } from '../ui/button';
@@ -34,6 +34,33 @@ const SyncCardSkeleton = () => (
     </Card>
 );
 
+const ForumDiffDetails = ({ item }: { item: any }) => {
+    if (item.type === 'added') {
+      return (
+        <ul className="list-disc list-inside text-xs">
+          {item.members.map((m: string, i: number) => <li key={i}>{m}</li>)}
+        </ul>
+      );
+    }
+    if (item.type === 'updated') {
+      return (
+        <div className="text-xs">
+          {item.added.length > 0 && (
+            <div className="text-green-500">
+              <strong>Added:</strong> {item.added.join(', ')}
+            </div>
+          )}
+          {item.removed.length > 0 && (
+            <div className="text-red-500">
+              <strong>Removed:</strong> {item.removed.join(', ')}
+            </div>
+          )}
+        </div>
+      );
+    }
+    return null;
+  };
+
 const DiffTable = ({ diff, type }: { diff: any, type: 'members' | 'abas' | 'forum' }) => {
     if (!diff) return null;
     
@@ -47,12 +74,14 @@ const DiffTable = ({ diff, type }: { diff: any, type: 'members' | 'abas' | 'foru
         return <p className="text-sm text-center text-muted-foreground p-4">No changes detected.</p>
     }
 
+    const headTitle = type === 'members' || type === 'abas' ? 'Character' : 'Group';
+
     return (
         <Table>
             <TableHeader>
                 <TableRow>
                     <TableHead>Status</TableHead>
-                    <TableHead>Character</TableHead>
+                    <TableHead>{headTitle}</TableHead>
                     <TableHead>Change</TableHead>
                 </TableRow>
             </TableHeader>
@@ -64,7 +93,7 @@ const DiffTable = ({ diff, type }: { diff: any, type: 'members' | 'abas' | 'foru
                             {item.type === 'updated' && <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/50"><ArrowRight className="mr-1" /> Updated</Badge>}
                             {item.type === 'removed' && <Badge variant="destructive"><X className="mr-1" /> Removed</Badge>}
                         </TableCell>
-                        <TableCell>{item.character_name}</TableCell>
+                        <TableCell>{item.character_name || item.group_name}</TableCell>
                         <TableCell>
                             {type === 'members' && item.type === 'updated' && (
                                 <span className="text-muted-foreground">{item.old_rank_name} &rarr; <span className="font-semibold text-foreground">{item.rank_name}</span></span>
@@ -73,8 +102,12 @@ const DiffTable = ({ diff, type }: { diff: any, type: 'members' | 'abas' | 'foru
                              {type === 'abas' && (
                                 <span className="text-muted-foreground">{item.old_abas} &rarr; <span className="font-semibold text-foreground">{item.new_abas}</span></span>
                              )}
-                              {type === 'forum' && item.type === 'added' && 'Will be added to syncable groups.'}
-                              {type === 'forum' && item.type === 'removed' && 'Will be removed from syncable groups.'}
+                              {type === 'forum' && (
+                                 <div>
+                                    <p className="font-semibold">{item.change_summary}</p>
+                                    <ForumDiffDetails item={item} />
+                                </div>
+                              )}
                         </TableCell>
                     </TableRow>
                 ))}
@@ -215,6 +248,7 @@ export function SyncManagementClientPage() {
                     <>
                         <SyncCardSkeleton />
                         <SyncCardSkeleton />
+                        <SyncCardSkeleton />
                     </>
                 ) : status ? (
                     <>
@@ -242,10 +276,10 @@ export function SyncManagementClientPage() {
                             <Card>
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2"><MessageSquare /> Forum Data Sync</CardTitle>
-                                    <CardDescription>Syncs memberships from your selected forum groups into the organizational structure.</CardDescription>
+                                    <CardDescription>Syncs memberships from your selected forum groups into the cache.</CardDescription>
                                 </CardHeader>
                                 <CardContent className="flex items-center justify-between">
-                                     <p className="text-sm text-muted-foreground">Syncs with live forum data.</p>
+                                     <p className="text-sm text-muted-foreground">Last synced: {status.forumLastSync ? `${formatDistanceToNow(new Date(status.forumLastSync))} ago` : 'Never'}</p>
                                     <Button onClick={() => handlePreview('forum')}>Preview Sync</Button>
                                 </CardContent>
                             </Card>

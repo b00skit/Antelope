@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
 import { users, apiForumSyncableGroups, forumApiCache } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import config from '@config';
 
 interface Diff {
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
 
         const groupPromises = syncableGroups.map(async (group) => {
             const url = `${baseUrl}app.php/booskit/phpbbapi/group/${group.group_id}?key=${apiKey}`;
-            const res = await fetch(url, { next: { revalidate: config.FORUM_API_REFRESH_MINUTES * 60 } });
+            const res = await fetch(url);
             if (!res.ok) return { group_id: group.group_id, name: group.name, members: [] };
             const data = await res.json();
             const allMembers = [
@@ -73,11 +73,25 @@ export async function GET(request: NextRequest) {
             const liveUsernames = new Set(liveGroup.members.map((m: any) => m.username));
 
             if (!cachedGroup) {
-                diff.added.push({ group_name: liveGroup.name, change: `${liveUsernames.size} members will be added.` });
+                if (liveUsernames.size > 0) {
+                     diff.added.push({ 
+                        group_name: liveGroup.name,
+                        change_summary: `Syncing ${liveUsernames.size} members.`,
+                        members: Array.from(liveUsernames)
+                    });
+                }
             } else {
                 const cachedUsernames = new Set((cachedGroup.data?.members || []).map((m: any) => m.username));
-                if (liveUsernames.size !== cachedUsernames.size || ![...liveUsernames].every(u => cachedUsernames.has(u))) {
-                     diff.updated.push({ group_name: liveGroup.name, change: `Member list will be updated from ${cachedUsernames.size} to ${liveUsernames.size} members.` });
+                const addedMembers = [...liveUsernames].filter(u => !cachedUsernames.has(u));
+                const removedMembers = [...cachedUsernames].filter(u => !liveUsernames.has(u));
+
+                if (addedMembers.length > 0 || removedMembers.length > 0) {
+                     diff.updated.push({ 
+                        group_name: liveGroup.name, 
+                        change_summary: `+${addedMembers.length} added, -${removedMembers.length} removed.`,
+                        added: addedMembers,
+                        removed: removedMembers,
+                    });
                 }
             }
         }

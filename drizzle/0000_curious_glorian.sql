@@ -132,12 +132,13 @@ CREATE TABLE `api_cache_alternative_characters` (
 CREATE UNIQUE INDEX `user_faction_alt_cache_unique_idx` ON `api_cache_alternative_characters` (`user_id`,`faction_id`);--> statement-breakpoint
 CREATE TABLE `api_cache_forums` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`faction_id` integer NOT NULL,
 	`group_id` integer NOT NULL,
 	`data` text,
 	`last_sync_timestamp` integer
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX `api_cache_forums_group_id_unique` ON `api_cache_forums` (`group_id`);--> statement-breakpoint
+CREATE UNIQUE INDEX `faction_forum_group_unique_idx` ON `api_cache_forums` (`faction_id`,`group_id`);--> statement-breakpoint
 CREATE TABLE `api_forum_syncable_groups` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`faction_id` integer NOT NULL,
