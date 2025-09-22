@@ -36,24 +36,7 @@ const SyncCardSkeleton = () => (
 
 const DiffTable = ({ diff, type }: { diff: any, type: 'members' | 'abas' | 'forum' }) => {
     if (!diff) return null;
-
-    if (type === 'forum') {
-        if (!diff.rostersToReset || diff.rostersToReset.length === 0) {
-            return <p className="text-sm text-center text-muted-foreground p-4">No rosters with forum configurations found to sync.</p>;
-        }
-        return (
-            <div>
-                <p className="text-sm text-muted-foreground mb-4">Confirming this sync will clear the cached forum data for the following rosters, forcing a re-fetch on their next view:</p>
-                <ul>
-                    {diff.rostersToReset.map((roster: any) => (
-                        <li key={roster.id} className="text-sm p-2 border-b">{roster.name}</li>
-                    ))}
-                </ul>
-            </div>
-        );
-    }
-
-
+    
     const allChanges = [
         ...diff.added.map((item: any) => ({ ...item, type: 'added' })),
         ...diff.updated.map((item: any) => ({ ...item, type: 'updated' })),
@@ -90,6 +73,8 @@ const DiffTable = ({ diff, type }: { diff: any, type: 'members' | 'abas' | 'foru
                              {type === 'abas' && (
                                 <span className="text-muted-foreground">{item.old_abas} &rarr; <span className="font-semibold text-foreground">{item.new_abas}</span></span>
                              )}
+                              {type === 'forum' && item.type === 'added' && 'Will be added to syncable groups.'}
+                              {type === 'forum' && item.type === 'removed' && 'Will be removed from syncable groups.'}
                         </TableCell>
                     </TableRow>
                 ))}
@@ -256,11 +241,11 @@ export function SyncManagementClientPage() {
                         {status.isForumEnabled && (
                             <Card>
                                 <CardHeader>
-                                    <CardTitle className="flex items-center gap-2"><MessageSquare /> Forum Data Cache</CardTitle>
-                                    <CardDescription>Refreshes cached data from your phpBB forum for roster filtering.</CardDescription>
+                                    <CardTitle className="flex items-center gap-2"><MessageSquare /> Forum Data Sync</CardTitle>
+                                    <CardDescription>Syncs memberships from your selected forum groups into the organizational structure.</CardDescription>
                                 </CardHeader>
                                 <CardContent className="flex items-center justify-between">
-                                    <p className="text-sm text-muted-foreground">Last synced: {status.forumLastSync ? `${formatDistanceToNow(new Date(status.forumLastSync))} ago` : 'Never'}</p>
+                                     <p className="text-sm text-muted-foreground">Syncs with live forum data.</p>
                                     <Button onClick={() => handlePreview('forum')}>Preview Sync</Button>
                                 </CardContent>
                             </Card>
