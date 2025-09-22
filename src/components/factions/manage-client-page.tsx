@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, Loader2, Trash2 } from 'lucide-react';
+import { AlertTriangle, Loader2, Trash2, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSession } from '@/hooks/use-session';
 import {
@@ -38,6 +38,7 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { ForumGroupsDialog } from './forum-groups-dialog';
 
 type Faction = typeof factions.$inferSelect;
 
@@ -67,6 +68,7 @@ export function ManageFactionClientPage({ faction }: ManageFactionClientPageProp
     const { toast } = useToast();
     const { refreshSession } = useSession();
     const [isDeleting, setIsDeleting] = React.useState(false);
+    const [isForumGroupsOpen, setIsForumGroupsOpen] = React.useState(false);
     
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -151,6 +153,7 @@ export function ManageFactionClientPage({ faction }: ManageFactionClientPageProp
 
     return (
         <div className="container mx-auto p-4 md:p-6 lg:p-8">
+            <ForumGroupsDialog open={isForumGroupsOpen} onOpenChange={setIsForumGroupsOpen} factionId={faction.id} />
             <PageHeader title={`Manage: ${faction.name}`} description="Update your faction's settings on the panel." />
 
             <Card>
@@ -409,6 +412,12 @@ export function ManageFactionClientPage({ faction }: ManageFactionClientPageProp
                                     <div>
                                         <Label>REST API Endpoint Preview</Label>
                                         <Input readOnly value={apiEndpointPreview} className="mt-1 font-mono text-xs" />
+                                    </div>
+                                    <div className="pt-2">
+                                        <Button type="button" variant="secondary" onClick={() => setIsForumGroupsOpen(true)} disabled={!watchUrl || !watchKey}>
+                                            <Users className="mr-2 h-4 w-4" />
+                                            Manage Forum Groups
+                                        </Button>
                                     </div>
                                 </CardContent>
                             </Card>
