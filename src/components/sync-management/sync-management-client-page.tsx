@@ -38,9 +38,9 @@ const DiffTable = ({ diff, type }: { diff: any, type: 'members' | 'abas' | 'foru
     if (!diff) return null;
     
     const allChanges = [
-        ...diff.added.map((item: any) => ({ ...item, type: 'added' })),
-        ...diff.updated.map((item: any) => ({ ...item, type: 'updated' })),
-        ...diff.removed.map((item: any) => ({ ...item, type: 'removed' })),
+        ...diff.added.map((item: any) => ({ ...item, changeType: 'added' })),
+        ...diff.updated.map((item: any) => ({ ...item, changeType: 'updated' })),
+        ...diff.removed.map((item: any) => ({ ...item, changeType: 'removed' })),
     ];
     
     if (allChanges.length === 0) {
@@ -64,17 +64,17 @@ const DiffTable = ({ diff, type }: { diff: any, type: 'members' | 'abas' | 'foru
                 {allChanges.map((item, index) => (
                     <TableRow key={index}>
                         <TableCell>
-                            {item.type === 'added' && <Badge variant="secondary" className="bg-green-500/10 text-green-500 border-green-500/50"><Check className="mr-1" /> Added</Badge>}
-                            {item.type === 'updated' && <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/50"><ArrowRight className="mr-1" /> Updated</Badge>}
-                            {item.type === 'removed' && <Badge variant="destructive"><X className="mr-1" /> Removed</Badge>}
+                            {item.changeType === 'added' && <Badge variant="secondary" className="bg-green-500/10 text-green-500 border-green-500/50"><Check className="mr-1" /> Added</Badge>}
+                            {item.changeType === 'updated' && <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/50"><ArrowRight className="mr-1" /> Updated</Badge>}
+                            {item.changeType === 'removed' && <Badge variant="destructive"><X className="mr-1" /> Removed</Badge>}
                         </TableCell>
                          {showGroup && <TableCell>{item.group_name}</TableCell>}
                         <TableCell>{item.character_name || item.group_name}</TableCell>
                         <TableCell>
-                            {type === 'members' && item.type === 'updated' && (
+                            {type === 'members' && item.changeType === 'updated' && (
                                 <span className="text-muted-foreground">{item.old_rank_name} &rarr; <span className="font-semibold text-foreground">{item.rank_name}</span></span>
                             )}
-                             {type === 'members' && item.type !== 'updated' && item.rank_name}
+                             {type === 'members' && item.changeType !== 'updated' && item.rank_name}
                              {type === 'abas' && (
                                 <span className="text-muted-foreground">{item.old_abas} &rarr; <span className="font-semibold text-foreground">{item.new_abas}</span></span>
                              )}
