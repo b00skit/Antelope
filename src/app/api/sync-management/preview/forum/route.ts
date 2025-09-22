@@ -3,22 +3,22 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { users, apiForumSyncableGroups, factionOrganizationMembership, factionMembersCache } from '@/db/schema';
-import { eq, and, inArray } from 'drizzle-orm';
+import { users, apiForumSyncableGroups, forumApiCache } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 import config from '@config';
 
 interface Diff {
     added: any[];
     updated: any[];
     removed: any[];
-    sourceData: any;
+    sourceData: any[];
 }
 
 export async function GET(request: NextRequest) {
     const cookieStore = await cookies();
     const session = await getSession(cookieStore);
 
-    if (!session.isLoggedIn || !session.userId || !session.gtaw_access_token) {
+    if (!session.isLoggedIn || !session.userId) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -51,59 +51,35 @@ export async function GET(request: NextRequest) {
         const groupPromises = syncableGroups.map(async (group) => {
             const url = `${baseUrl}app.php/booskit/phpbbapi/group/${group.group_id}?key=${apiKey}`;
             const res = await fetch(url, { next: { revalidate: config.FORUM_API_REFRESH_MINUTES * 60 } });
-            if (!res.ok) return { groupId: group.group_id, members: [] };
+            if (!res.ok) return { group_id: group.group_id, name: group.name, members: [] };
             const data = await res.json();
             const allMembers = [
-                ...(data.group?.members?.map((m: any) => m.username.replace(/_/g, ' ')) || []),
-                ...(data.group?.leaders?.map((l: any) => l.username.replace(/_/g, ' ')) || [])
+                ...(data.group?.members || []),
+                ...(data.group?.leaders || [])
             ];
-            return { groupId: group.group_id, members: allMembers };
+            return { group_id: group.group_id, name: group.name, members: allMembers };
         });
+        
+        const liveGroupData = await Promise.all(groupPromises);
+        const cachedGroups = await db.query.forumApiCache.findMany();
+        const cachedGroupsMap = new Map(cachedGroups.map(g => [g.group_id, g]));
 
-        const groupResults = await Promise.all(groupPromises);
-        const liveForumUsernames = new Set<string>();
-        for (const result of groupResults) {
-            result.members.forEach(username => liveForumUsernames.add(username));
+        const diff: Diff = { added: [], updated: [], removed: [], sourceData: liveGroupData };
+        
+        for (const liveGroup of liveGroupData) {
+            const cachedGroup = cachedGroupsMap.get(liveGroup.group_id);
+            const liveUsernames = new Set(liveGroup.members.map((m: any) => m.username));
+
+            if (!cachedGroup) {
+                diff.added.push({ group_name: liveGroup.name, change: `${liveUsernames.size} members will be added.` });
+            } else {
+                const cachedUsernames = new Set((cachedGroup.data?.members || []).map((m: any) => m.username));
+                if (liveUsernames.size !== cachedUsernames.size || ![...liveUsernames].every(u => cachedUsernames.has(u))) {
+                     diff.updated.push({ group_name: liveGroup.name, change: `Member list will be updated from ${cachedUsernames.size} to ${liveUsernames.size} members.` });
+                }
+            }
         }
-
-        const [factionCache, existingMemberships] = await Promise.all([
-            db.query.factionMembersCache.findFirst({ where: eq(factionMembersCache.faction_id, faction.id) }),
-            db.query.factionOrganizationMembership.findMany({
-                where: inArray(factionOrganizationMembership.category_id, syncableGroups.map(g => g.group_id))
-            })
-        ]);
-
-        if (!factionCache?.members) {
-             return NextResponse.json({ error: 'Faction member cache is missing. Please sync members first.' }, { status: 400 });
-        }
-
-        const factionCharacterMap = new Map(factionCache.members.map((m: any) => [m.character_name, m.character_id]));
-        const existingCharacterIds = new Set(existingMemberships.map(m => m.character_id));
-        const liveCharacterIds = new Set<number>();
-        liveForumUsernames.forEach(username => {
-            if (factionCharacterMap.has(username)) {
-                liveCharacterIds.add(factionCharacterMap.get(username));
-            }
-        });
-
-        const diff: Diff = { added: [], updated: [], removed: [], sourceData: { syncableGroups, groupResults } };
-
-        const idToNameMap = new Map(factionCache.members.map((m: any) => [m.character_id, m.character_name]));
-
-        // Added
-        liveCharacterIds.forEach(id => {
-            if (!existingCharacterIds.has(id)) {
-                diff.added.push({ character_id: id, character_name: idToNameMap.get(id) || `Character #${id}` });
-            }
-        });
-
-        // Removed
-        existingCharacterIds.forEach(id => {
-            if (!liveCharacterIds.has(id)) {
-                diff.removed.push({ character_id: id, character_name: idToNameMap.get(id) || `Character #${id}` });
-            }
-        });
-
+        
         return NextResponse.json(diff);
 
     } catch (error) {

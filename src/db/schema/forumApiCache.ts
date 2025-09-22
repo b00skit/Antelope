@@ -1,8 +1,8 @@
-import { table, int, json, timestamp } from './helpers';
-import { activityRosters } from './activityRosters';
+import { table, serial, int, json, timestamp, uniqueIndex } from './helpers';
 
 export const forumApiCache = table('api_cache_forums', {
-  activity_roster_id: int('activity_roster_id').primaryKey().references(() => activityRosters.id, { onDelete: 'cascade' }),
-  data: json('data').$type<{ includedUsernames: string[]; excludedUsernames: string[] }>(),
+  id: serial('id'),
+  group_id: int('group_id').notNull().unique(),
+  data: json('data').$type<{ members: { id: number; username: string }[] }>(),
   last_sync_timestamp: timestamp('last_sync_timestamp'),
 });
