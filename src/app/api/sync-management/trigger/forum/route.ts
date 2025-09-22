@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
 import { users, forumApiCache } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 
 interface SyncPayload {
     group_id: number;
@@ -20,6 +20,16 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
+    const user = await db.query.users.findFirst({
+        where: eq(users.id, session.userId),
+        with: { selectedFaction: true }
+    });
+
+    if (!user?.selectedFaction?.id) {
+        return NextResponse.json({ error: 'No active faction selected.' }, { status: 400 });
+    }
+    const factionId = user.selectedFaction.id;
+    
     const sourceData: SyncPayload[] = await request.json();
 
     try {
@@ -27,11 +37,12 @@ export async function POST(request: NextRequest) {
         
         for (const group of sourceData) {
             await db.insert(forumApiCache).values({
+                faction_id: factionId,
                 group_id: group.group_id,
                 data: { members: group.members },
                 last_sync_timestamp: now,
             }).onConflictDoUpdate({
-                target: forumApiCache.group_id,
+                target: [forumApiCache.faction_id, forumApiCache.group_id],
                 set: {
                     data: { members: group.members },
                     last_sync_timestamp: now,

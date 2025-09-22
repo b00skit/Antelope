@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
 import { users, apiForumSyncableGroups, forumApiCache } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import config from '@config';
 
 interface Diff {
@@ -61,7 +61,9 @@ export async function GET(request: NextRequest) {
         });
         
         const liveGroupData = await Promise.all(groupPromises);
-        const cachedGroups = await db.query.forumApiCache.findMany();
+        const cachedGroups = await db.query.forumApiCache.findMany({
+            where: eq(forumApiCache.faction_id, faction.id)
+        });
         const cachedGroupsMap = new Map(cachedGroups.map(g => [g.group_id, g]));
 
         const diff: Diff = { added: [], updated: [], removed: [], sourceData: liveGroupData };

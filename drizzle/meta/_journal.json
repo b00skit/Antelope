@@ -5,43 +5,8 @@
     {
       "idx": 0,
       "version": "6",
-      "when": 1758091230360,
-      "tag": "0000_swift_firebird",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1758096140371,
-      "tag": "0001_mean_anita_blake",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1758096236302,
-      "tag": "0002_striped_epoch",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "6",
-      "when": 1758103861842,
-      "tag": "0003_magical_quasimodo",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "6",
-      "when": 1758564197575,
-      "tag": "0004_outgoing_shape",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "6",
-      "when": 1758656123498,
-      "tag": "0005_lumpy_iron_fist",
+      "when": 1758567078846,
+      "tag": "0000_dusty_yellow_claw",
       "breakpoints": true
     }
   ]
