@@ -1,3 +1,4 @@
+
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
@@ -14,7 +15,7 @@ interface RouteParams {
 
 const syncableGroupsSchema = z.object({
     groups: z.array(z.object({
-        group_id: z.number(),
+        id: z.number(),
         name: z.string(),
     })),
 });
@@ -52,9 +53,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         
         const data = await response.json();
         
-        const [syncableGroups] = await Promise.all([
-             db.query.apiForumSyncableGroups.findMany({ where: eq(apiForumSyncableGroups.faction_id, factionId) }),
-        ]);
+        const syncableGroups = await db.query.apiForumSyncableGroups.findMany({ where: eq(apiForumSyncableGroups.faction_id, factionId) });
 
         return NextResponse.json({
             allGroups: data.groups || [],
@@ -107,7 +106,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
                 await tx.insert(apiForumSyncableGroups).values(
                     parsed.data.groups.map(group => ({
                         faction_id: factionId,
-                        group_id: group.group_id,
+                        group_id: group.id,
                         name: group.name,
                         created_by: session.userId!,
                     }))

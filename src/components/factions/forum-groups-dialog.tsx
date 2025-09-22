@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -16,7 +17,7 @@ import { MultiSelect } from '../ui/multi-select';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 
 interface ForumGroup {
-    group_id: number;
+    id: number;
     name: string;
 }
 
@@ -60,8 +61,8 @@ export function ForumGroupsDialog({ open, onOpenChange, factionId }: ForumGroups
         setIsSaving(true);
         try {
             const groupsToSave = selectedGroupIds.map(id => {
-                const group = allGroups.find(g => g.group_id.toString() === id);
-                return { group_id: parseInt(id), name: group?.name || '' };
+                const group = allGroups.find(g => g.id.toString() === id);
+                return { id: parseInt(id), name: group?.name || '' };
             }).filter(g => g.name);
 
             const res = await fetch(`/api/factions/${factionId}/forum-groups`, {
@@ -82,7 +83,7 @@ export function ForumGroupsDialog({ open, onOpenChange, factionId }: ForumGroups
     };
 
     const groupOptions = allGroups.map(group => ({
-        value: group.group_id.toString(),
+        value: group.id.toString(),
         label: group.name,
     }));
 
