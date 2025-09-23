@@ -3,33 +3,19 @@
 
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, MoreVertical, Pencil, Trash2, User, Loader2, Move, RefreshCw } from "lucide-react";
-import { format } from "date-fns";
+import { PlusCircle, Loader2 } from "lucide-react";
 import { Combobox } from '../ui/combobox';
 import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-  } from "@/components/ui/dropdown-menu";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { cn } from '@/lib/utils';
 import { TransferMemberDialog } from './transfer-member-dialog';
-import { Checkbox } from '../ui/checkbox';
+import { SectionDialog } from './section-dialog';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
+import { RosterSection } from './roster-section';
+import { motion, AnimatePresence } from 'framer-motion';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '../ui/dropdown-menu';
+import { Move } from 'lucide-react';
 
 
 interface Member {
@@ -44,8 +30,18 @@ interface Member {
     }
 }
 
+interface Section {
+    id: number | 'unassigned';
+    name: string;
+    description: string | null;
+    character_ids_json: number[];
+    order: number;
+}
+
+
 interface Cat3MembersTableProps {
     members: Member[];
+    sections: Section[];
     allFactionMembers: any[];
     allAssignedCharacterIds: number[];
     canManage: boolean;
@@ -58,16 +54,16 @@ interface Cat3MembersTableProps {
     isSecondary: boolean;
 }
 
-export function Cat3MembersTable({ members, allFactionMembers, allAssignedCharacterIds, canManage, cat1Id, cat2Id, cat3Id, onDataChange, allUnitsAndDetails, forumGroupId, isSecondary }: Cat3MembersTableProps) {
+export function Cat3MembersTable({ members, sections: initialSections, allFactionMembers, allAssignedCharacterIds, canManage, cat1Id, cat2Id, cat3Id, onDataChange, allUnitsAndDetails, forumGroupId, isSecondary }: Cat3MembersTableProps) {
     const [isAdding, setIsAdding] = useState(false);
     const [selectedCharacterId, setSelectedCharacterId] = useState<string>('');
     const [newTitle, setNewTitle] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [editingMember, setEditingMember] = useState<Member | null>(null);
-    const [isDeleting, setIsDeleting] = useState<number | null>(null);
     const [transferringMember, setTransferringMember] = useState<Member | null>(null);
     const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
-    const [isSyncing, setIsSyncing] = useState(false);
+    const [sections, setSections] = useState<Section[]>(initialSections.sort((a,b) => a.order - b.order));
+    const [isSectionDialogOpen, setIsSectionDialogOpen] = useState(false);
+    const [editingSection, setEditingSection] = useState<Section | null>(null);
     const [selectedMemberIds, setSelectedMemberIds] = useState<Set<number>>(new Set());
     const { toast } = useToast();
 
@@ -75,10 +71,14 @@ export function Cat3MembersTable({ members, allFactionMembers, allAssignedCharac
     const assignedIds = new Set(allAssignedCharacterIds);
     const characterOptions = allFactionMembers
         .filter(fm => {
-            if (isSecondary) return true;
+            if (isSecondary) return !currentMemberIds.has(fm.character_id);
             return !assignedIds.has(fm.character_id) || currentMemberIds.has(fm.character_id);
         })
         .map(fm => fm.character_name);
+        
+    const assignedMemberIds = new Set(sections.flatMap(s => s.character_ids_json));
+    const unassignedMembers = members.filter(m => !assignedMemberIds.has(m.character_id));
+
 
     const handleAddMember = async () => {
         if (!selectedCharacterId) {
@@ -91,7 +91,7 @@ export function Cat3MembersTable({ members, allFactionMembers, allAssignedCharac
             const res = await fetch(`/api/units-divisions/${cat1Id}/${cat2Id}/${cat3Id}/members`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ character_id: character.character_id, title: newTitle, manual: true }),
+                body: JSON.stringify({ character_id: character.character_id, title: newTitle }),
             });
             const result = await res.json();
             if (!res.ok) throw new Error(result.error);
@@ -107,21 +107,18 @@ export function Cat3MembersTable({ members, allFactionMembers, allAssignedCharac
         }
     }
     
-    const handleUpdateTitle = async () => {
-        if (!editingMember) return;
+     const handleUpdateTitle = async (membershipId: number, title: string | null) => {
         setIsSubmitting(true);
          try {
-            const res = await fetch(`/api/units-divisions/${cat1Id}/${cat2Id}/${cat3Id}/members/${editingMember.id}`, {
+            const res = await fetch(`/api/units-divisions/${cat1Id}/${cat2Id}/${cat3Id}/members/${membershipId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title: newTitle }),
+                body: JSON.stringify({ title }),
             });
             const result = await res.json();
             if (!res.ok) throw new Error(result.error);
             toast({ title: 'Success', description: 'Title updated.' });
             onDataChange();
-            setEditingMember(null);
-            setNewTitle('');
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Error', description: err.message });
         } finally {
@@ -130,7 +127,6 @@ export function Cat3MembersTable({ members, allFactionMembers, allAssignedCharac
     }
     
     const handleDelete = async (membershipId: number) => {
-        setIsDeleting(membershipId);
         try {
             const res = await fetch(`/api/units-divisions/${cat1Id}/${cat2Id}/${cat3Id}/members/${membershipId}`, { method: 'DELETE' });
             const result = await res.json();
@@ -139,8 +135,6 @@ export function Cat3MembersTable({ members, allFactionMembers, allAssignedCharac
             onDataChange();
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Error', description: err.message });
-        } finally {
-            setIsDeleting(null);
         }
     }
 
@@ -149,7 +143,98 @@ export function Cat3MembersTable({ members, allFactionMembers, allAssignedCharac
         setIsTransferDialogOpen(true);
     }
     
-    const handleToggleSelection = (characterId: number) => {
+    // Section Handlers
+    const handleAddOrUpdateSection = async (name: string, description: string) => {
+        const url = editingSection ? `/api/units-divisions/${cat1Id}/${cat2Id}/${cat3Id}/sections/${editingSection.id}` : `/api/units-divisions/${cat1Id}/${cat2Id}/${cat3Id}/sections`;
+        const method = editingSection ? 'PUT' : 'POST';
+
+        try {
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, description }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+
+            if (editingSection) {
+                setSections(prev => prev.map(s => s.id === editingSection.id ? { ...s, name, description } : s));
+            } else {
+                setSections(prev => [...prev, { ...data.section, character_ids_json: [] }]);
+            }
+            toast({ title: 'Success', description: `Section ${editingSection ? 'updated' : 'created'}.` });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Error', description: err.message });
+        } finally {
+            setIsSectionDialogOpen(false);
+            setEditingSection(null);
+        }
+    };
+    
+    const handleDeleteSection = async (sectionId: number) => {
+        if (!confirm('Are you sure? Members will be moved to Unassigned.')) return;
+        try {
+            const res = await fetch(`/api/units-divisions/${cat1Id}/${cat2Id}/${cat3Id}/sections/${sectionId}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error((await res.json()).error);
+            setSections(prev => prev.filter(s => s.id !== sectionId));
+            toast({ title: 'Success', description: 'Section deleted.' });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Error', description: err.message });
+        }
+    };
+
+     const handleMoveMember = async (characterId: number, sourceSectionId: number | 'unassigned', destinationSectionId: number | 'unassigned') => {
+        if (sourceSectionId === destinationSectionId) return;
+
+        const originalSections = JSON.parse(JSON.stringify(sections));
+        const newSections = sections.map(s => {
+            let sectionCopy = { ...s, character_ids_json: [...s.character_ids_json] };
+            if (s.id === sourceSectionId) {
+                sectionCopy.character_ids_json = sectionCopy.character_ids_json.filter(id => id !== characterId);
+            }
+            if (s.id === destinationSectionId) {
+                if (!sectionCopy.character_ids_json.includes(characterId)) {
+                    sectionCopy.character_ids_json.push(characterId);
+                }
+            }
+            return sectionCopy;
+        });
+        setSections(newSections);
+
+        try {
+            await fetch(`/api/units-divisions/${cat1Id}/${cat2Id}/${cat3Id}/sections/assign`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ characterId, sourceSectionId, destinationSectionId }),
+            });
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Move Failed', description: err.message });
+            setSections(originalSections);
+        }
+    };
+    
+    const handleReorderSections = async (dragIndex: number, hoverIndex: number) => {
+        const draggedSection = sections[dragIndex];
+        const newSections = [...sections];
+        newSections.splice(dragIndex, 1);
+        newSections.splice(hoverIndex, 0, draggedSection);
+        
+        const orderedIds = newSections.map(s => s.id);
+        setSections(newSections);
+
+        try {
+            await fetch(`/api/units-divisions/${cat1Id}/${cat2Id}/${cat3Id}/sections/reorder`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orderedSectionIds: orderedIds }),
+            });
+        } catch(err: any) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to save new order.' });
+            setSections(sections);
+        }
+    };
+    
+     const handleToggleSelection = (characterId: number) => {
         setSelectedMemberIds(prev => {
             const newSet = new Set(prev);
             if (newSet.has(characterId)) {
@@ -161,17 +246,49 @@ export function Cat3MembersTable({ members, allFactionMembers, allAssignedCharac
         });
     };
 
-    const handleSelectAll = () => {
-        if (selectedMemberIds.size === members.length) {
+    const handleSelectAllInSection = (section: Section | 'unassigned', isSelected: boolean) => {
+        const membersInSection = section === 'unassigned' ? unassignedMembers : members.filter(m => section.character_ids_json.includes(m.character_id));
+        const memberIds = membersInSection.map(m => m.character_id);
+
+        setSelectedMemberIds(prev => {
+            const newSet = new Set(prev);
+            if (isSelected) {
+                memberIds.forEach(id => newSet.add(id));
+            } else {
+                memberIds.forEach(id => newSet.delete(id));
+            }
+            return newSet;
+        });
+    };
+    
+     const handleBulkMove = async (destinationSectionId: number | 'unassigned') => {
+        const characterIds = Array.from(selectedMemberIds);
+        try {
+            const res = await fetch(`/api/units-divisions/cat3/${cat3Id}/sections/bulk-move`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ characterIds, destinationSectionId }),
+            });
+            if (!res.ok) throw new Error('Bulk move failed.');
+            toast({ title: 'Success', description: `${characterIds.length} members moved.`});
+            
+            const newSections = sections.map(s => {
+                let ids = (s.character_ids_json || []).filter(id => !characterIds.includes(id));
+                if (s.id === destinationSectionId) {
+                    ids = [...new Set([...ids, ...characterIds])];
+                }
+                return { ...s, character_ids_json: ids };
+            });
+            setSections(newSections);
             setSelectedMemberIds(new Set());
-        } else {
-            setSelectedMemberIds(new Set(members.map(m => m.character_id)));
+        } catch(err: any) {
+             toast({ variant: 'destructive', title: 'Error', description: err.message });
         }
     };
 
 
     return (
-        <>
+        <DndProvider backend={HTML5Backend}>
             <TransferMemberDialog
                 open={isTransferDialogOpen}
                 onOpenChange={setIsTransferDialogOpen}
@@ -182,7 +299,13 @@ export function Cat3MembersTable({ members, allFactionMembers, allAssignedCharac
                     opt => !(opt.type === 'cat_3' && opt.value === cat3Id.toString())
                 )}
             />
-            <Card>
+            <SectionDialog
+                open={isSectionDialogOpen}
+                onClose={() => setIsSectionDialogOpen(false)}
+                onSave={handleAddOrUpdateSection}
+                section={editingSection}
+            />
+             <Card>
                 <CardHeader>
                     <div className="flex justify-between items-start">
                         <div>
@@ -191,6 +314,10 @@ export function Cat3MembersTable({ members, allFactionMembers, allAssignedCharac
                         </div>
                         {canManage && (
                            <div className="flex gap-2">
+                                <Button variant="outline" onClick={() => { setEditingSection(null); setIsSectionDialogOpen(true); }}>
+                                    <PlusCircle className="mr-2" />
+                                    Add Section
+                                </Button>
                                 <Button onClick={() => setIsAdding(!isAdding)}>
                                     <PlusCircle className="mr-2" />
                                     {isAdding ? 'Cancel' : 'Add Member'}
@@ -199,9 +326,9 @@ export function Cat3MembersTable({ members, allFactionMembers, allAssignedCharac
                         )}
                     </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                     {isAdding && (
-                        <div className="p-4 border rounded-md mb-4 flex flex-col sm:flex-row gap-4 items-end">
+                        <div className="p-4 border rounded-md flex flex-col sm:flex-row gap-4 items-end">
                             <div className="flex-1 w-full">
                                 <label className="text-sm font-medium">Character</label>
                                 <Combobox options={characterOptions} value={selectedCharacterId} onChange={setSelectedCharacterId} placeholder="Select a character..." />
@@ -216,119 +343,78 @@ export function Cat3MembersTable({ members, allFactionMembers, allAssignedCharac
                             </Button>
                         </div>
                     )}
-                    {members.length > 0 ? (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="w-12">
-                                         <Checkbox
-                                            checked={selectedMemberIds.size === members.length}
-                                            onCheckedChange={handleSelectAll}
-                                            aria-label="Select all members in this section"
-                                            disabled={!canManage}
-                                        />
-                                    </TableHead>
-                                    <TableHead>Name</TableHead>
-                                    <TableHead>Rank</TableHead>
-                                    <TableHead>Title</TableHead>
-                                    <TableHead>Added By</TableHead>
-                                    <TableHead>Date Added</TableHead>
-                                    {canManage && <TableHead></TableHead>}
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {members.map(member => (
-                                    <TableRow key={member.id} data-state={selectedMemberIds.has(member.character_id) ? 'selected' : undefined}>
-                                         <TableCell>
-                                            <Checkbox
-                                                checked={selectedMemberIds.has(member.character_id)}
-                                                onCheckedChange={() => handleToggleSelection(member.character_id)}
-                                                aria-label={`Select ${member.character_name}`}
-                                                disabled={!canManage}
-                                            />
-                                        </TableCell>
-                                        <TableCell>{member.character_name}</TableCell>
-                                        <TableCell>{member.rank_name}</TableCell>
-                                        <TableCell>
-                                            {editingMember?.id === member.id ? (
-                                                <Input 
-                                                    value={newTitle} 
-                                                    onChange={(e) => setNewTitle(e.target.value)} 
-                                                    onBlur={handleUpdateTitle} 
-                                                    onKeyDown={(e) => e.key === 'Enter' && handleUpdateTitle()}
-                                                    autoFocus 
-                                                    disabled={isSubmitting}
-                                                />
-                                            ) : (
-                                                <div 
-                                                    className={cn("group flex items-center gap-2", canManage && "cursor-pointer")}
-                                                    onClick={() => {
-                                                        if (canManage) {
-                                                            setEditingMember(member);
-                                                            setNewTitle(member.title || '');
-                                                        }
-                                                    }}
-                                                >
-                                                    {member.title || <span className="text-muted-foreground">N/A</span>}
-                                                    {canManage && <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />}
-                                                </div>
-                                            )}
-                                        </TableCell>
-                                        <TableCell>{member.creator.username}</TableCell>
-                                        <TableCell>{format(new Date(member.created_at), 'PPP')}</TableCell>
-                                        {canManage && (
-                                            <TableCell className="text-right">
-                                                <AlertDialog>
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="icon"><MoreVertical /></Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent>
-                                                            <DropdownMenuItem onSelect={() => { setEditingMember(member); setNewTitle(member.title || '') }}>
-                                                                <Pencil className="mr-2" /> Edit Title
-                                                            </DropdownMenuItem>
-                                                            {!isSecondary && (
-                                                                <DropdownMenuItem onSelect={() => handleOpenTransferDialog(member)}>
-                                                                    <Move className="mr-2" /> Transfer Member
-                                                                </DropdownMenuItem>
-                                                            )}
-                                                            <AlertDialogTrigger asChild>
-                                                                <div className="relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 text-destructive">
-                                                                    <Trash2 className="mr-2" /> Remove
-                                                                </div>
-                                                            </AlertDialogTrigger>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                    <AlertDialogContent>
-                                                        <AlertDialogHeader>
-                                                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                            <AlertDialogDescription>
-                                                                This will remove {member.character_name} from this detail.
-                                                            </AlertDialogDescription>
-                                                        </AlertDialogHeader>
-                                                        <AlertDialogFooter>
-                                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={() => handleDelete(member.id)} disabled={isDeleting === member.id}>
-                                                                {isDeleting === member.id && <Loader2 className="mr-2 animate-spin" />}
-                                                                Yes, Remove
-                                                            </AlertDialogAction>
-                                                        </AlertDialogFooter>
-                                                    </AlertDialogContent>
-                                                </AlertDialog>
-                                            </TableCell>
-                                        )}
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    ) : (
-                        <div className="text-center py-8 text-muted-foreground">
-                            <User className="mx-auto h-8 w-8 mb-2" />
-                            <p>No members have been assigned to this detail yet.</p>
-                        </div>
-                    )}
+                    
+                    {sections.map((section, index) => (
+                        <RosterSection
+                            key={section.id}
+                            index={index}
+                            section={section}
+                            members={members.filter(m => section.character_ids_json.includes(m.character_id))}
+                            allSections={sections}
+                            onMoveMember={handleMoveMember}
+                            onEdit={() => { setEditingSection(section); setIsSectionDialogOpen(true); }}
+                            onDelete={() => handleDeleteSection(section.id as number)}
+                            onReorder={handleReorderSections}
+                            onUpdateTitle={handleUpdateTitle}
+                            onRemoveMember={handleDelete}
+                            onTransferMember={handleOpenTransferDialog}
+                            canManage={canManage}
+                            selectedMemberIds={selectedMemberIds}
+                            onToggleSelection={handleToggleSelection}
+                            onSelectAll={handleSelectAllInSection}
+                            isSecondary={isSecondary}
+                        />
+                    ))}
+
+                     <RosterSection
+                        section={{ id: 'unassigned', name: 'Unassigned', description: null, order: 999, character_ids_json: [] }}
+                        members={unassignedMembers}
+                        allSections={sections}
+                        onMoveMember={handleMoveMember}
+                        onUpdateTitle={handleUpdateTitle}
+                        onRemoveMember={handleDelete}
+                        onTransferMember={handleOpenTransferDialog}
+                        canManage={canManage}
+                        isUnassigned
+                        selectedMemberIds={selectedMemberIds}
+                        onToggleSelection={handleToggleSelection}
+                        onSelectAll={handleSelectAllInSection}
+                        isSecondary={isSecondary}
+                    />
+
                 </CardContent>
             </Card>
-        </>
+             <AnimatePresence>
+                {canManage && selectedMemberIds.size > 0 && (
+                    <motion.div
+                        initial={{ y: 100, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: 100, opacity: 0 }}
+                        transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+                        className="fixed bottom-4 left-1/2 -translate-x-1/2 w-auto bg-card border shadow-lg rounded-lg p-2 flex items-center gap-4 z-50"
+                    >
+                         <p className="text-sm font-medium">{selectedMemberIds.size} selected</p>
+                         <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button>
+                                    <Move className="mr-2 h-4 w-4" />
+                                    Move Selected To...
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                                {sections.map(s => (
+                                    <DropdownMenuItem key={s.id} onSelect={() => handleBulkMove(s.id as number)}>
+                                        {s.name}
+                                    </DropdownMenuItem>
+                                ))}
+                                 <DropdownMenuItem onSelect={() => handleBulkMove('unassigned')}>
+                                    Unassigned
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                         </DropdownMenu>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </DndProvider>
     )
 }
