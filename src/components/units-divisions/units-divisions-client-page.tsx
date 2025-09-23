@@ -44,7 +44,8 @@ export interface Cat2 {
     name: string;
     short_name: string | null;
     access_json: number[] | null;
-    settings_json: { allow_cat3?: boolean; forum_group_id?: number, secondary?: boolean } | null;
+    settings_json: { allow_cat3?: boolean; secondary?: boolean, mark_alternative_characters?: boolean, allow_roster_snapshots?: boolean } | null;
+    forum_group_id: number | null;
     created_by: number;
     creator: { username: string };
     canManage?: boolean;
@@ -169,6 +170,7 @@ export function UnitsDivisionsClientPage() {
     const [editingCat1, setEditingCat1] = useState<Cat1 | null>(null);
     const [editingCat2, setEditingCat2] = useState<Cat2 | null>(null);
     const [currentParentCat1, setCurrentParentCat1] = useState<Cat1 | null>(null);
+    const [syncableForumGroups, setSyncableForumGroups] = useState<{ value: string; label: string; }[]>([]);
     const { toast } = useToast();
     const { favorites, toggleFavorite } = useOrganizationFavorites();
     
@@ -178,10 +180,19 @@ export function UnitsDivisionsClientPage() {
         setIsLoading(true);
         setError(null);
         try {
-            const res = await fetch('/api/units-divisions');
-            const result = await res.json();
-            if (!res.ok) throw new Error(result.error);
-            setData(result);
+            const [mainRes, groupsRes] = await Promise.all([
+                fetch('/api/units-divisions'),
+                fetch(`/api/factions/${session.activeFaction.id}/forum-groups`)
+            ]);
+            
+            const mainResult = await mainRes.json();
+            if (!mainRes.ok) throw new Error(mainResult.error);
+            setData(mainResult);
+            
+            if (groupsRes.ok) {
+                const groupsResult = await groupsRes.json();
+                setSyncableForumGroups((groupsResult.syncableGroups || []).map((g: any) => ({ value: g.group_id.toString(), label: g.name })));
+            }
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -295,6 +306,7 @@ export function UnitsDivisionsClientPage() {
                     parentCat1={currentParentCat1}
                     settings={data.settings}
                     factionUsers={data.factionUsers || []}
+                    syncableForumGroups={syncableForumGroups}
                 />
             )}
             <PageHeader

@@ -40,23 +40,28 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         });
 
         if (!faction || !faction.phpbb_api_url || !faction.phpbb_api_key) {
-            return NextResponse.json({ error: 'Forum integration not configured.' }, { status: 400 });
+            return NextResponse.json({ syncableGroups: [], allGroups: [] });
         }
 
+        const syncableGroups = await db.query.apiForumSyncableGroups.findMany({ where: eq(apiForumSyncableGroups.faction_id, factionId) });
+        
         const baseUrl = faction.phpbb_api_url.endsWith('/') ? faction.phpbb_api_url : `${faction.phpbb_api_url}/`;
         const url = `${baseUrl}app.php/booskit/phpbbapi/groups?key=${faction.phpbb_api_key}`;
         
-        const response = await fetch(url, { next: { revalidate: 300 } }); // Cache for 5 mins
-        if (!response.ok) {
-            return NextResponse.json({ error: 'Failed to fetch groups from forum API.' }, { status: 502 });
+        let allGroups = [];
+        try {
+            const response = await fetch(url, { next: { revalidate: 300 } }); // Cache for 5 mins
+            if (response.ok) {
+                const data = await response.json();
+                allGroups = data.groups || [];
+            }
+        } catch (e) {
+            // Ignore fetch error, return what we have
         }
-        
-        const data = await response.json();
-        
-        const syncableGroups = await db.query.apiForumSyncableGroups.findMany({ where: eq(apiForumSyncableGroups.faction_id, factionId) });
+
 
         return NextResponse.json({
-            allGroups: data.groups || [],
+            allGroups: allGroups,
             syncableGroups: syncableGroups,
         });
 
@@ -99,18 +104,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             return NextResponse.json({ error: 'You do not have permission to modify these settings.' }, { status: 403 });
         }
         
-        db.transaction((tx) => {
-            tx.delete(apiForumSyncableGroups).where(eq(apiForumSyncableGroups.faction_id, factionId)).run();
+        await db.transaction(async (tx) => {
+            await tx.delete(apiForumSyncableGroups).where(eq(apiForumSyncableGroups.faction_id, factionId));
             
             if (parsed.data.groups.length > 0) {
-                tx.insert(apiForumSyncableGroups).values(
+                await tx.insert(apiForumSyncableGroups).values(
                     parsed.data.groups.map(group => ({
                         faction_id: factionId,
                         group_id: group.id,
                         name: group.name,
                         created_by: session.userId!,
                     }))
-                ).run();
+                );
             }
         });
         
