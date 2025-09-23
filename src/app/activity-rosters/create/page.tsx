@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { AlertTriangle, Loader2, Plus, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Form,
@@ -29,6 +29,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from '@/hooks/use-session';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { Switch } from '@/components/ui/switch';
+import { cn } from '@/lib/utils';
 
 const jsonString = z.string().refine((value) => {
     if (!value) return true; // Allow empty string
@@ -52,6 +53,11 @@ const formSchema = z.object({
     path: ["password"],
 });
 
+interface LabelConfig {
+    color: string;
+    title: string;
+}
+
 interface BasicFilters {
     include_ranks: string;
     exclude_ranks: string;
@@ -61,6 +67,7 @@ interface BasicFilters {
     forum_groups_excluded: number[];
     show_assignment_titles: boolean;
     mark_alternative_characters: boolean;
+    labels: LabelConfig[];
 }
 
 const visibilityOptions = [
@@ -68,6 +75,11 @@ const visibilityOptions = [
     { value: 'private', label: 'Private', description: 'Only people with the password can see this roster.' },
     { value: 'unlisted', label: 'Unlisted', description: 'Anyone with the link can see it, but it\'s hidden from the main list.' },
     { value: 'public', label: 'Public', description: 'Everyone in the faction can see this roster.' },
+];
+
+const labelColors = [
+    "red", "orange", "amber", "yellow", "lime", "green", "emerald", "teal", "cyan",
+    "sky", "blue", "indigo", "violet", "purple", "fuchsia", "pink", "rose"
 ];
 
 export default function CreateRosterPage() {
@@ -85,6 +97,7 @@ export default function CreateRosterPage() {
         forum_groups_excluded: [],
         show_assignment_titles: true,
         mark_alternative_characters: true,
+        labels: [],
     });
 
     const form = useForm<z.infer<typeof formSchema>>({
@@ -113,7 +126,7 @@ export default function CreateRosterPage() {
 
                 const groupsData = await groupsRes.json();
                 if (groupsRes.ok) {
-                    setSyncableForumGroups((groupsData.syncableGroups || []).map((g: any) => ({ value: g.group_id.toString(), label: g.name })));
+                    setSyncableForumGroups((groupsData.syncableGroups || []).map((g: any) => ({ value: g.id.toString(), label: g.name })));
                 }
             } catch (e) {
                 console.error("Failed to fetch initial data for roster creation");
@@ -135,6 +148,7 @@ export default function CreateRosterPage() {
                 forum_groups_excluded: json.forum_groups_excluded || [],
                 show_assignment_titles: json.show_assignment_titles ?? true,
                 mark_alternative_characters: json.mark_alternative_characters ?? true,
+                labels: json.labels ? Object.entries(json.labels).map(([color, title]) => ({ color, title: title as string })) : [],
             });
         } catch (e) {
             // Invalid JSON, do nothing
@@ -148,6 +162,12 @@ export default function CreateRosterPage() {
             
             const parseRanks = (rankString: string) => rankString.split(',').map(r => parseInt(r.trim(), 10)).filter(r => !isNaN(r));
             const parseMembers = (memberString: string) => memberString.split('\n').map(m => m.trim()).filter(Boolean);
+            const parseLabels = (labels: LabelConfig[]) => labels.reduce((acc, label) => {
+                if (label.color && label.title) {
+                    acc[label.color] = label.title;
+                }
+                return acc;
+            }, {} as Record<string, string>);
 
             const newJson = {
                 ...currentJson,
@@ -159,6 +179,7 @@ export default function CreateRosterPage() {
                 forum_groups_excluded: basicFilters.forum_groups_excluded,
                 show_assignment_titles: basicFilters.show_assignment_titles,
                 mark_alternative_characters: basicFilters.mark_alternative_characters,
+                labels: parseLabels(basicFilters.labels),
             };
             form.setValue('roster_setup_json', JSON.stringify(newJson, null, 2), { shouldValidate: true });
         } catch (e) {
@@ -196,6 +217,21 @@ export default function CreateRosterPage() {
     };
     
     const userOptions = factionUsers.map(user => ({ value: user.id.toString(), label: user.username }));
+
+    const handleLabelChange = (index: number, field: 'color' | 'title', value: string) => {
+        const newLabels = [...basicFilters.labels];
+        newLabels[index][field] = value;
+        setBasicFilters(f => ({ ...f, labels: newLabels }));
+    };
+
+    const addLabel = () => {
+        setBasicFilters(f => ({ ...f, labels: [...f.labels, { color: 'red', title: '' }] }));
+    };
+
+    const removeLabel = (index: number) => {
+        const newLabels = basicFilters.labels.filter((_, i) => i !== index);
+        setBasicFilters(f => ({ ...f, labels: newLabels }));
+    };
 
     return (
         <div className="container mx-auto p-4 md:p-6 lg:p-8">
@@ -287,48 +323,95 @@ export default function CreateRosterPage() {
                                         <TabsTrigger value="advanced">Advanced (JSON)</TabsTrigger>
                                     </TabsList>
                                     <TabsContent value="basic" className="space-y-4 pt-2">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <FormItem>
-                                                <FormLabel>Include Ranks</FormLabel>
-                                                <Input value={basicFilters.include_ranks} onChange={(e) => setBasicFilters(f => ({...f, include_ranks: e.target.value}))} placeholder="e.g., 1,5,10" />
-                                                <FormDescription>Comma-separated rank IDs to include.</FormDescription>
-                                            </FormItem>
-                                             <FormItem>
-                                                <FormLabel>Exclude Ranks</FormLabel>
-                                                <Input value={basicFilters.exclude_ranks} onChange={(e) => setBasicFilters(f => ({...f, exclude_ranks: e.target.value}))} placeholder="e.g., 14,15" />
-                                                <FormDescription>Comma-separated rank IDs to exclude.</FormDescription>
-                                            </FormItem>
-                                            <FormItem>
-                                                <FormLabel>Include Forum Groups</FormLabel>
-                                                <MultiSelect
-                                                    options={syncableForumGroups}
-                                                    onValueChange={(selected) => setBasicFilters(f => ({...f, forum_groups_included: selected.map(Number)}))}
-                                                    defaultValue={basicFilters.forum_groups_included.map(String)}
-                                                    placeholder="Select groups..."
-                                                />
-                                            </FormItem>
-                                            <FormItem>
-                                                <FormLabel>Exclude Forum Groups</FormLabel>
-                                                <MultiSelect
-                                                    options={syncableForumGroups}
-                                                    onValueChange={(selected) => setBasicFilters(f => ({...f, forum_groups_excluded: selected.map(Number)}))}
-                                                    defaultValue={basicFilters.forum_groups_excluded.map(String)}
-                                                    placeholder="Select groups..."
-                                                />
-                                            </FormItem>
-                                        </div>
-                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                            <div className="space-y-0.5">
-                                                <FormLabel>Show Assignment Titles</FormLabel>
-                                            </div>
-                                            <Switch checked={basicFilters.show_assignment_titles} onCheckedChange={(checked) => setBasicFilters(f => ({...f, show_assignment_titles: checked}))} />
-                                        </FormItem>
-                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                            <div className="space-y-0.5">
-                                                <FormLabel>Mark Alternative Characters</FormLabel>
-                                            </div>
-                                            <Switch checked={basicFilters.mark_alternative_characters} onCheckedChange={(checked) => setBasicFilters(f => ({...f, mark_alternative_characters: checked}))} />
-                                        </FormItem>
+                                        <Card>
+                                            <CardHeader>
+                                                <CardTitle className="text-base">Filters</CardTitle>
+                                            </CardHeader>
+                                            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <FormItem>
+                                                    <FormLabel>Include Ranks</FormLabel>
+                                                    <Input value={basicFilters.include_ranks} onChange={(e) => setBasicFilters(f => ({...f, include_ranks: e.target.value}))} placeholder="e.g., 1,5,10" />
+                                                    <FormDescription>Comma-separated rank IDs to include.</FormDescription>
+                                                </FormItem>
+                                                <FormItem>
+                                                    <FormLabel>Exclude Ranks</FormLabel>
+                                                    <Input value={basicFilters.exclude_ranks} onChange={(e) => setBasicFilters(f => ({...f, exclude_ranks: e.target.value}))} placeholder="e.g., 14,15" />
+                                                    <FormDescription>Comma-separated rank IDs to exclude.</FormDescription>
+                                                </FormItem>
+                                                <FormItem>
+                                                    <FormLabel>Include Forum Groups</FormLabel>
+                                                    <MultiSelect
+                                                        options={syncableForumGroups}
+                                                        onValueChange={(selected) => setBasicFilters(f => ({...f, forum_groups_included: selected.map(Number)}))}
+                                                        defaultValue={basicFilters.forum_groups_included.map(String)}
+                                                        placeholder="Select groups..."
+                                                    />
+                                                </FormItem>
+                                                <FormItem>
+                                                    <FormLabel>Exclude Forum Groups</FormLabel>
+                                                    <MultiSelect
+                                                        options={syncableForumGroups}
+                                                        onValueChange={(selected) => setBasicFilters(f => ({...f, forum_groups_excluded: selected.map(Number)}))}
+                                                        defaultValue={basicFilters.forum_groups_excluded.map(String)}
+                                                        placeholder="Select groups..."
+                                                    />
+                                                </FormItem>
+                                            </CardContent>
+                                        </Card>
+                                         <Card>
+                                            <CardHeader>
+                                                <CardTitle className="text-base">Display Options</CardTitle>
+                                            </CardHeader>
+                                            <CardContent className="space-y-4">
+                                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                                    <div className="space-y-0.5">
+                                                        <FormLabel>Show Assignment Titles</FormLabel>
+                                                    </div>
+                                                    <Switch checked={basicFilters.show_assignment_titles} onCheckedChange={(checked) => setBasicFilters(f => ({...f, show_assignment_titles: checked}))} />
+                                                </FormItem>
+                                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                                    <div className="space-y-0.5">
+                                                        <FormLabel>Mark Alternative Characters</FormLabel>
+                                                    </div>
+                                                    <Switch checked={basicFilters.mark_alternative_characters} onCheckedChange={(checked) => setBasicFilters(f => ({...f, mark_alternative_characters: checked}))} />
+                                                </FormItem>
+                                            </CardContent>
+                                        </Card>
+                                         <Card>
+                                            <CardHeader>
+                                                <CardTitle className="text-base">Labels</CardTitle>
+                                                <CardDescription>Create color-coded labels for members on this roster.</CardDescription>
+                                            </CardHeader>
+                                            <CardContent className="space-y-2">
+                                                {basicFilters.labels.map((label, index) => (
+                                                    <div key={index} className="flex items-center gap-2">
+                                                        <Select value={label.color} onValueChange={(value) => handleLabelChange(index, 'color', value)}>
+                                                            <SelectTrigger className="w-[120px]">
+                                                                <SelectValue>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className={cn('h-2 w-2 rounded-full', `bg-${label.color}-500`)} />
+                                                                        {label.color}
+                                                                    </div>
+                                                                </SelectValue>
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {labelColors.map(color => (
+                                                                    <SelectItem key={color} value={color}>
+                                                                         <div className="flex items-center gap-2">
+                                                                            <span className={cn('h-2 w-2 rounded-full', `bg-${color}-500`)} />
+                                                                            {color}
+                                                                        </div>
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <Input value={label.title} onChange={(e) => handleLabelChange(index, 'title', e.target.value)} placeholder="Label Title" />
+                                                        <Button variant="ghost" size="icon" onClick={() => removeLabel(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                                    </div>
+                                                ))}
+                                                <Button type="button" variant="outline" size="sm" onClick={addLabel}><Plus className="mr-2" /> Add Label</Button>
+                                            </CardContent>
+                                        </Card>
                                     </TabsContent>
                                     <TabsContent value="advanced">
                                          <FormField
