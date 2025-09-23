@@ -16,6 +16,8 @@ const cat2Schema = z.object({
         allow_cat3: z.boolean().optional(),
         forum_group_id: z.coerce.number().optional().nullable(),
         secondary: z.boolean().optional(),
+        mark_alternative_characters: z.boolean().optional(),
+        allow_roster_snapshots: z.boolean().optional(),
     }).optional().nullable(),
 });
 
@@ -71,6 +73,7 @@ export async function POST(request: NextRequest) {
             short_name,
             access_json,
             settings_json,
+            forum_group_id: settings_json?.forum_group_id,
             created_by: session.userId,
         }).returning();
 

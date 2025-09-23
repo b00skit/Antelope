@@ -23,6 +23,8 @@ const cat2UpdateSchema = z.object({
         allow_cat3: z.boolean().optional(),
         forum_group_id: z.coerce.number().optional().nullable(),
         secondary: z.boolean().optional(),
+        mark_alternative_characters: z.boolean().optional(),
+        allow_roster_snapshots: z.boolean().optional(),
     }).optional().nullable(),
 });
 
@@ -55,7 +57,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         const { cat1_id, ...updateData } = parsed.data;
 
         const updatedCat2 = await db.update(factionOrganizationCat2)
-            .set(updateData)
+            .set({
+                ...updateData,
+                forum_group_id: updateData.settings_json?.forum_group_id,
+            })
             .where(eq(factionOrganizationCat2.id, cat2Id))
             .returning();
 

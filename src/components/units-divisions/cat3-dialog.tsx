@@ -18,6 +18,7 @@ import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { MultiSelect } from '../ui/multi-select';
 import { Switch } from '../ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const cat3FormSchema = z.object({
     name: z.string().min(1, "Name cannot be empty."),
@@ -25,6 +26,8 @@ const cat3FormSchema = z.object({
     access_json: z.array(z.number()).optional().nullable(),
     forum_group_id: z.coerce.number().optional().nullable(),
     secondary: z.boolean().default(false),
+    mark_alternative_characters: z.boolean().default(true),
+    allow_roster_snapshots: z.boolean().default(false),
 });
 
 interface Cat3DialogProps {
@@ -35,9 +38,10 @@ interface Cat3DialogProps {
     parentCat2: Cat2;
     settings: { category_3_name: string };
     factionUsers: FactionUser[];
+    syncableForumGroups: { value: string; label: string; }[];
 }
 
-export function Cat3Dialog({ open, onOpenChange, onSave, cat3, parentCat2, settings, factionUsers }: Cat3DialogProps) {
+export function Cat3Dialog({ open, onOpenChange, onSave, cat3, parentCat2, settings, factionUsers, syncableForumGroups }: Cat3DialogProps) {
     const { toast } = useToast();
     const form = useForm<z.infer<typeof cat3FormSchema>>({
         resolver: zodResolver(cat3FormSchema),
@@ -47,6 +51,8 @@ export function Cat3Dialog({ open, onOpenChange, onSave, cat3, parentCat2, setti
             access_json: [],
             forum_group_id: undefined,
             secondary: false,
+            mark_alternative_characters: true,
+            allow_roster_snapshots: false,
         }
     });
 
@@ -58,6 +64,8 @@ export function Cat3Dialog({ open, onOpenChange, onSave, cat3, parentCat2, setti
                 access_json: cat3.access_json,
                 forum_group_id: cat3.settings_json?.forum_group_id,
                 secondary: cat3.settings_json?.secondary ?? false,
+                mark_alternative_characters: cat3.settings_json?.mark_alternative_characters ?? true,
+                allow_roster_snapshots: cat3.settings_json?.allow_roster_snapshots ?? false,
             });
         } else {
             form.reset({
@@ -66,6 +74,8 @@ export function Cat3Dialog({ open, onOpenChange, onSave, cat3, parentCat2, setti
                 access_json: [],
                 forum_group_id: undefined,
                 secondary: false,
+                mark_alternative_characters: true,
+                allow_roster_snapshots: false,
             });
         }
     }, [cat3, form]);
@@ -83,6 +93,8 @@ export function Cat3Dialog({ open, onOpenChange, onSave, cat3, parentCat2, setti
                 settings_json: {
                     forum_group_id: values.forum_group_id,
                     secondary: values.secondary,
+                    mark_alternative_characters: values.mark_alternative_characters,
+                    allow_roster_snapshots: values.allow_roster_snapshots,
                 },
             };
 
@@ -164,8 +176,20 @@ export function Cat3Dialog({ open, onOpenChange, onSave, cat3, parentCat2, setti
                             name="forum_group_id"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Forum Group ID (Optional)</FormLabel>
-                                    <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
+                                    <FormLabel>Forum Group for Roster Sync (Optional)</FormLabel>
+                                     <Select onValueChange={(value) => field.onChange(value ? parseInt(value) : undefined)} defaultValue={field.value?.toString()}>
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select a forum group..." />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="">None</SelectItem>
+                                            {syncableForumGroups.map(group => (
+                                                <SelectItem key={group.value} value={group.value}>{group.label}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                     <FormDescription>Sync this detail with a phpBB forum group.</FormDescription>
                                     <FormMessage />
                                 </FormItem>
@@ -181,6 +205,40 @@ export function Cat3Dialog({ open, onOpenChange, onSave, cat3, parentCat2, setti
                                         <FormDescription>
                                             Allow members to join this {settings.category_3_name.toLowerCase()} even if they have a primary assignment.
                                         </FormDescription>
+                                    </div>
+                                    <FormControl>
+                                        <Switch
+                                            checked={field.value}
+                                            onCheckedChange={field.onChange}
+                                        />
+                                    </FormControl>
+                                </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name="mark_alternative_characters"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                    <div className="space-y-0.5">
+                                        <FormLabel>Mark Alternative Characters</FormLabel>
+                                    </div>
+                                    <FormControl>
+                                        <Switch
+                                            checked={field.value}
+                                            onCheckedChange={field.onChange}
+                                        />
+                                    </FormControl>
+                                </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name="allow_roster_snapshots"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                    <div className="space-y-0.5">
+                                        <FormLabel>Allow Roster Snapshots</FormLabel>
                                     </div>
                                     <FormControl>
                                         <Switch
