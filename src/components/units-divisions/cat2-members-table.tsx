@@ -34,7 +34,7 @@ import { Checkbox } from '../ui/checkbox';
 import { SectionDialog } from './section-dialog';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { RosterSection } from '../activity-rosters/roster-section';
+import { RosterSection } from '@/components/activity-rosters/roster-section';
 
 
 interface Member {
