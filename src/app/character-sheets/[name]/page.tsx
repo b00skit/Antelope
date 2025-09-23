@@ -2,8 +2,8 @@ import { notFound } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { users, factionMembersCache, factionMembersAbasCache, factionOrganizationMembership, factionOrganizationCat2, factionOrganizationCat3, factionOrganizationCat1, factionMembers } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { users, factionMembersCache, factionMembersAbasCache, factionOrganizationMembership, factionOrganizationCat2, factionOrganizationCat3, factionOrganizationCat1, factionMembers, apiCacheAlternativeCharacters } from '@/db/schema';
+import { eq, and, inArray } from 'drizzle-orm';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import { canUserManage } from '@/app/api/units-divisions/[cat1Id]/[cat2Id]/helpers';
@@ -72,29 +72,20 @@ async function getCharacterData(name: string) {
         return { error: 'Character sheets are not enabled for this faction.' };
     }
 
-    const now = new Date();
-    const factionRefreshThreshold = now.getTime() - config.GTAW_API_REFRESH_MINUTES_FACTIONS * 60 * 1000;
     const cachedFaction = await db.query.factionMembersCache.findFirst({
         where: eq(factionMembersCache.faction_id, factionId)
     });
 
-    let members = cachedFaction?.members || [];
-    if (!cachedFaction || !cachedFaction.last_sync_timestamp || new Date(cachedFaction.last_sync_timestamp).getTime() < factionRefreshThreshold) {
-        const factionApiResponse = await fetch(`https://ucp.gta.world/api/faction/${factionId}`, {
-            headers: { Authorization: `Bearer ${session.gtaw_access_token}` },
-        });
+    if (!cachedFaction?.members || cachedFaction.members.length === 0) {
+        return { error: 'Faction data has not been synced. Please go to Sync Management.' };
+    }
 
-        if (!factionApiResponse.ok) {
-            if (factionApiResponse.status === 401) return { error: 'GTA:World session expired.', reauth: true };
-            return { error: 'Failed to sync with GTA:World API.' };
+    let members = cachedFaction.members || [];
+    const membersByCharacterId = new Map<number, any>();
+    for (const member of members) {
+        if (member && typeof member.character_id === 'number') {
+            membersByCharacterId.set(member.character_id, member);
         }
-        
-        const gtawFactionData = await factionApiResponse.json();
-        members = gtawFactionData.data.members;
-
-        await db.insert(factionMembersCache)
-            .values({ faction_id: factionId, members: members, last_sync_timestamp: now })
-            .onConflictDoUpdate({ target: factionMembersCache.faction_id, set: { members: members, last_sync_timestamp: now } });
     }
     
     const characterName = decodeURIComponent(name).replace(/_/g, ' ');
@@ -104,47 +95,128 @@ async function getCharacterData(name: string) {
     }
     const characterId = character.character_id;
 
-    const charApiResponse = await fetch(`https://ucp.gta.world/api/faction/${factionId}/character/${characterId}`, {
-        headers: { Authorization: `Bearer ${session.gtaw_access_token}` },
+    const altCacheEntry = await db.query.apiCacheAlternativeCharacters.findFirst({
+        where: and(
+            eq(apiCacheAlternativeCharacters.faction_id, factionId),
+            eq(apiCacheAlternativeCharacters.user_id, character.user_id),
+        )
     });
-    if (!charApiResponse.ok) {
-        if (charApiResponse.status === 401) return { error: 'GTA:World session expired.', reauth: true };
-        return { error: 'Failed to fetch character data from GTA:World API.' };
+
+    const alternativeCharactersRaw = Array.isArray(altCacheEntry?.alternative_characters_json)
+        ? altCacheEntry.alternative_characters_json
+        : [];
+
+    const relatedCharacterIds = new Set<number>([characterId]);
+    if (typeof altCacheEntry?.character_id === 'number') {
+        relatedCharacterIds.add(altCacheEntry.character_id);
     }
-    const charData = await charApiResponse.json();
 
-    if (charData.data.alternative_characters) {
-        const uniqueAlts = Array.from(new Map(charData.data.alternative_characters.map((item: any) => [item['character_id'], item])).values());
-        charData.data.alternative_characters = uniqueAlts;
-    }
-
-    const charactersToCache = [
-        { character_id: charData.data.character_id, abas: charData.data.abas },
-        ...charData.data.alternative_characters.map((alt: any) => ({ character_id: alt.character_id, abas: alt.abas }))
-    ];
-    
-    const totalAbas = charactersToCache.reduce((sum, char) => sum + parseFloat(char.abas || '0'), 0);
-
-    for (const char of charactersToCache) {
-        if (char.character_id && char.abas !== undefined) {
-            await db.insert(factionMembersAbasCache)
-                .values({
-                    character_id: char.character_id,
-                    faction_id: factionId,
-                    abas: char.abas,
-                    total_abas: totalAbas,
-                    last_sync_timestamp: now,
-                })
-                .onConflictDoUpdate({
-                    target: [factionMembersAbasCache.character_id, factionMembersAbasCache.faction_id],
-                    set: {
-                        abas: char.abas,
-                        total_abas: totalAbas,
-                        last_sync_timestamp: now,
-                    }
-                });
+    for (const alt of alternativeCharactersRaw) {
+        if (alt && typeof alt.character_id === 'number') {
+            relatedCharacterIds.add(alt.character_id);
         }
     }
+
+    const characterIdsForAbas = Array.from(relatedCharacterIds);
+
+    const abasEntries = characterIdsForAbas.length > 0
+        ? await db.query.factionMembersAbasCache.findMany({
+            where: and(
+                eq(factionMembersAbasCache.faction_id, factionId),
+                inArray(factionMembersAbasCache.character_id, characterIdsForAbas),
+            )
+        })
+        : [];
+
+    const abasMap = new Map(abasEntries.map(entry => [entry.character_id, entry]));
+    const mainAbasEntry = abasMap.get(characterId);
+
+    const totalAbas = mainAbasEntry?.total_abas ?? characterIdsForAbas.reduce((sum, id) => {
+        const entry = abasMap.get(id);
+        if (!entry?.abas) return sum;
+        const value = parseFloat(entry.abas);
+        return isNaN(value) ? sum : sum + value;
+    }, 0);
+
+    const deriveNameParts = () => {
+        if (character.firstname && character.lastname) {
+            return { firstname: character.firstname, lastname: character.lastname };
+        }
+
+        const cleanedName = (character.character_name || '').replace(/_/g, ' ').trim();
+        if (!cleanedName) {
+            return { firstname: character.firstname ?? '', lastname: character.lastname ?? '' };
+        }
+
+        const parts = cleanedName.split(' ');
+        const firstname = parts.shift() ?? '';
+        const lastname = parts.join(' ') || '';
+        return { firstname, lastname };
+    };
+
+    const nameParts = deriveNameParts();
+
+    const alternativeCharacters: any[] = [];
+    const addAlternativeCharacter = (candidate: any) => {
+        if (!candidate) {
+            return;
+        }
+
+        const candidateId = typeof candidate.character_id === 'number'
+            ? candidate.character_id
+            : typeof candidate.characterId === 'number'
+                ? candidate.characterId
+                : undefined;
+
+        if (typeof candidateId !== 'number' || candidateId === characterId) {
+            return;
+        }
+
+        if (alternativeCharacters.some(alt => alt.character_id === candidateId)) {
+            return;
+        }
+
+        const memberData = membersByCharacterId.get(candidateId) ?? candidate;
+        const altAbasEntry = abasMap.get(candidateId);
+
+        alternativeCharacters.push({
+            ...memberData,
+            character_id: candidateId,
+            character_name: memberData.character_name ?? candidate.character_name,
+            firstname: memberData.firstname ?? candidate.firstname,
+            lastname: memberData.lastname ?? candidate.lastname,
+            rank: memberData.rank ?? candidate.rank,
+            rank_name: memberData.rank_name ?? candidate.rank_name,
+            last_online: memberData.last_online ?? candidate.last_online,
+            last_duty: memberData.last_duty ?? candidate.last_duty,
+            user_id: memberData.user_id ?? candidate.user_id ?? character.user_id,
+            abas: altAbasEntry?.abas ?? memberData.abas ?? candidate.abas,
+        });
+    };
+
+    if (altCacheEntry) {
+        const primaryMember = membersByCharacterId.get(altCacheEntry.character_id) ?? {
+            character_id: altCacheEntry.character_id,
+            character_name: altCacheEntry.character_name,
+            rank: altCacheEntry.rank,
+            user_id: character.user_id,
+        };
+        addAlternativeCharacter(primaryMember);
+    }
+
+    for (const alt of alternativeCharactersRaw) {
+        addAlternativeCharacter(alt);
+    }
+
+    const charData = {
+        data: {
+            ...character,
+            firstname: nameParts.firstname,
+            lastname: nameParts.lastname,
+            abas: mainAbasEntry?.abas ?? character.abas,
+            alternative_characters: alternativeCharacters,
+        }
+    };
     
     let forumData: ForumData | null = null;
     if (selectedFaction.phpbb_api_url && selectedFaction.phpbb_api_key) {

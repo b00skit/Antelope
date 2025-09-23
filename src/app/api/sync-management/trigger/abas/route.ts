@@ -1,3 +1,4 @@
+
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
@@ -35,9 +36,9 @@ export async function POST(request: NextRequest) {
         const now = new Date();
 
         // Use a transaction for bulk updates
-        await db.transaction(async (tx) => {
+        db.transaction((tx) => {
             for (const abasEntry of abasValues) {
-                await tx.insert(factionMembersAbasCache)
+                tx.insert(factionMembersAbasCache)
                     .values({
                         character_id: abasEntry.character_id,
                         faction_id: factionId,
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest) {
                             abas: abasEntry.abas,
                             last_sync_timestamp: now,
                         }
-                    });
+                    }).run();
             }
         });
 
