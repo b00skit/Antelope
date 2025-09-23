@@ -46,10 +46,10 @@ interface PageData {
     unit: Cat2 & { cat1: { name: string }, cat3s: Cat3[] };
     members: Member[];
     allFactionMembers: any[];
-    allAssignedCharacterIds: number[];
     canManage: boolean;
     factionUsers: FactionUser[];
     allUnitsAndDetails: { label: string; value: string; type: 'cat_2' | 'cat_3' }[];
+    missingForumUsers: string[];
 }
 
 interface Cat2ClientPageProps {
@@ -155,16 +155,23 @@ export function Cat2ClientPage({ cat1Id, cat2Id }: Cat2ClientPageProps) {
             <PageHeader
                 title={data.unit.name}
             />
+             {data.missingForumUsers && data.missingForumUsers.length > 0 && (
+                <Alert variant="warning">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Forum Sync Mismatch</AlertTitle>
+                    <AlertDescription>
+                        The following forum users in the assigned group could not be found in the GTA:W faction roster: {data.missingForumUsers.join(', ')}.
+                    </AlertDescription>
+                </Alert>
+            )}
             <MembersTable 
                 members={data.members}
                 allFactionMembers={data.allFactionMembers}
-                allAssignedCharacterIds={data.allAssignedCharacterIds}
                 canManage={data.canManage}
                 cat1Id={cat1Id}
                 cat2Id={cat2Id}
                 onDataChange={fetchData}
                 allUnitsAndDetails={data.allUnitsAndDetails}
-                forumGroupId={data.unit.settings_json?.forum_group_id}
                 isSecondary={data.unit.settings_json?.secondary ?? false}
             />
 

@@ -55,7 +55,7 @@ export const factionOrganizationMembership = table('faction_organization_members
   character_id: int('character_id').notNull(),
   title: text('title', { length: 255 }),
   secondary: boolean('secondary').default(false),
-  manual: boolean('manual').default(false),
+  manual: boolean('manual').notNull().default(false),
   created_by: int('created_by').notNull().references(() => users.id),
   created_at: timestamp('created_at').default(now()),
   updated_at: timestamp('updated_at').default(now()),

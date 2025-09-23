@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, MoreVertical, Pencil, Trash2, User, Loader2, Move, RefreshCw } from "lucide-react";
+import { PlusCircle, MoreVertical, Pencil, Trash2, User, Loader2, Move } from "lucide-react";
 import { format } from "date-fns";
 import { Combobox } from '../ui/combobox';
 import { Input } from '../ui/input';
@@ -46,17 +46,15 @@ interface Member {
 interface MembersTableProps {
     members: Member[];
     allFactionMembers: any[];
-    allAssignedCharacterIds: number[];
     canManage: boolean;
     cat1Id: number;
     cat2Id: number;
     onDataChange: () => void;
     allUnitsAndDetails: { label: string; value: string; type: 'cat_2' | 'cat_3' }[];
-    forumGroupId?: number | null;
     isSecondary: boolean;
 }
 
-export function MembersTable({ members, allFactionMembers, allAssignedCharacterIds, canManage, cat1Id, cat2Id, onDataChange, allUnitsAndDetails, forumGroupId, isSecondary }: MembersTableProps) {
+export function MembersTable({ members, allFactionMembers, canManage, cat1Id, cat2Id, onDataChange, allUnitsAndDetails, isSecondary }: MembersTableProps) {
     const [isAdding, setIsAdding] = useState(false);
     const [selectedCharacterId, setSelectedCharacterId] = useState<string>('');
     const [newTitle, setNewTitle] = useState('');
@@ -65,18 +63,13 @@ export function MembersTable({ members, allFactionMembers, allAssignedCharacterI
     const [isDeleting, setIsDeleting] = useState<number | null>(null);
     const [transferringMember, setTransferringMember] = useState<Member | null>(null);
     const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
-    const [isSyncing, setIsSyncing] = useState(false);
     const { toast } = useToast();
 
     const currentMemberIds = new Set(members.map(m => m.character_id));
-    const assignedIds = new Set(allAssignedCharacterIds);
     
     const characterOptions = allFactionMembers
-        .filter(fm => {
-            if (isSecondary) return true; // For secondary units, show everyone
-            return !assignedIds.has(fm.character_id) || currentMemberIds.has(fm.character_id);
-        })
-        .map(fm => fm.character_name);
+        .filter(fm => currentMemberIds.has(fm.character_id) || fm.manual)
+        .map((fm: any) => fm.character_name);
 
 
     const handleAddMember = async () => {
@@ -147,26 +140,6 @@ export function MembersTable({ members, allFactionMembers, allAssignedCharacterI
         setTransferringMember(member);
         setIsTransferDialogOpen(true);
     }
-    
-    const handleSync = async () => {
-        setIsSyncing(true);
-        try {
-            const res = await fetch('/api/units-divisions/sync-forum-group', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ categoryType: 'cat_2', categoryId: cat2Id }),
-            });
-            const result = await res.json();
-            if (!res.ok) throw new Error(result.error);
-            toast({ title: 'Success', description: result.message });
-            onDataChange();
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Error', description: err.message });
-        } finally {
-            setIsSyncing(false);
-        }
-    }
-
 
     return (
         <>
@@ -189,12 +162,6 @@ export function MembersTable({ members, allFactionMembers, allAssignedCharacterI
                     </div>
                     {canManage && (
                         <div className="flex gap-2">
-                             {forumGroupId && (
-                                <Button variant="secondary" onClick={handleSync} disabled={isSyncing}>
-                                    {isSyncing ? <Loader2 className="mr-2 animate-spin" /> : <RefreshCw className="mr-2" />}
-                                    Sync with Forum
-                                </Button>
-                             )}
                              <Button onClick={() => setIsAdding(!isAdding)}>
                                 <PlusCircle className="mr-2" />
                                 {isAdding ? 'Cancel' : 'Add Member'}
