@@ -34,6 +34,16 @@ const SyncCardSkeleton = () => (
     </Card>
 );
 
+const formatTimestamp = (ts: string | null) => {
+    if (!ts) return 'N/A';
+    try {
+        return formatDistanceToNow(new Date(ts)) + ' ago';
+    } catch {
+        return 'Invalid Date';
+    }
+}
+
+
 const DiffTable = ({ diff, type }: { diff: any, type: 'members' | 'abas' | 'forum' }) => {
     if (!diff) return null;
     
@@ -46,8 +56,7 @@ const DiffTable = ({ diff, type }: { diff: any, type: 'members' | 'abas' | 'foru
     if (allChanges.length === 0) {
         return <p className="text-sm text-center text-muted-foreground p-4">No changes detected.</p>
     }
-
-    const headTitle = type === 'members' || type === 'abas' ? 'Character' : 'Member';
+    
     const showGroup = type === 'forum';
 
     return (
@@ -56,8 +65,9 @@ const DiffTable = ({ diff, type }: { diff: any, type: 'members' | 'abas' | 'foru
                 <TableRow>
                     <TableHead>Status</TableHead>
                     {showGroup && <TableHead>Group</TableHead>}
-                    <TableHead>{headTitle}</TableHead>
-                    <TableHead>Change</TableHead>
+                    <TableHead>Name</TableHead>
+                    {type === 'members' && <TableHead>Rank</TableHead>}
+                    <TableHead>Change Summary</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
@@ -69,18 +79,10 @@ const DiffTable = ({ diff, type }: { diff: any, type: 'members' | 'abas' | 'foru
                             {item.changeType === 'removed' && <Badge variant="destructive"><X className="mr-1" /> Removed</Badge>}
                         </TableCell>
                          {showGroup && <TableCell>{item.group_name}</TableCell>}
-                        <TableCell>{item.character_name || item.group_name}</TableCell>
+                        <TableCell>{item.character_name}</TableCell>
+                        {type === 'members' && <TableCell>{item.rank_name}</TableCell>}
                         <TableCell>
-                            {type === 'members' && item.changeType === 'updated' && (
-                                <span className="text-muted-foreground">{item.old_rank_name} &rarr; <span className="font-semibold text-foreground">{item.rank_name}</span></span>
-                            )}
-                             {type === 'members' && item.changeType !== 'updated' && item.rank_name}
-                             {type === 'abas' && (
-                                <span className="text-muted-foreground">{item.old_abas} &rarr; <span className="font-semibold text-foreground">{item.new_abas}</span></span>
-                             )}
-                              {type === 'forum' && (
-                                <p className="text-sm">{item.change_summary}</p>
-                              )}
+                            <p className="text-sm">{item.change_summary || 'N/A'}</p>
                         </TableCell>
                     </TableRow>
                 ))}

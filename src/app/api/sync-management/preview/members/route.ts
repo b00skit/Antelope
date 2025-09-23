@@ -68,11 +68,17 @@ export async function GET(request: NextRequest) {
             if (!cachedMember) {
                 diff.added.push(liveMember);
             } else {
-                if (cachedMember.rank !== liveMember.rank || cachedMember.character_name !== liveMember.character_name) {
-                    diff.updated.push({
+                const changes: string[] = [];
+                if (cachedMember.character_name !== liveMember.character_name) {
+                    changes.push(`Name: ${cachedMember.character_name} -> ${liveMember.character_name}`);
+                }
+                if (cachedMember.rank !== liveMember.rank) {
+                     changes.push(`Rank: ${cachedMember.rank_name} -> ${liveMember.rank_name}`);
+                }
+                if (changes.length > 0) {
+                     diff.updated.push({
                         ...liveMember,
-                        old_rank_name: cachedMember.rank_name,
-                        old_character_name: cachedMember.character_name,
+                        change_summary: changes.join(', '),
                     });
                 }
             }

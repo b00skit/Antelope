@@ -69,14 +69,12 @@ export async function GET(request: NextRequest) {
             const characterName = memberMap.get(charId) || `Character #${charId}`;
 
             if (!cachedEntry) {
-                diff.added.push({ character_id: charId, character_name: characterName, new_abas: liveEntry.abas, old_abas: 'N/A' });
+                diff.added.push({ character_id: charId, character_name: characterName, change_summary: `New ABAS: ${liveEntry.abas}` });
             } else if (cachedEntry.abas !== liveEntry.abas) {
-                diff.updated.push({ character_id: charId, character_name: characterName, new_abas: liveEntry.abas, old_abas: cachedEntry.abas });
+                diff.updated.push({ character_id: charId, character_name: characterName, change_summary: `ABAS: ${cachedEntry.abas} -> ${liveEntry.abas}` });
             }
         }
         
-        // Removed are not tracked for ABAS as it's a sparse dataset
-
         return NextResponse.json(diff);
 
     } catch (error) {
