@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
         }
 
         const abasMap = new Map(abasCache.map(a => [a.character_id, a.abas]));
-        const altMap = new Map(altCache.map(a => [a.user_id, a]));
+        const altMap = new Map(altCache.map(a => [String(a.user_id), a]));
         
         const allMembers: Member[] = membersCache.members;
         
@@ -120,12 +120,14 @@ export async function POST(request: NextRequest) {
             const lastDutyTime = formatTime(member.last_duty);
             
             let primaryCharacterName = '';
-            const altInfo = altMap.get(member.user_id);
+            const altInfo = altMap.get(String(member.user_id));
             let hasAlts = false;
-            // A user has alts if they appear in the altCache
-            if (altInfo) {
+            if (altInfo && Array.isArray(altInfo.alternative_characters_json) && altInfo.alternative_characters_json.length > 0) {
                 hasAlts = true;
                 primaryCharacterName = altInfo.character_name;
+                if (altInfo.character_id === member.character_id) {
+                    primaryCharacterName = member.character_name;
+                }
             }
 
             const isSupervisor = member.rank >= (faction.supervisor_rank ?? 10);

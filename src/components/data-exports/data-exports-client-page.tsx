@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,10 +27,18 @@ interface Column {
     label: string;
 }
 
+interface FilterSettings {
+    onlyWithAlts: boolean;
+    dutyActiveDays: string;
+    belowMinimumAbas: boolean;
+    rank: string;
+}
+
 interface Sheet {
     id: string;
     name: string;
     columns: Column[];
+    filters: FilterSettings;
 }
 
 const ALL_COLUMNS: Column[] = [
@@ -46,6 +54,13 @@ const ALL_COLUMNS: Column[] = [
     { key: 'last_duty_date', label: 'Last Duty (Date)' },
     { key: 'last_duty_time', label: 'Last Duty (Time)' },
 ];
+
+const defaultFilters: FilterSettings = {
+    onlyWithAlts: false,
+    dutyActiveDays: 'all',
+    belowMinimumAbas: false,
+    rank: 'all',
+};
 
 const DraggableColumn = ({ col, index, moveColumn, onRemove }: { col: Column, index: number, moveColumn: (dragIndex: number, hoverIndex: number) => void, onRemove: (key: string) => void }) => {
     const ref = React.useRef<HTMLDivElement>(null);
@@ -97,22 +112,16 @@ export function DataExportsClientPage() {
             { key: 'abas', label: 'ABAS' },
             { key: 'primary_character', label: 'Primary Character' },
             { key: 'last_duty_date', label: 'Last Duty (Date)' },
-        ]},
+        ], filters: defaultFilters},
     ]);
     const [activeSheetId, setActiveSheetId] = useState('sheet1');
-    const [filters, setFilters] = useState({
-        onlyWithAlts: false,
-        dutyActiveDays: 'all', // 'all', '7', '14', '30'
-        belowMinimumAbas: false,
-        rank: 'all',
-    });
 
     const activeSheet = sheets.find(s => s.id === activeSheetId);
     const selectedColumnKeys = new Set(activeSheet?.columns.map(c => c.key));
     
     const addSheet = () => {
         const newSheetId = `sheet${Date.now()}`;
-        setSheets(prev => [...prev, { id: newSheetId, name: `Sheet ${prev.length + 1}`, columns: [] }]);
+        setSheets(prev => [...prev, { id: newSheetId, name: `Sheet ${prev.length + 1}`, columns: [], filters: defaultFilters }]);
         setActiveSheetId(newSheetId);
     };
     
@@ -129,6 +138,10 @@ export function DataExportsClientPage() {
     
     const updateSheetName = (id: string, name: string) => {
         setSheets(prev => prev.map(s => s.id === id ? { ...s, name } : s));
+    };
+    
+    const updateSheetFilters = (id: string, newFilters: Partial<FilterSettings>) => {
+        setSheets(prev => prev.map(s => s.id === id ? { ...s, filters: { ...s.filters, ...newFilters } } : s));
     };
 
     const handleColumnToggle = (key: string) => {
@@ -165,7 +178,7 @@ export function DataExportsClientPage() {
             const response = await fetch('/api/exports/faction-roster', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sheets, filters }),
+                body: JSON.stringify({ sheets }),
             });
             if (!response.ok) {
                 const errorData = await response.json();
@@ -232,45 +245,55 @@ export function DataExportsClientPage() {
                                         ))}
                                     </div>
                                 </div>
-                                <div>
-                                     <h3 className="font-semibold mb-2">Filters</h3>
-                                     <div className="space-y-4 p-4 border rounded-md">
-                                        <div className="flex items-center space-x-2">
-                                            <Checkbox 
-                                                id="filter-alts"
-                                                checked={filters.onlyWithAlts}
-                                                onCheckedChange={(checked) => setFilters(f => ({ ...f, onlyWithAlts: !!checked }))}
-                                            />
-                                            <Label htmlFor="filter-alts">Only include characters with alts</Label>
+                                {activeSheet && (
+                                    <div>
+                                        <h3 className="font-semibold mb-2">Filters for "{activeSheet.name}"</h3>
+                                        <div className="space-y-4 p-4 border rounded-md">
+                                            <div className="flex items-center space-x-2">
+                                                <Checkbox 
+                                                    id="filter-alts"
+                                                    checked={activeSheet.filters.onlyWithAlts}
+                                                    onCheckedChange={(checked) => updateSheetFilters(activeSheet.id, { onlyWithAlts: !!checked })}
+                                                />
+                                                <Label htmlFor="filter-alts">Only include characters with alts</Label>
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                                <Checkbox 
+                                                    id="filter-abas"
+                                                    checked={activeSheet.filters.belowMinimumAbas}
+                                                    onCheckedChange={(checked) => updateSheetFilters(activeSheet.id, { belowMinimumAbas: !!checked })}
+                                                />
+                                                <Label htmlFor="filter-abas">Only include members below minimum ABAS</Label>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <Label htmlFor="filter-duty">Duty Activity</Label>
+                                                <Select 
+                                                    value={activeSheet.filters.dutyActiveDays} 
+                                                    onValueChange={(value) => updateSheetFilters(activeSheet.id, { dutyActiveDays: value })}
+                                                >
+                                                    <SelectTrigger id="filter-duty">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="all">All Members</SelectItem>
+                                                        <SelectItem value="7">Active in last 7 days</SelectItem>
+                                                        <SelectItem value="14">Active in last 14 days</SelectItem>
+                                                        <SelectItem value="30">Active in last 30 days</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <Label htmlFor="filter-rank">Rank (Exact Match)</Label>
+                                                <Input 
+                                                    id="filter-rank" 
+                                                    placeholder="e.g. Sergeant"
+                                                    value={activeSheet.filters.rank === 'all' ? '' : activeSheet.filters.rank}
+                                                    onChange={(e) => updateSheetFilters(activeSheet.id, { rank: e.target.value || 'all' })}
+                                                />
+                                            </div>
                                         </div>
-                                         <div className="flex items-center space-x-2">
-                                            <Checkbox 
-                                                id="filter-abas"
-                                                checked={filters.belowMinimumAbas}
-                                                onCheckedChange={(checked) => setFilters(f => ({ ...f, belowMinimumAbas: !!checked }))}
-                                            />
-                                            <Label htmlFor="filter-abas">Only include members below minimum ABAS</Label>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <Label htmlFor="filter-duty">Duty Activity</Label>
-                                            <Select value={filters.dutyActiveDays} onValueChange={(value) => setFilters(f => ({ ...f, dutyActiveDays: value }))}>
-                                                <SelectTrigger id="filter-duty">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="all">All Members</SelectItem>
-                                                    <SelectItem value="7">Active in last 7 days</SelectItem>
-                                                    <SelectItem value="14">Active in last 14 days</SelectItem>
-                                                    <SelectItem value="30">Active in last 30 days</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <Label htmlFor="filter-rank">Rank (Exact Match)</Label>
-                                            <Input id="filter-rank" placeholder="e.g. Sergeant" onChange={(e) => setFilters(f => ({ ...f, rank: e.target.value || 'all' }))} />
-                                        </div>
-                                     </div>
-                                </div>
+                                    </div>
+                                )}
                             </div>
                             <div className="lg:col-span-2">
                                 <Tabs value={activeSheetId} onValueChange={setActiveSheetId}>
