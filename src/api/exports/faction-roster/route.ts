@@ -13,8 +13,19 @@ const columnSchema = z.object({
     label: z.string(),
 });
 
-const exportSchema = z.object({
+const sheetSchema = z.object({
+    id: z.string(),
+    name: z.string(),
     columns: z.array(columnSchema),
+});
+
+const filterSchema = z.object({
+    onlyWithAlts: z.boolean(),
+});
+
+const exportSchema = z.object({
+    sheets: z.array(sheetSchema),
+    filters: filterSchema,
 });
 
 
@@ -57,9 +68,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const parsed = exportSchema.safeParse(body);
     if (!parsed.success) {
-        return NextResponse.json({ error: 'Invalid columns configuration.' }, { status: 400 });
+        return NextResponse.json({ error: 'Invalid configuration.', details: parsed.error.flatten() }, { status: 400 });
     }
-    const { columns } = parsed.data;
+    const { sheets, filters } = parsed.data;
 
 
     try {
@@ -92,8 +103,8 @@ export async function POST(request: NextRequest) {
         const altMap = new Map(altCache.map(a => [a.user_id, a]));
         
         const allMembers: Member[] = membersCache.members;
-
-        const processedData = allMembers.map(member => {
+        
+        let processedData = allMembers.map(member => {
             const abas = abasMap.get(member.character_id) ?? '0.00';
             const lastOnlineDate = formatDate(member.last_online);
             const lastOnlineTime = formatTime(member.last_online);
@@ -102,7 +113,9 @@ export async function POST(request: NextRequest) {
             
             let altStatus = 'N/A';
             const altInfo = altMap.get(member.user_id);
-            if (altInfo) {
+            let hasAlts = false;
+            if (altInfo && Array.isArray(altInfo.alternative_characters_json) && altInfo.alternative_characters_json.length > 0) {
+                hasAlts = true;
                 if (altInfo.character_id === member.character_id) {
                     altStatus = 'Primary Character';
                 } else {
@@ -113,6 +126,7 @@ export async function POST(request: NextRequest) {
             return {
                 ...member,
                 alt_status: altStatus,
+                has_alts: hasAlts,
                 abas,
                 last_online_date: lastOnlineDate,
                 last_online_time: lastOnlineTime,
@@ -120,18 +134,29 @@ export async function POST(request: NextRequest) {
                 last_duty_time: lastDutyTime,
             };
         });
-        
-        const worksheetData = processedData.map(row => {
-            const newRow: Record<string, any> = {};
-            for (const col of columns) {
-                newRow[col.label] = row[col.key] ?? '';
-            }
-            return newRow;
-        });
 
-        const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+        // Apply filters
+        if (filters.onlyWithAlts) {
+            processedData = processedData.filter(row => row.has_alts);
+        }
+        
         const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'Faction Roster');
+
+        for (const sheetConfig of sheets) {
+            if (sheetConfig.columns.length === 0) continue;
+
+            const worksheetData = processedData.map(row => {
+                const newRow: Record<string, any> = {};
+                for (const col of sheetConfig.columns) {
+                    newRow[col.label] = row[col.key] ?? '';
+                }
+                return newRow;
+            });
+            const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+            // Sanitize sheet name
+            const sheetName = sheetConfig.name.replace(/[*?:/\\\[\]]/g, '').substring(0, 31) || `Sheet ${sheets.indexOf(sheetConfig) + 1}`;
+            XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+        }
 
         const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
 
