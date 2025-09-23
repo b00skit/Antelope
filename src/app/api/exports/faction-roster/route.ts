@@ -5,6 +5,29 @@ import { getSession } from '@/lib/session';
 import { db } from '@/db';
 import { users, factionMembersCache, factionMembersAbasCache, apiCacheAlternativeCharacters } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import * as XLSX from 'xlsx';
+import { z } from 'zod';
+
+const columnSchema = z.object({
+    key: z.string(),
+    label: z.string(),
+});
+
+const sheetSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    columns: z.array(columnSchema),
+});
+
+const filterSchema = z.object({
+    onlyWithAlts: z.boolean(),
+});
+
+const exportSchema = z.object({
+    sheets: z.array(sheetSchema),
+    filters: filterSchema,
+});
+
 
 interface Member {
     character_id: number;
@@ -12,15 +35,43 @@ interface Member {
     user_id: number;
     last_online: string | null;
     last_duty: string | null;
+    [key: string]: any;
 }
 
-export async function GET(request: NextRequest) {
+const formatDate = (timestamp: string | null): string => {
+    if (!timestamp) return 'N/A';
+    try {
+        return new Date(timestamp).toLocaleDateString();
+    } catch (e) {
+        return 'Invalid Date';
+    }
+};
+
+const formatTime = (timestamp: string | null): string => {
+    if (!timestamp) return 'N/A';
+    try {
+        return new Date(timestamp).toLocaleTimeString();
+    } catch (e) {
+        return 'Invalid Time';
+    }
+};
+
+
+export async function POST(request: NextRequest) {
     const cookieStore = await cookies();
     const session = await getSession(cookieStore);
 
     if (!session.isLoggedIn || !session.userId) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const body = await request.json();
+    const parsed = exportSchema.safeParse(body);
+    if (!parsed.success) {
+        return NextResponse.json({ error: 'Invalid configuration.', details: parsed.error.flatten() }, { status: 400 });
+    }
+    const { sheets, filters } = parsed.data;
+
 
     try {
         const user = await db.query.users.findFirst({
@@ -52,17 +103,19 @@ export async function GET(request: NextRequest) {
         const altMap = new Map(altCache.map(a => [a.user_id, a]));
         
         const allMembers: Member[] = membersCache.members;
-
-        const csvHeader = "Character ID,Name,User ID,Alternative Character,ABAS,Last Logged In,Last Duty\n";
-
-        const csvRows = allMembers.map(member => {
+        
+        let processedData = allMembers.map(member => {
             const abas = abasMap.get(member.character_id) ?? '0.00';
-            const lastOnline = member.last_online ? new Date(member.last_online).toLocaleString() : 'N/A';
-            const lastDuty = member.last_duty ? new Date(member.last_duty).toLocaleString() : 'N/A';
+            const lastOnlineDate = formatDate(member.last_online);
+            const lastOnlineTime = formatTime(member.last_online);
+            const lastDutyDate = formatDate(member.last_duty);
+            const lastDutyTime = formatTime(member.last_duty);
             
             let altStatus = 'N/A';
             const altInfo = altMap.get(member.user_id);
-            if (altInfo) {
+            let hasAlts = false;
+            if (altInfo && Array.isArray(altInfo.alternative_characters_json) && altInfo.alternative_characters_json.length > 0) {
+                hasAlts = true;
                 if (altInfo.character_id === member.character_id) {
                     altStatus = 'Primary Character';
                 } else {
@@ -70,27 +123,48 @@ export async function GET(request: NextRequest) {
                 }
             }
 
-            // Escape commas in names
-            const name = `"${member.character_name.replace(/"/g, '""')}"`;
-
-            return [
-                member.character_id,
-                name,
-                member.user_id,
-                altStatus,
+            return {
+                ...member,
+                alt_status: altStatus,
+                has_alts: hasAlts,
                 abas,
-                lastOnline,
-                lastDuty
-            ].join(',');
+                last_online_date: lastOnlineDate,
+                last_online_time: lastOnlineTime,
+                last_duty_date: lastDutyDate,
+                last_duty_time: lastDutyTime,
+            };
         });
-        
-        const csvContent = csvHeader + csvRows.join('\n');
 
-        return new Response(csvContent, {
+        // Apply filters
+        if (filters.onlyWithAlts) {
+            processedData = processedData.filter(row => row.has_alts);
+        }
+        
+        const workbook = XLSX.utils.book_new();
+
+        for (const sheetConfig of sheets) {
+            if (sheetConfig.columns.length === 0) continue;
+
+            const worksheetData = processedData.map(row => {
+                const newRow: Record<string, any> = {};
+                for (const col of sheetConfig.columns) {
+                    newRow[col.label] = row[col.key] ?? '';
+                }
+                return newRow;
+            });
+            const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+            // Sanitize sheet name
+            const sheetName = sheetConfig.name.replace(/[*?:/\\\[\]]/g, '').substring(0, 31) || `Sheet ${sheets.indexOf(sheetConfig) + 1}`;
+            XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+        }
+
+        const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+
+        return new Response(Buffer.from(buffer), {
             status: 200,
             headers: {
-                'Content-Type': 'text/csv',
-                'Content-Disposition': `attachment; filename="faction-roster-${new Date().toISOString().split('T')[0]}.csv"`,
+                'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Disposition': `attachment; filename="faction-roster-${new Date().toISOString().split('T')[0]}.xlsx"`,
             },
         });
 
