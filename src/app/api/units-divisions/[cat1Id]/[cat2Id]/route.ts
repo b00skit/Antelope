@@ -2,7 +2,7 @@
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
-import { getCatViewData } from '../helpers';
+import { getCatViewData } from '../../helpers';
 
 interface RouteParams {
     params: {
