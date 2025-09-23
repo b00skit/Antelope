@@ -122,7 +122,8 @@ export async function POST(request: NextRequest) {
             let primaryCharacterName = '';
             const altInfo = altMap.get(member.user_id);
             let hasAlts = false;
-            if (altInfo && Array.isArray(altInfo.alternative_characters_json) && altInfo.alternative_characters_json.length > 0) {
+            // A user has alts if they appear in the altCache
+            if (altInfo) {
                 hasAlts = true;
                 primaryCharacterName = altInfo.character_name;
             }
@@ -154,10 +155,12 @@ export async function POST(request: NextRequest) {
         }
         if (filters.dutyActiveDays !== 'all') {
             const days = parseInt(filters.dutyActiveDays, 10);
-            const cutoffDate = subDays(new Date(), days);
-            processedData = processedData.filter(row => row.last_duty && new Date(row.last_duty) > cutoffDate);
+            if (!isNaN(days)) {
+                const cutoffDate = subDays(new Date(), days);
+                processedData = processedData.filter(row => row.last_duty && new Date(row.last_duty) > cutoffDate);
+            }
         }
-        if (filters.rank !== 'all' && filters.rank.trim() !== '') {
+        if (filters.rank && filters.rank !== 'all' && filters.rank.trim() !== '') {
             processedData = processedData.filter(row => row.rank_name.toLowerCase() === filters.rank.toLowerCase().trim());
         }
         
