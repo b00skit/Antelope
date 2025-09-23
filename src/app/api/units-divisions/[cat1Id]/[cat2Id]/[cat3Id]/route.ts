@@ -2,7 +2,7 @@
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
-import { getCat3ViewData } from './helpers';
+import { getCatViewData } from '../../helpers';
 
 interface RouteParams {
     params: {
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     try {
-        const data = await getCat3ViewData(session, cat3Id);
+        const data = await getCatViewData(session, 'cat_3', cat3Id);
         if ('error' in data) {
             return NextResponse.json({ error: data.error }, { status: 400 });
         }
