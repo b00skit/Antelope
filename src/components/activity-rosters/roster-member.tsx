@@ -92,13 +92,11 @@ export function RosterMember({
 
     const getLabelStyles = () => {
         if (!member.label) return {};
-        // Note: TailwindCSS needs to be able to see full class names to purge CSS correctly.
-        // This dynamic style approach is necessary here.
         const colorMap: Record<string, { border: string, bg: string }> = {
             red: { border: 'hsl(0, 72%, 51%)', bg: 'hsla(0, 72%, 51%, 0.1)' },
             orange: { border: 'hsl(25, 95%, 53%)', bg: 'hsla(25, 95%, 53%, 0.1)' },
-            amber: { border: 'hsl(48, 96%, 53%)', bg: 'hsla(48, 96%, 53%, 0.1)' },
-            yellow: { border: 'hsl(60, 95%, 50%)', bg: 'hsla(60, 95%, 50%, 0.1)' },
+            amber: { border: 'hsl(45, 93%, 47%)', bg: 'hsla(45, 93%, 47%, 0.1)' },
+            yellow: { border: 'hsl(53, 98%, 50%)', bg: 'hsla(53, 98%, 50%, 0.1)' },
             lime: { border: 'hsl(84, 81%, 48%)', bg: 'hsla(84, 81%, 48%, 0.1)' },
             green: { border: 'hsl(142, 71%, 45%)', bg: 'hsla(142, 71%, 45%, 0.1)' },
             emerald: { border: 'hsl(145, 63%, 42%)', bg: 'hsla(145, 63%, 42%, 0.1)' },
