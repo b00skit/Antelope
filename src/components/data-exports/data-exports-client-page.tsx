@@ -255,7 +255,7 @@ export function DataExportsClientPage() {
                                                     checked={activeSheet.filters.onlyWithAlts}
                                                     onCheckedChange={(checked) => updateSheetFilters(activeSheet.id, { onlyWithAlts: !!checked })}
                                                 />
-                                                <Label htmlFor="filter-alts">Only include characters with alts</Label>
+                                                <Label htmlFor="filter-alts">Only include alternative characters</Label>
                                             </div>
                                             <div className="flex items-center space-x-2">
                                                 <Checkbox 

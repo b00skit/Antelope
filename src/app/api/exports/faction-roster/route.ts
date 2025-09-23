@@ -120,11 +120,11 @@ export async function POST(request: NextRequest) {
             const lastDutyTime = formatTime(member.last_duty);
             
             let primaryCharacterName = '';
+            let isAlternative = false;
             const altInfo = altMap.get(member.user_id);
-            let hasAlts = false;
             if (altInfo && Array.isArray(altInfo.alternative_characters_json) && altInfo.alternative_characters_json.length > 0) {
-                hasAlts = true;
                 primaryCharacterName = altInfo.character_name;
+                isAlternative = altInfo.character_id !== member.character_id;
             }
 
             const isSupervisor = member.rank >= (faction.supervisor_rank ?? 10);
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
             return {
                 ...member,
                 primary_character: primaryCharacterName,
-                has_alts: hasAlts,
+                is_alternative: isAlternative,
                 is_below_min_abas: isBelowMinimumAbas,
                 abas,
                 last_online_date: lastOnlineDate,
@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
 
             // Apply filters for this specific sheet
             if (filters.onlyWithAlts) {
-                processedData = processedData.filter(row => row.has_alts);
+                processedData = processedData.filter(row => row.is_alternative);
             }
             if (filters.belowMinimumAbas) {
                 processedData = processedData.filter(row => row.is_below_min_abas);
