@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from '@/lib/utils';
 import { TransferMemberDialog } from './transfer-member-dialog';
+import { Checkbox } from '../ui/checkbox';
 
 
 interface Member {
@@ -67,13 +68,14 @@ export function Cat3MembersTable({ members, allFactionMembers, allAssignedCharac
     const [transferringMember, setTransferringMember] = useState<Member | null>(null);
     const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
+    const [selectedMemberIds, setSelectedMemberIds] = useState<Set<number>>(new Set());
     const { toast } = useToast();
 
     const currentMemberIds = new Set(members.map(m => m.character_id));
     const assignedIds = new Set(allAssignedCharacterIds);
     const characterOptions = allFactionMembers
         .filter(fm => {
-            if (isSecondary) return true; // For secondary units, show everyone
+            if (isSecondary) return true;
             return !assignedIds.has(fm.character_id) || currentMemberIds.has(fm.character_id);
         })
         .map(fm => fm.character_name);
@@ -89,7 +91,7 @@ export function Cat3MembersTable({ members, allFactionMembers, allAssignedCharac
             const res = await fetch(`/api/units-divisions/${cat1Id}/${cat2Id}/${cat3Id}/members`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ character_id: character.character_id, title: newTitle }),
+                body: JSON.stringify({ character_id: character.character_id, title: newTitle, manual: true }),
             });
             const result = await res.json();
             if (!res.ok) throw new Error(result.error);
@@ -147,24 +149,25 @@ export function Cat3MembersTable({ members, allFactionMembers, allAssignedCharac
         setIsTransferDialogOpen(true);
     }
     
-    const handleSync = async () => {
-        setIsSyncing(true);
-        try {
-            const res = await fetch('/api/units-divisions/sync-forum-group', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ categoryType: 'cat_3', categoryId: cat3Id }),
-            });
-            const result = await res.json();
-            if (!res.ok) throw new Error(result.error);
-            toast({ title: 'Success', description: result.message });
-            onDataChange();
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Error', description: err.message });
-        } finally {
-            setIsSyncing(false);
+    const handleToggleSelection = (characterId: number) => {
+        setSelectedMemberIds(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(characterId)) {
+                newSet.delete(characterId);
+            } else {
+                newSet.add(characterId);
+            }
+            return newSet;
+        });
+    };
+
+    const handleSelectAll = () => {
+        if (selectedMemberIds.size === members.length) {
+            setSelectedMemberIds(new Set());
+        } else {
+            setSelectedMemberIds(new Set(members.map(m => m.character_id)));
         }
-    }
+    };
 
 
     return (
@@ -188,12 +191,6 @@ export function Cat3MembersTable({ members, allFactionMembers, allAssignedCharac
                         </div>
                         {canManage && (
                            <div className="flex gap-2">
-                                {forumGroupId && (
-                                    <Button variant="secondary" onClick={handleSync} disabled={isSyncing}>
-                                        {isSyncing ? <Loader2 className="mr-2 animate-spin" /> : <RefreshCw className="mr-2" />}
-                                        Sync with Forum
-                                    </Button>
-                                )}
                                 <Button onClick={() => setIsAdding(!isAdding)}>
                                     <PlusCircle className="mr-2" />
                                     {isAdding ? 'Cancel' : 'Add Member'}
@@ -223,6 +220,14 @@ export function Cat3MembersTable({ members, allFactionMembers, allAssignedCharac
                         <Table>
                             <TableHeader>
                                 <TableRow>
+                                    <TableHead className="w-12">
+                                         <Checkbox
+                                            checked={selectedMemberIds.size === members.length}
+                                            onCheckedChange={handleSelectAll}
+                                            aria-label="Select all members in this section"
+                                            disabled={!canManage}
+                                        />
+                                    </TableHead>
                                     <TableHead>Name</TableHead>
                                     <TableHead>Rank</TableHead>
                                     <TableHead>Title</TableHead>
@@ -233,7 +238,15 @@ export function Cat3MembersTable({ members, allFactionMembers, allAssignedCharac
                             </TableHeader>
                             <TableBody>
                                 {members.map(member => (
-                                    <TableRow key={member.id}>
+                                    <TableRow key={member.id} data-state={selectedMemberIds.has(member.character_id) ? 'selected' : undefined}>
+                                         <TableCell>
+                                            <Checkbox
+                                                checked={selectedMemberIds.has(member.character_id)}
+                                                onCheckedChange={() => handleToggleSelection(member.character_id)}
+                                                aria-label={`Select ${member.character_name}`}
+                                                disabled={!canManage}
+                                            />
+                                        </TableCell>
                                         <TableCell>{member.character_name}</TableCell>
                                         <TableCell>{member.rank_name}</TableCell>
                                         <TableCell>
