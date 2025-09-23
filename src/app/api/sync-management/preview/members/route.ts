@@ -10,6 +10,8 @@ interface Member {
     character_name: string;
     rank: number;
     rank_name: string;
+    last_online: string | null;
+    last_duty: string | null;
     [key: string]: any;
 }
 
@@ -68,18 +70,22 @@ export async function GET(request: NextRequest) {
             if (!cachedMember) {
                 diff.added.push(liveMember);
             } else {
-                const changes: string[] = [];
-                if (cachedMember.character_name !== liveMember.character_name) {
-                    changes.push(`Name: ${cachedMember.character_name} -> ${liveMember.character_name}`);
+                let hasChanged = false;
+                const updatedData: any = { character_id: charId };
+
+                const fieldsToCompare: (keyof Member)[] = ['character_name', 'rank_name', 'last_online', 'last_duty'];
+                
+                for(const field of fieldsToCompare) {
+                    if (cachedMember[field] !== liveMember[field]) {
+                        hasChanged = true;
+                        updatedData[field] = { old: cachedMember[field], new: liveMember[field] };
+                    } else {
+                        updatedData[field] = liveMember[field];
+                    }
                 }
-                if (cachedMember.rank !== liveMember.rank) {
-                     changes.push(`Rank: ${cachedMember.rank_name} -> ${liveMember.rank_name}`);
-                }
-                if (changes.length > 0) {
-                     diff.updated.push({
-                        ...liveMember,
-                        change_summary: changes.join(', '),
-                    });
+
+                if (hasChanged) {
+                     diff.updated.push(updatedData);
                 }
             }
         }

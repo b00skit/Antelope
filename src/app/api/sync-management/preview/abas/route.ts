@@ -51,11 +51,10 @@ export async function GET(request: NextRequest) {
         const cachedMembers = await db.query.factionMembersCache.findFirst({
             where: eq(factionMembersCache.faction_id, factionId),
         });
-        const characterIds = cachedMembers?.members?.map((m: any) => m.character_id) || [];
         
-        const cachedAbas = characterIds.length > 0 ? await db.query.factionMembersAbasCache.findMany({
+        const cachedAbas = await db.query.factionMembersAbasCache.findMany({
             where: eq(factionMembersAbasCache.faction_id, factionId)
-        }) : [];
+        });
 
         // 3. Compare and generate diff
         const liveMap = new Map(liveAbas.map(a => [a.character_id, a]));
@@ -69,9 +68,13 @@ export async function GET(request: NextRequest) {
             const characterName = memberMap.get(charId) || `Character #${charId}`;
 
             if (!cachedEntry) {
-                diff.added.push({ character_id: charId, character_name: characterName, change_summary: `New ABAS: ${liveEntry.abas}` });
+                diff.added.push({ character_id: charId, character_name: characterName, abas: liveEntry.abas });
             } else if (cachedEntry.abas !== liveEntry.abas) {
-                diff.updated.push({ character_id: charId, character_name: characterName, change_summary: `ABAS: ${cachedEntry.abas} -> ${liveEntry.abas}` });
+                 diff.updated.push({
+                    character_id: charId,
+                    character_name: characterName,
+                    abas: { old: cachedEntry.abas, new: liveEntry.abas },
+                });
             }
         }
         

@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Badge } from '../ui/badge';
+import { cn } from '@/lib/utils';
 
 interface SyncStatus {
     membersLastSync: string | null;
@@ -37,17 +38,32 @@ const SyncCardSkeleton = () => (
 const formatTimestamp = (ts: string | null) => {
     if (!ts) return 'N/A';
     try {
-        return formatDistanceToNow(new Date(ts)) + ' ago';
+        const date = new Date(ts);
+        if (isNaN(date.getTime())) return 'Invalid Date';
+        return formatDistanceToNow(date) + ' ago';
     } catch {
         return 'Invalid Date';
     }
 }
 
+const DiffCell = ({ value }: { value: any }) => {
+    if (typeof value === 'object' && value !== null && 'old' in value && 'new' in value) {
+        return (
+            <div className="flex items-center gap-2">
+                <span className="text-muted-foreground line-through">{value.old || 'N/A'}</span>
+                <ArrowRight className="h-4 w-4 text-primary" />
+                <span className="font-semibold">{value.new || 'N/A'}</span>
+            </div>
+        );
+    }
+    return <span>{value || 'N/A'}</span>;
+};
+
 
 const DiffTable = ({ diff, type }: { diff: any, type: 'members' | 'abas' | 'forum' }) => {
     if (!diff) return null;
     
-    const allChanges = [
+     const allChanges = [
         ...diff.added.map((item: any) => ({ ...item, changeType: 'added' })),
         ...diff.updated.map((item: any) => ({ ...item, changeType: 'updated' })),
         ...diff.removed.map((item: any) => ({ ...item, changeType: 'removed' })),
@@ -57,33 +73,71 @@ const DiffTable = ({ diff, type }: { diff: any, type: 'members' | 'abas' | 'foru
         return <p className="text-sm text-center text-muted-foreground p-4">No changes detected.</p>
     }
     
-    const showGroup = type === 'forum';
+    if (type === 'forum') {
+         return (
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Group</TableHead>
+                        <TableHead>Character</TableHead>
+                        <TableHead>Change</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {allChanges.map((item, index) => (
+                        <TableRow key={index}>
+                             <TableCell>
+                                {item.changeType === 'added' && <Badge variant="secondary" className="bg-green-500/10 text-green-500 border-green-500/50"><Check className="mr-1" /> Added</Badge>}
+                                {item.changeType === 'removed' && <Badge variant="destructive"><X className="mr-1" /> Removed</Badge>}
+                            </TableCell>
+                            <TableCell>{item.group_name}</TableCell>
+                            <TableCell>{item.character_name}</TableCell>
+                            <TableCell>{item.change_summary}</TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        );
+    }
+
+    const isMemberSync = type === 'members';
 
     return (
         <Table>
             <TableHeader>
                 <TableRow>
                     <TableHead>Status</TableHead>
-                    {showGroup && <TableHead>Group</TableHead>}
                     <TableHead>Name</TableHead>
-                    {type === 'members' && <TableHead>Rank</TableHead>}
-                    <TableHead>Change Summary</TableHead>
+                    {isMemberSync ? (
+                        <>
+                            <TableHead>Rank</TableHead>
+                            <TableHead>Last Online</TableHead>
+                            <TableHead>Last Duty</TableHead>
+                        </>
+                    ) : (
+                        <TableHead className="text-right">ABAS</TableHead>
+                    )}
                 </TableRow>
             </TableHeader>
             <TableBody>
                 {allChanges.map((item, index) => (
-                    <TableRow key={index}>
-                        <TableCell>
+                    <TableRow key={item.character_id || index}>
+                         <TableCell>
                             {item.changeType === 'added' && <Badge variant="secondary" className="bg-green-500/10 text-green-500 border-green-500/50"><Check className="mr-1" /> Added</Badge>}
                             {item.changeType === 'updated' && <Badge variant="secondary" className="bg-yellow-500/10 text-yellow-500 border-yellow-500/50"><ArrowRight className="mr-1" /> Updated</Badge>}
                             {item.changeType === 'removed' && <Badge variant="destructive"><X className="mr-1" /> Removed</Badge>}
                         </TableCell>
-                         {showGroup && <TableCell>{item.group_name}</TableCell>}
-                        <TableCell>{item.character_name}</TableCell>
-                        {type === 'members' && <TableCell>{item.rank_name}</TableCell>}
-                        <TableCell>
-                            <p className="text-sm">{item.change_summary || 'N/A'}</p>
-                        </TableCell>
+                        <TableCell><DiffCell value={item.character_name} /></TableCell>
+                        {isMemberSync ? (
+                            <>
+                                <TableCell><DiffCell value={item.rank_name} /></TableCell>
+                                <TableCell><DiffCell value={formatTimestamp(item.last_online?.new ?? item.last_online)} /></TableCell>
+                                <TableCell><DiffCell value={formatTimestamp(item.last_duty?.new ?? item.last_duty)} /></TableCell>
+                            </>
+                        ) : (
+                             <TableCell className="text-right"><DiffCell value={item.abas} /></TableCell>
+                        )}
                     </TableRow>
                 ))}
             </TableBody>
@@ -233,7 +287,7 @@ export function SyncManagementClientPage() {
                                 <CardDescription>Syncs the full member list, ranks, and status from the GTA:W UCP.</CardDescription>
                             </CardHeader>
                             <CardContent className="flex items-center justify-between">
-                                <p className="text-sm text-muted-foreground">Last synced: {status.membersLastSync ? `${formatDistanceToNow(new Date(status.membersLastSync))} ago` : 'Never'}</p>
+                                <p className="text-sm text-muted-foreground">Last synced: {formatTimestamp(status.membersLastSync)}</p>
                                 <Button onClick={() => handlePreview('members')}>Preview Sync</Button>
                             </CardContent>
                         </Card>
@@ -243,7 +297,7 @@ export function SyncManagementClientPage() {
                                 <CardDescription>Updates the weekly ABAS for all characters in the faction.</CardDescription>
                             </CardHeader>
                             <CardContent className="flex items-center justify-between">
-                                <p className="text-sm text-muted-foreground">Last synced: {status.abasLastSync ? `${formatDistanceToNow(new Date(status.abasLastSync))} ago` : 'Never'}</p>
+                                <p className="text-sm text-muted-foreground">Last synced: {formatTimestamp(status.abasLastSync)}</p>
                                 <Button onClick={() => handlePreview('abas')}>Preview Sync</Button>
                             </CardContent>
                         </Card>
@@ -254,7 +308,7 @@ export function SyncManagementClientPage() {
                                     <CardDescription>Syncs memberships from your selected forum groups into the cache.</CardDescription>
                                 </CardHeader>
                                 <CardContent className="flex items-center justify-between">
-                                     <p className="text-sm text-muted-foreground">Last synced: {status.forumLastSync ? `${formatDistanceToNow(new Date(status.forumLastSync))} ago` : 'Never'}</p>
+                                     <p className="text-sm text-muted-foreground">Last synced: {formatTimestamp(status.forumLastSync)}</p>
                                     <Button onClick={() => handlePreview('forum')}>Preview Sync</Button>
                                 </CardContent>
                             </Card>
