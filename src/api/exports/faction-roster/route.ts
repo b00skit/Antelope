@@ -5,6 +5,18 @@ import { getSession } from '@/lib/session';
 import { db } from '@/db';
 import { users, factionMembersCache, factionMembersAbasCache, apiCacheAlternativeCharacters } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import * as XLSX from 'xlsx';
+import { z } from 'zod';
+
+const columnSchema = z.object({
+    key: z.string(),
+    label: z.string(),
+});
+
+const exportSchema = z.object({
+    columns: z.array(columnSchema),
+});
+
 
 interface Member {
     character_id: number;
@@ -12,6 +24,7 @@ interface Member {
     user_id: number;
     last_online: string | null;
     last_duty: string | null;
+    [key: string]: any;
 }
 
 const formatDate = (timestamp: string | null): string => {
@@ -33,13 +46,21 @@ const formatTime = (timestamp: string | null): string => {
 };
 
 
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
     const cookieStore = await cookies();
     const session = await getSession(cookieStore);
 
     if (!session.isLoggedIn || !session.userId) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const body = await request.json();
+    const parsed = exportSchema.safeParse(body);
+    if (!parsed.success) {
+        return NextResponse.json({ error: 'Invalid columns configuration.' }, { status: 400 });
+    }
+    const { columns } = parsed.data;
+
 
     try {
         const user = await db.query.users.findFirst({
@@ -72,9 +93,7 @@ export async function GET(request: NextRequest) {
         
         const allMembers: Member[] = membersCache.members;
 
-        const csvHeader = "Character ID,Name,User ID,Alternative Character,ABAS,Last Logged In - Date,Last Logged In - Time,Last Duty - Date,Last Duty - Time\n";
-
-        const csvRows = allMembers.map(member => {
+        const processedData = allMembers.map(member => {
             const abas = abasMap.get(member.character_id) ?? '0.00';
             const lastOnlineDate = formatDate(member.last_online);
             const lastOnlineTime = formatTime(member.last_online);
@@ -91,29 +110,36 @@ export async function GET(request: NextRequest) {
                 }
             }
 
-            // Escape commas in names
-            const name = `"${member.character_name.replace(/"/g, '""')}"`;
-
-            return [
-                member.character_id,
-                name,
-                member.user_id,
-                altStatus,
+            return {
+                ...member,
+                alt_status: altStatus,
                 abas,
-                lastOnlineDate,
-                lastOnlineTime,
-                lastDutyDate,
-                lastDutyTime,
-            ].join(',');
+                last_online_date: lastOnlineDate,
+                last_online_time: lastOnlineTime,
+                last_duty_date: lastDutyDate,
+                last_duty_time: lastDutyTime,
+            };
         });
         
-        const csvContent = csvHeader + csvRows.join('\n');
+        const worksheetData = processedData.map(row => {
+            const newRow: Record<string, any> = {};
+            for (const col of columns) {
+                newRow[col.label] = row[col.key] ?? '';
+            }
+            return newRow;
+        });
 
-        return new Response(csvContent, {
+        const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Faction Roster');
+
+        const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+
+        return new Response(Buffer.from(buffer), {
             status: 200,
             headers: {
-                'Content-Type': 'text/csv',
-                'Content-Disposition': `attachment; filename="faction-roster-${new Date().toISOString().split('T')[0]}.csv"`,
+                'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Disposition': `attachment; filename="faction-roster-${new Date().toISOString().split('T')[0]}.xlsx"`,
             },
         });
 
