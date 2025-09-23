@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
 import { factionOrganizationCat3 } from '@/db/schema';
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { canManageCat2 } from '../../[cat1Id]/[cat2Id]/helpers';
 import { z } from 'zod';
 
@@ -18,8 +18,8 @@ const cat3UpdateSchema = z.object({
     name: z.string().min(1, "Name cannot be empty."),
     short_name: z.string().optional().nullable(),
     access_json: z.array(z.number()).optional().nullable(),
+    forum_group_id: z.coerce.number().optional().nullable(),
     settings_json: z.object({
-        forum_group_id: z.coerce.number().optional().nullable(),
         secondary: z.boolean().optional(),
         mark_alternative_characters: z.boolean().optional(),
         allow_roster_snapshots: z.boolean().optional(),
@@ -63,7 +63,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         const result = await db.update(factionOrganizationCat3)
             .set({
                 ...parsed.data,
-                forum_group_id: parsed.data.settings_json?.forum_group_id,
+                forum_group_id: parsed.data.forum_group_id ?? null,
             })
             .where(eq(factionOrganizationCat3.id, cat3Id))
             .returning();
