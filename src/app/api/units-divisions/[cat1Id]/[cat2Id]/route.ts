@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { factionOrganizationCat1, factionOrganizationCat2, factionMembersCache, factionOrganizationMembership, factionOrganizationCat3, factionMembers } from '@/db/schema';
+import { factionOrganizationCat1, factionOrganizationCat2, factionMembersCache, factionOrganizationMembership, factionOrganizationCat3, factionMembers, factionOrganizationCat2Sections } from '@/db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import { canManageCat2, canUserManage } from './helpers';
 
@@ -36,7 +36,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
                 with: {
                     creator: { columns: { username: true } }
                 }
-            }
+            },
+            sections: true,
         }
     });
 

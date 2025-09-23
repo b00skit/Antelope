@@ -36,7 +36,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
                         columns: { id: true, name: true }
                     }
                 }
-            }
+            },
+            sections: true,
         }
     });
 
