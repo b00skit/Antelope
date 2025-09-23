@@ -177,14 +177,14 @@ export function Cat3Dialog({ open, onOpenChange, onSave, cat3, parentCat2, setti
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Forum Group for Roster Sync (Optional)</FormLabel>
-                                     <Select onValueChange={(value) => field.onChange(value ? parseInt(value) : undefined)} defaultValue={field.value?.toString()}>
+                                     <Select onValueChange={(value) => field.onChange(value === 'none' ? undefined : parseInt(value))} defaultValue={field.value?.toString() ?? 'none'}>
                                         <FormControl>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Select a forum group..." />
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                            <SelectItem value="">None</SelectItem>
+                                            <SelectItem value="none">None</SelectItem>
                                             {syncableForumGroups.map(group => (
                                                 <SelectItem key={group.value} value={group.value}>{group.label}</SelectItem>
                                             ))}
