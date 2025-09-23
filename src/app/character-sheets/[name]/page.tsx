@@ -81,6 +81,12 @@ async function getCharacterData(name: string) {
     }
 
     let members = cachedFaction.members || [];
+    const membersByCharacterId = new Map<number, any>();
+    for (const member of members) {
+        if (member && typeof member.character_id === 'number') {
+            membersByCharacterId.set(member.character_id, member);
+        }
+    }
     
     const characterName = decodeURIComponent(name).replace(/_/g, ' ');
     const character = members.find((m: any) => m.character_name.toLowerCase() === characterName.toLowerCase());
@@ -100,12 +106,18 @@ async function getCharacterData(name: string) {
         ? altCacheEntry.alternative_characters_json
         : [];
 
-    const characterIdsForAbas = [
-        characterId,
-        ...alternativeCharactersRaw
-            .map((alt: any) => alt?.character_id)
-            .filter((id): id is number => typeof id === 'number'),
-    ];
+    const relatedCharacterIds = new Set<number>([characterId]);
+    if (typeof altCacheEntry?.character_id === 'number') {
+        relatedCharacterIds.add(altCacheEntry.character_id);
+    }
+
+    for (const alt of alternativeCharactersRaw) {
+        if (alt && typeof alt.character_id === 'number') {
+            relatedCharacterIds.add(alt.character_id);
+        }
+    }
+
+    const characterIdsForAbas = Array.from(relatedCharacterIds);
 
     const abasEntries = characterIdsForAbas.length > 0
         ? await db.query.factionMembersAbasCache.findMany({
@@ -144,13 +156,57 @@ async function getCharacterData(name: string) {
 
     const nameParts = deriveNameParts();
 
-    const alternativeCharacters = alternativeCharactersRaw.map((alt: any) => {
-        const altAbasEntry = abasMap.get(alt?.character_id);
-        return {
-            ...alt,
-            abas: altAbasEntry?.abas ?? alt?.abas,
+    const alternativeCharacters: any[] = [];
+    const addAlternativeCharacter = (candidate: any) => {
+        if (!candidate) {
+            return;
+        }
+
+        const candidateId = typeof candidate.character_id === 'number'
+            ? candidate.character_id
+            : typeof candidate.characterId === 'number'
+                ? candidate.characterId
+                : undefined;
+
+        if (typeof candidateId !== 'number' || candidateId === characterId) {
+            return;
+        }
+
+        if (alternativeCharacters.some(alt => alt.character_id === candidateId)) {
+            return;
+        }
+
+        const memberData = membersByCharacterId.get(candidateId) ?? candidate;
+        const altAbasEntry = abasMap.get(candidateId);
+
+        alternativeCharacters.push({
+            ...memberData,
+            character_id: candidateId,
+            character_name: memberData.character_name ?? candidate.character_name,
+            firstname: memberData.firstname ?? candidate.firstname,
+            lastname: memberData.lastname ?? candidate.lastname,
+            rank: memberData.rank ?? candidate.rank,
+            rank_name: memberData.rank_name ?? candidate.rank_name,
+            last_online: memberData.last_online ?? candidate.last_online,
+            last_duty: memberData.last_duty ?? candidate.last_duty,
+            user_id: memberData.user_id ?? candidate.user_id ?? character.user_id,
+            abas: altAbasEntry?.abas ?? memberData.abas ?? candidate.abas,
+        });
+    };
+
+    if (altCacheEntry) {
+        const primaryMember = membersByCharacterId.get(altCacheEntry.character_id) ?? {
+            character_id: altCacheEntry.character_id,
+            character_name: altCacheEntry.character_name,
+            rank: altCacheEntry.rank,
+            user_id: character.user_id,
         };
-    });
+        addAlternativeCharacter(primaryMember);
+    }
+
+    for (const alt of alternativeCharactersRaw) {
+        addAlternativeCharacter(alt);
+    }
 
     const charData = {
         data: {
