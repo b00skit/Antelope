@@ -28,6 +28,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { MultiSelect } from '@/components/ui/multi-select';
+import { Switch } from '@/components/ui/switch';
+import { useSession } from '@/hooks/use-session';
 
 
 const jsonString = z.string().refine((value) => {
@@ -56,35 +58,16 @@ const formSchema = z.object({
     path: ["password"],
 });
 
-
-const jsonExample = `{
-  "include_ranks": [1, 2, 3],
-  "exclude_ranks": [4],
-  "include_members": ["First_Name"],
-  "exclude_members": ["Another_Name"],
-  "forum_groups_included": [5, 8],
-  "forum_groups_excluded": [10],
-  "forum_users_included": [2, 123],
-  "forum_users_excluded": [45],
-  "alert_forum_users_missing": true,
-  "show_assignment_titles": true,
-  "allow_roster_snapshots": true,
-  "mark_alternative_characters": true,
-  "abas_standards": {
-    "by_rank": {
-      "10": 5.0,
-      "12": 7.5
-    },
-    "by_name": {
-      "John_Doe": 10.0
-    }
-  },
-  "labels": {
-    "red": "High Priority",
-    "blue": "Training",
-    "green": "Field Training Officer"
-  }
-}`;
+interface BasicFilters {
+    include_ranks: string;
+    exclude_ranks: string;
+    include_members: string;
+    exclude_members: string;
+    forum_groups_included: number[];
+    forum_groups_excluded: number[];
+    show_assignment_titles: boolean;
+    mark_alternative_characters: boolean;
+}
 
 const visibilityOptions = [
     { value: 'personal', label: 'Personal', description: 'Only you can see this roster.' },
@@ -98,17 +81,27 @@ export default function EditRosterPage() {
     const params = useParams();
     const rosterId = params.id as string;
     const { toast } = useToast();
+    const { session } = useSession();
     const [isLoading, setIsLoading] = useState(true);
     const [initialVisibility, setInitialVisibility] = useState<string | null>(null);
-    const [basicIncludeMembers, setBasicIncludeMembers] = useState('');
     const [factionUsers, setFactionUsers] = useState<{ id: number; username: string }[]>([]);
+    const [syncableForumGroups, setSyncableForumGroups] = useState<{ value: string; label: string; }[]>([]);
+    const [basicFilters, setBasicFilters] = useState<BasicFilters>({
+        include_ranks: '',
+        exclude_ranks: '',
+        include_members: '',
+        exclude_members: '',
+        forum_groups_included: [],
+        forum_groups_excluded: [],
+        show_assignment_titles: true,
+        mark_alternative_characters: true,
+    });
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
     });
     
     const watchVisibility = form.watch('visibility');
-    const watchJson = form.watch('roster_setup_json');
 
     useEffect(() => {
         if (!rosterId) return;
@@ -136,13 +129,29 @@ export default function EditRosterPage() {
                 // Initialize basic editor state from fetched data
                 try {
                     const json = rosterJson ? JSON.parse(rosterJson) : {};
-                    const members = json.include_members || [];
-                    setBasicIncludeMembers(members.join('\n'));
+                    setBasicFilters({
+                        include_ranks: (json.include_ranks || []).join(','),
+                        exclude_ranks: (json.exclude_ranks || []).join(','),
+                        include_members: (json.include_members || []).join('\n'),
+                        exclude_members: (json.exclude_members || []).join('\n'),
+                        forum_groups_included: json.forum_groups_included || [],
+                        forum_groups_excluded: json.forum_groups_excluded || [],
+                        show_assignment_titles: json.show_assignment_titles ?? true,
+                        mark_alternative_characters: json.mark_alternative_characters ?? true,
+                    });
                 } catch (e) {
-                    setBasicIncludeMembers('');
+                    // ignore
                 }
 
                 setInitialVisibility(data.roster.visibility);
+
+                if(session?.hasActiveFaction) {
+                    const groupsRes = await fetch(`/api/factions/${session.activeFaction?.id}/forum-groups`);
+                    const groupsData = await groupsRes.json();
+                    if (groupsRes.ok) {
+                        setSyncableForumGroups((groupsData.syncableGroups || []).map((g: any) => ({ value: g.group_id.toString(), label: g.name })));
+                    }
+                }
             } catch (err: any) {
                 toast({ variant: 'destructive', title: 'Error', description: err.message });
                 router.push('/activity-rosters');
@@ -152,42 +161,57 @@ export default function EditRosterPage() {
         };
 
         fetchRosterData();
-    }, [rosterId, router, toast, form]);
+    }, [rosterId, router, toast, form, session]);
 
-    const handleTabChange = (newTab: string) => {
-        if (newTab === 'basic') {
-            try {
-                const json = watchJson ? JSON.parse(watchJson) : {};
-                const members = json.include_members || [];
-                setBasicIncludeMembers(members.join('\n'));
-            } catch (e) {
-                setBasicIncludeMembers('');
-            }
-        } else if (newTab === 'advanced') {
-            try {
-                const json = watchJson ? JSON.parse(watchJson) : {};
-                const members = basicIncludeMembers.split('\n').map(m => m.trim()).filter(Boolean);
-                json.include_members = members;
-                form.setValue('roster_setup_json', JSON.stringify(json, null, 2), { shouldValidate: true });
-            } catch (e) {
-                // If current JSON is invalid, do nothing
-            }
+    const syncJsonToBasic = () => {
+        try {
+            const jsonString = form.getValues('roster_setup_json');
+            const json = jsonString ? JSON.parse(jsonString) : {};
+            setBasicFilters({
+                include_ranks: (json.include_ranks || []).join(','),
+                exclude_ranks: (json.exclude_ranks || []).join(','),
+                include_members: (json.include_members || []).join('\n'),
+                exclude_members: (json.exclude_members || []).join('\n'),
+                forum_groups_included: json.forum_groups_included || [],
+                forum_groups_excluded: json.forum_groups_excluded || [],
+                show_assignment_titles: json.show_assignment_titles ?? true,
+                mark_alternative_characters: json.mark_alternative_characters ?? true,
+            });
+        } catch (e) {
+            // Invalid JSON, do nothing
+        }
+    };
+
+    const syncBasicToJson = () => {
+        try {
+            const jsonString = form.getValues('roster_setup_json');
+            const currentJson = jsonString ? JSON.parse(jsonString) : {};
+            
+            const parseRanks = (rankString: string) => rankString.split(',').map(r => parseInt(r.trim(), 10)).filter(r => !isNaN(r));
+            const parseMembers = (memberString: string) => memberString.split('\n').map(m => m.trim()).filter(Boolean);
+
+            const newJson = {
+                ...currentJson,
+                include_ranks: parseRanks(basicFilters.include_ranks),
+                exclude_ranks: parseRanks(basicFilters.exclude_ranks),
+                include_members: parseMembers(basicFilters.include_members),
+                exclude_members: parseMembers(basicFilters.exclude_members),
+                forum_groups_included: basicFilters.forum_groups_included,
+                forum_groups_excluded: basicFilters.forum_groups_excluded,
+                show_assignment_titles: basicFilters.show_assignment_titles,
+                mark_alternative_characters: basicFilters.mark_alternative_characters,
+            };
+            form.setValue('roster_setup_json', JSON.stringify(newJson, null, 2), { shouldValidate: true });
+        } catch (e) {
+            // Could happen if json is malformed, but we proceed anyway
         }
     };
 
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         try {
-            // Ensure the final JSON is up-to-date before submitting
-            const finalValues = { ...values };
-            try {
-                const json = finalValues.roster_setup_json ? JSON.parse(finalValues.roster_setup_json) : {};
-                const members = basicIncludeMembers.split('\n').map(m => m.trim()).filter(Boolean);
-                json.include_members = members;
-                finalValues.roster_setup_json = JSON.stringify(json);
-            } catch (e) {
-                // Ignore if JSON is malformed, it will be caught by validation
-            }
+            syncBasicToJson();
+            const finalValues = form.getValues();
 
             const response = await fetch(`/api/rosters/${rosterId}`, {
                 method: 'PUT',
@@ -314,11 +338,55 @@ export default function EditRosterPage() {
                             )}
                              <FormItem>
                                 <FormLabel>Roster Configuration (Optional)</FormLabel>
-                                <Tabs defaultValue="advanced" className="w-full" onValueChange={handleTabChange}>
+                                <Tabs defaultValue="basic" className="w-full" onValueChange={(tab) => tab === 'basic' ? syncJsonToBasic() : syncBasicToJson()}>
                                     <TabsList>
+                                        <TabsTrigger value="basic">Basic</TabsTrigger>
                                         <TabsTrigger value="advanced">Advanced (JSON)</TabsTrigger>
-                                        <TabsTrigger value="basic">Basic (Included Members)</TabsTrigger>
                                     </TabsList>
+                                    <TabsContent value="basic" className="space-y-4 pt-2">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <FormItem>
+                                                <FormLabel>Include Ranks</FormLabel>
+                                                <Input value={basicFilters.include_ranks} onChange={(e) => setBasicFilters(f => ({...f, include_ranks: e.target.value}))} placeholder="e.g., 1,5,10" />
+                                                <FormDescription>Comma-separated rank IDs to include.</FormDescription>
+                                            </FormItem>
+                                             <FormItem>
+                                                <FormLabel>Exclude Ranks</FormLabel>
+                                                <Input value={basicFilters.exclude_ranks} onChange={(e) => setBasicFilters(f => ({...f, exclude_ranks: e.target.value}))} placeholder="e.g., 14,15" />
+                                                <FormDescription>Comma-separated rank IDs to exclude.</FormDescription>
+                                            </FormItem>
+                                            <FormItem>
+                                                <FormLabel>Include Forum Groups</FormLabel>
+                                                <MultiSelect
+                                                    options={syncableForumGroups}
+                                                    onValueChange={(selected) => setBasicFilters(f => ({...f, forum_groups_included: selected.map(Number)}))}
+                                                    defaultValue={basicFilters.forum_groups_included.map(String)}
+                                                    placeholder="Select groups..."
+                                                />
+                                            </FormItem>
+                                            <FormItem>
+                                                <FormLabel>Exclude Forum Groups</FormLabel>
+                                                <MultiSelect
+                                                    options={syncableForumGroups}
+                                                    onValueChange={(selected) => setBasicFilters(f => ({...f, forum_groups_excluded: selected.map(Number)}))}
+                                                    defaultValue={basicFilters.forum_groups_excluded.map(String)}
+                                                    placeholder="Select groups..."
+                                                />
+                                            </FormItem>
+                                        </div>
+                                         <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                            <div className="space-y-0.5">
+                                                <FormLabel>Show Assignment Titles</FormLabel>
+                                            </div>
+                                            <Switch checked={basicFilters.show_assignment_titles} onCheckedChange={(checked) => setBasicFilters(f => ({...f, show_assignment_titles: checked}))} />
+                                        </FormItem>
+                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                            <div className="space-y-0.5">
+                                                <FormLabel>Mark Alternative Characters</FormLabel>
+                                            </div>
+                                            <Switch checked={basicFilters.mark_alternative_characters} onCheckedChange={(checked) => setBasicFilters(f => ({...f, mark_alternative_characters: checked}))} />
+                                        </FormItem>
+                                    </TabsContent>
                                     <TabsContent value="advanced">
                                         <FormField
                                             control={form.control}
@@ -328,33 +396,15 @@ export default function EditRosterPage() {
                                                     <FormControl>
                                                         <Textarea
                                                             placeholder='Paste your JSON configuration here...'
-                                                            className="font-mono min-h-[150px]"
+                                                            className="font-mono min-h-[250px]"
                                                             {...field}
                                                             value={field.value ?? ''}
                                                         />
                                                     </FormControl>
-                                                    <FormDescription>
-                                                        Use this to filter the roster by rank, name, or forum groups/users.
-                                                    </FormDescription>
-                                                    <details className="text-sm">
-                                                        <summary className="cursor-pointer text-muted-foreground">View Example</summary>
-                                                        <pre className="mt-2 p-2 bg-muted rounded-md text-xs">{jsonExample}</pre>
-                                                    </details>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
                                         />
-                                    </TabsContent>
-                                    <TabsContent value="basic">
-                                        <Textarea
-                                            placeholder='Enter one character name per line...'
-                                            className="font-mono min-h-[150px]"
-                                            value={basicIncludeMembers}
-                                            onChange={(e) => setBasicIncludeMembers(e.target.value)}
-                                        />
-                                        <FormDescription>
-                                            Only members with these names will be shown. This will only affect the `include_members` field.
-                                        </FormDescription>
                                     </TabsContent>
                                 </Tabs>
                             </FormItem>
