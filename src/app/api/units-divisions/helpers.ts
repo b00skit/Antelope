@@ -122,6 +122,28 @@ function computeMissingForumUsers(
         });
 }
 
+export function hasUserAccess(
+    accessList: (number | string | null | undefined)[] | null | undefined,
+    userId: number,
+): boolean {
+    if (!Array.isArray(accessList)) {
+        return false;
+    }
+
+    return accessList.some((value) => {
+        if (typeof value === 'number') {
+            return value === userId;
+        }
+
+        if (typeof value === 'string') {
+            const parsed = Number.parseInt(value, 10);
+            return Number.isInteger(parsed) && parsed === userId;
+        }
+
+        return false;
+    });
+}
+
 export async function canUserManage(
     session: IronSession<SessionData>,
     factionId: number,
@@ -146,13 +168,20 @@ export async function canUserManage(
     if (type === 'cat_2') {
         const cat2 = await db.query.factionOrganizationCat2.findFirst({ where: eq(factionOrganizationCat2.id, id), with: { cat1: true } });
         if (!cat2) return { authorized: false, message: 'Not found.' };
-        if (cat2.access_json?.includes(session.userId) || cat2.cat1.access_json?.includes(session.userId)) {
+        if (
+            hasUserAccess(cat2.access_json, session.userId)
+            || hasUserAccess(cat2.cat1?.access_json, session.userId)
+        ) {
             return { authorized: true, user, membership, faction: user.selectedFaction };
         }
     } else { // cat_3
         const cat3 = await db.query.factionOrganizationCat3.findFirst({ where: eq(factionOrganizationCat3.id, id), with: { cat2: { with: { cat1: true } } } });
         if (!cat3) return { authorized: false, message: 'Not found.' };
-        if (cat3.access_json?.includes(session.userId) || cat3.cat2.access_json?.includes(session.userId) || cat3.cat2.cat1.access_json?.includes(session.userId)) {
+        if (
+            hasUserAccess(cat3.access_json, session.userId)
+            || hasUserAccess(cat3.cat2?.access_json, session.userId)
+            || hasUserAccess(cat3.cat2?.cat1?.access_json, session.userId)
+        ) {
             return { authorized: true, user, membership, faction: user.selectedFaction };
         }
     }
@@ -327,8 +356,8 @@ export async function getCatViewData(
 
         const canAdminister = membership.rank >= (user.selectedFaction.administration_rank ?? 15);
         const canManage = canAdminister
-            || unit.access_json?.includes(session.userId)
-            || unit.cat1?.access_json?.includes(session.userId) || false;
+            || hasUserAccess(unit.access_json, session.userId)
+            || hasUserAccess(unit.cat1?.access_json, session.userId);
 
         return {
             unit: {

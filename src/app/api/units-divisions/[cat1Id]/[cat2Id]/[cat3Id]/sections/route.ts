@@ -5,7 +5,7 @@ import { getSession } from '@/lib/session';
 import { db } from '@/db';
 import { factionOrganizationCat3, factionOrganizationCat3Sections } from '@/db/schema';
 import { and, eq, sql } from 'drizzle-orm';
-import { canUserManage } from '../../../../helpers';
+import { canUserManage } from '../../../../../helpers';
 import { z } from 'zod';
 
 interface RouteParams {

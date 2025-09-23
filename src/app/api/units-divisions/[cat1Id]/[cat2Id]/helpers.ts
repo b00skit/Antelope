@@ -2,6 +2,7 @@
 import { db } from '@/db';
 import { users, factionMembers, factionOrganizationCat1, factionOrganizationCat2, factionOrganizationCat3 } from '@/db/schema';
 import { and, eq } from 'drizzle-orm';
+import { hasUserAccess } from '../../helpers';
 
 export async function canManageCat2(session: any, cat2Id: number) {
     if (!session.isLoggedIn || !session.userId) {
@@ -43,12 +44,12 @@ export async function canManageCat2(session: any, cat2Id: number) {
     }
 
     // Check for Cat2 access
-    if (cat2.access_json?.includes(session.userId)) {
+    if (hasUserAccess(cat2.access_json, session.userId)) {
         return { authorized: true, factionId: user.selectedFaction.id, user, membership, faction: user.selectedFaction, cat2 };
     }
-    
+
     // Check for parent Cat1 access
-    if (cat2.cat1.access_json?.includes(session.userId)) {
+    if (hasUserAccess(cat2.cat1?.access_json, session.userId)) {
         return { authorized: true, factionId: user.selectedFaction.id, user, membership, faction: user.selectedFaction, cat2 };
     }
 
