@@ -34,7 +34,7 @@ import { Checkbox } from '../ui/checkbox';
 import { SectionDialog } from './section-dialog';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { RosterSection } from './roster-section';
+import { RosterSection } from '../activity-rosters/roster-section';
 
 
 interface Member {
@@ -350,12 +350,12 @@ export function MembersTable({ members, sections: initialSections, allFactionMem
                                 <label className="text-sm font-medium">Character</label>
                                 <Combobox options={characterOptions} value={selectedCharacterId} onChange={setSelectedCharacterId} placeholder="Select a character..." />
                             </div>
-                            <div className="flex-1 w-full">
+                             <div className="flex-1 w-full">
                                 <label className="text-sm font-medium">Title (Optional)</label>
                                 <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="e.g., Senior Deputy" />
                             </div>
                             <Button onClick={handleAddMember} disabled={isSubmitting}>
-                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Confirm
                             </Button>
                         </div>

@@ -12,7 +12,7 @@ import { TransferMemberDialog } from './transfer-member-dialog';
 import { SectionDialog } from './section-dialog';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { RosterSection } from './roster-section';
+import { RosterSection } from '../activity-rosters/roster-section';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '../ui/dropdown-menu';
 import { Move } from 'lucide-react';
