@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from '../ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const ItemTypes = {
     COLUMN: 'column',
@@ -39,7 +40,7 @@ const ALL_COLUMNS: Column[] = [
     { key: 'rank', label: 'Rank' },
     { key: 'rank_name', label: 'Rank Name' },
     { key: 'abas', label: 'ABAS' },
-    { key: 'alt_status', label: 'Alternative Character' },
+    { key: 'primary_character', label: 'Primary Character' },
     { key: 'last_online_date', label: 'Last Online (Date)' },
     { key: 'last_online_time', label: 'Last Online (Time)' },
     { key: 'last_duty_date', label: 'Last Duty (Date)' },
@@ -94,12 +95,17 @@ export function DataExportsClientPage() {
             { key: 'character_name', label: 'Name' },
             { key: 'rank_name', label: 'Rank' },
             { key: 'abas', label: 'ABAS' },
-            { key: 'alt_status', label: 'Alternative Character' },
+            { key: 'primary_character', label: 'Primary Character' },
             { key: 'last_duty_date', label: 'Last Duty (Date)' },
         ]},
     ]);
     const [activeSheetId, setActiveSheetId] = useState('sheet1');
-    const [filters, setFilters] = useState({ onlyWithAlts: false });
+    const [filters, setFilters] = useState({
+        onlyWithAlts: false,
+        dutyActiveDays: 'all', // 'all', '7', '14', '30'
+        belowMinimumAbas: false,
+        rank: 'all',
+    });
 
     const activeSheet = sheets.find(s => s.id === activeSheetId);
     const selectedColumnKeys = new Set(activeSheet?.columns.map(c => c.key));
@@ -116,7 +122,6 @@ export function DataExportsClientPage() {
             return;
         }
         setSheets(prev => prev.filter(s => s.id !== id));
-        // If the active sheet is being removed, set the first one as active
         if (activeSheetId === id) {
             setActiveSheetId(sheets[0].id);
         }
@@ -229,7 +234,7 @@ export function DataExportsClientPage() {
                                 </div>
                                 <div>
                                      <h3 className="font-semibold mb-2">Filters</h3>
-                                     <div className="space-y-2 p-4 border rounded-md">
+                                     <div className="space-y-4 p-4 border rounded-md">
                                         <div className="flex items-center space-x-2">
                                             <Checkbox 
                                                 id="filter-alts"
@@ -237,6 +242,32 @@ export function DataExportsClientPage() {
                                                 onCheckedChange={(checked) => setFilters(f => ({ ...f, onlyWithAlts: !!checked }))}
                                             />
                                             <Label htmlFor="filter-alts">Only include characters with alts</Label>
+                                        </div>
+                                         <div className="flex items-center space-x-2">
+                                            <Checkbox 
+                                                id="filter-abas"
+                                                checked={filters.belowMinimumAbas}
+                                                onCheckedChange={(checked) => setFilters(f => ({ ...f, belowMinimumAbas: !!checked }))}
+                                            />
+                                            <Label htmlFor="filter-abas">Only include members below minimum ABAS</Label>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label htmlFor="filter-duty">Duty Activity</Label>
+                                            <Select value={filters.dutyActiveDays} onValueChange={(value) => setFilters(f => ({ ...f, dutyActiveDays: value }))}>
+                                                <SelectTrigger id="filter-duty">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="all">All Members</SelectItem>
+                                                    <SelectItem value="7">Active in last 7 days</SelectItem>
+                                                    <SelectItem value="14">Active in last 14 days</SelectItem>
+                                                    <SelectItem value="30">Active in last 30 days</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label htmlFor="filter-rank">Rank (Exact Match)</Label>
+                                            <Input id="filter-rank" placeholder="e.g. Sergeant" onChange={(e) => setFilters(f => ({ ...f, rank: e.target.value || 'all' }))} />
                                         </div>
                                      </div>
                                 </div>

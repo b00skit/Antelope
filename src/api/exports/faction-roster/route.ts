@@ -3,10 +3,11 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { users, factionMembersCache, factionMembersAbasCache, apiCacheAlternativeCharacters } from '@/db/schema';
+import { users, factionMembersCache, factionMembersAbasCache, apiCacheAlternativeCharacters, factions } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import * as XLSX from 'xlsx';
 import { z } from 'zod';
+import { subDays } from 'date-fns';
 
 const columnSchema = z.object({
     key: z.string(),
@@ -21,6 +22,9 @@ const sheetSchema = z.object({
 
 const filterSchema = z.object({
     onlyWithAlts: z.boolean(),
+    dutyActiveDays: z.string(), // 'all', '7', '14', '30'
+    belowMinimumAbas: z.boolean(),
+    rank: z.string(),
 });
 
 const exportSchema = z.object({
@@ -89,14 +93,18 @@ export async function POST(request: NextRequest) {
 
         const factionId = user.selectedFaction.id;
 
-        const [membersCache, abasCache, altCache] = await Promise.all([
+        const [membersCache, abasCache, altCache, faction] = await Promise.all([
             db.query.factionMembersCache.findFirst({ where: eq(factionMembersCache.faction_id, factionId) }),
             db.query.factionMembersAbasCache.findMany({ where: eq(factionMembersAbasCache.faction_id, factionId) }),
-            db.query.apiCacheAlternativeCharacters.findMany({ where: eq(apiCacheAlternativeCharacters.faction_id, factionId) })
+            db.query.apiCacheAlternativeCharacters.findMany({ where: eq(apiCacheAlternativeCharacters.faction_id, factionId) }),
+            db.query.factions.findFirst({ where: eq(factions.id, factionId) }),
         ]);
 
         if (!membersCache || !membersCache.members) {
             return NextResponse.json({ error: 'No member data found to export.' }, { status: 404 });
+        }
+        if (!faction) {
+            return NextResponse.json({ error: 'Faction settings not found.' }, { status: 404 });
         }
 
         const abasMap = new Map(abasCache.map(a => [a.character_id, a.abas]));
@@ -111,22 +119,24 @@ export async function POST(request: NextRequest) {
             const lastDutyDate = formatDate(member.last_duty);
             const lastDutyTime = formatTime(member.last_duty);
             
-            let altStatus = 'N/A';
+            let primaryCharacterName = '';
             const altInfo = altMap.get(member.user_id);
             let hasAlts = false;
             if (altInfo && Array.isArray(altInfo.alternative_characters_json) && altInfo.alternative_characters_json.length > 0) {
                 hasAlts = true;
-                if (altInfo.character_id === member.character_id) {
-                    altStatus = 'Primary Character';
-                } else {
-                    altStatus = `Yes - ${altInfo.character_name}`;
-                }
+                primaryCharacterName = altInfo.character_name;
             }
+
+            const isSupervisor = member.rank >= (faction.supervisor_rank ?? 10);
+            const requiredAbas = isSupervisor ? (faction.minimum_supervisor_abas ?? 0) : (faction.minimum_abas ?? 0);
+            const isBelowMinimumAbas = parseFloat(abas) < requiredAbas;
+
 
             return {
                 ...member,
-                alt_status: altStatus,
+                primary_character: primaryCharacterName,
                 has_alts: hasAlts,
+                is_below_min_abas: isBelowMinimumAbas,
                 abas,
                 last_online_date: lastOnlineDate,
                 last_online_time: lastOnlineTime,
@@ -138,6 +148,17 @@ export async function POST(request: NextRequest) {
         // Apply filters
         if (filters.onlyWithAlts) {
             processedData = processedData.filter(row => row.has_alts);
+        }
+        if (filters.belowMinimumAbas) {
+            processedData = processedData.filter(row => row.is_below_min_abas);
+        }
+        if (filters.dutyActiveDays !== 'all') {
+            const days = parseInt(filters.dutyActiveDays, 10);
+            const cutoffDate = subDays(new Date(), days);
+            processedData = processedData.filter(row => row.last_duty && new Date(row.last_duty) > cutoffDate);
+        }
+        if (filters.rank !== 'all' && filters.rank.trim() !== '') {
+            processedData = processedData.filter(row => row.rank_name.toLowerCase() === filters.rank.toLowerCase().trim());
         }
         
         const workbook = XLSX.utils.book_new();
@@ -153,7 +174,6 @@ export async function POST(request: NextRequest) {
                 return newRow;
             });
             const worksheet = XLSX.utils.json_to_sheet(worksheetData);
-            // Sanitize sheet name
             const sheetName = sheetConfig.name.replace(/[*?:/\\\[\]]/g, '').substring(0, 31) || `Sheet ${sheets.indexOf(sheetConfig) + 1}`;
             XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
         }
