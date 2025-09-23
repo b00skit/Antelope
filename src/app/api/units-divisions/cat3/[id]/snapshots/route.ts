@@ -6,11 +6,11 @@ import { db } from '@/db';
 import { users, factionOrganizationCat3Snapshots } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { getCat3ViewData } from '../../../[cat1Id]/[cat2Id]/[cat3Id]/helpers';
+import { getCatViewData } from '../../../helpers';
 
 interface RouteParams {
     params: {
-        id: string; // Cat3 ID
+        cat3Id: string; // Cat3 ID
     }
 }
 
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const cat3Id = parseInt(params.id, 10);
+    const cat3Id = parseInt(params.cat3Id, 10);
     if (isNaN(cat3Id)) {
         return NextResponse.json({ error: 'Invalid ID.' }, { status: 400 });
     }
@@ -45,11 +45,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             return NextResponse.json({ error: 'No active faction selected.' }, { status: 400 });
         }
         
-        const rosterDataResult = await getCat3ViewData(session, cat3Id);
+        const rosterDataResult = await getCatViewData(session, 'cat_3', cat3Id);
 
         if ('error' in rosterDataResult) {
-            const status = rosterDataResult.reauth ? 401 : 500;
-            return NextResponse.json(rosterDataResult, { status });
+            return NextResponse.json({ error: rosterDataResult.error }, { status: 500 });
         }
 
         await db.insert(factionOrganizationCat3Snapshots).values({

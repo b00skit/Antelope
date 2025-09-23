@@ -4,13 +4,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
 import { factionOrganizationCat3 } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { canManageCat2 } from '../../[cat1Id]/[cat2Id]/helpers';
 import { z } from 'zod';
 
 interface RouteParams {
     params: {
-        id: string;
+        cat3Id: string;
     }
 }
 
@@ -35,7 +35,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const cat3Id = parseInt(params.id, 10);
+    const cat3Id = parseInt(params.cat3Id, 10);
     if (isNaN(cat3Id)) {
         return NextResponse.json({ error: 'Invalid ID.' }, { status: 400 });
     }
@@ -61,7 +61,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         }
 
         const result = await db.update(factionOrganizationCat3)
-            .set(parsed.data)
+            .set({
+                ...parsed.data,
+                forum_group_id: parsed.data.forum_group_id,
+            })
             .where(eq(factionOrganizationCat3.id, cat3Id))
             .returning();
             
@@ -82,7 +85,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    const cat3Id = parseInt(params.id, 10);
+    const cat3Id = parseInt(params.cat3Id, 10);
     if (isNaN(cat3Id)) {
         return NextResponse.json({ error: 'Invalid ID.' }, { status: 400 });
     }
