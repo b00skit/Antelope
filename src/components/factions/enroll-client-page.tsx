@@ -88,6 +88,7 @@ export function EnrollClientPage() {
 
     const watchUrl = form.watch('phpbb_api_url');
     const watchKey = form.watch('phpbb_api_key');
+    const unitsDivisionsEnabled = form.watch('units_divisions_enabled');
 
     const apiEndpointPreview = React.useMemo(() => {
         if (watchUrl && watchKey) {
@@ -102,6 +103,18 @@ export function EnrollClientPage() {
         }
         return "Fill out both URL and Key to see the preview.";
     }, [watchUrl, watchKey]);
+    
+    useEffect(() => {
+        if (unitsDivisionsEnabled && (!watchUrl || !watchKey)) {
+            form.setValue('units_divisions_enabled', false);
+            toast({
+                variant: 'destructive',
+                title: 'Forum Required',
+                description: 'Units & Divisions requires Forum Integration to be enabled first.'
+            });
+        }
+    }, [unitsDivisionsEnabled, watchUrl, watchKey, form, toast]);
+
 
     useEffect(() => {
         const fetchEligible = async () => {
@@ -345,6 +358,47 @@ export function EnrollClientPage() {
                                             )}
                                         />
                                     </div>
+                                    <Card>
+                                        <CardHeader>
+                                            <CardTitle>Forum Integration (Optional)</CardTitle>
+                                            <CardDescription>
+                                                Connect your phpBB forum to enable roster syncing and more. This requires the{' '}
+                                                <Link href="https://github.com/b00skit/phpbb-api-extension/" target="_blank" className="text-primary hover:underline">phpBB API Extension</Link> by booskit.
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="space-y-4">
+                                            <FormField
+                                                control={form.control}
+                                                name="phpbb_api_url"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>phpBB Forum URL</FormLabel>
+                                                        <FormControl>
+                                                            <Input placeholder="https://your-forum.com/phpbb/" {...field} value={field.value ?? ''} />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                             <FormField
+                                                control={form.control}
+                                                name="phpbb_api_key"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>phpBB API Key</FormLabel>
+                                                        <FormControl>
+                                                            <Input placeholder="Enter your API key" {...field} value={field.value ?? ''} />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <div>
+                                                <Label>REST API Endpoint Preview</Label>
+                                                <Input readOnly value={apiEndpointPreview} className="mt-1 font-mono text-xs" />
+                                            </div>
+                                        </CardContent>
+                                    </Card>
 
                                     <Card>
                                         <CardHeader>
@@ -420,13 +474,14 @@ export function EnrollClientPage() {
                                                         <div className="space-y-0.5">
                                                             <FormLabel>Units & Divisions</FormLabel>
                                                             <FormDescription>
-                                                                Enable the organizational structure module.
+                                                                Enable the organizational structure module. Requires Forum Integration.
                                                             </FormDescription>
                                                         </div>
                                                         <FormControl>
                                                             <Switch
                                                                 checked={field.value}
                                                                 onCheckedChange={field.onChange}
+                                                                disabled={!watchUrl || !watchKey}
                                                             />
                                                         </FormControl>
                                                     </FormItem>
@@ -452,48 +507,6 @@ export function EnrollClientPage() {
                                                     </FormItem>
                                                 )}
                                             />
-                                        </CardContent>
-                                    </Card>
-
-                                    <Card>
-                                        <CardHeader>
-                                            <CardTitle>Forum Integration (Optional)</CardTitle>
-                                            <CardDescription>
-                                                Connect your phpBB forum to enable roster syncing and more. This requires the{' '}
-                                                <Link href="https://github.com/b00skit/phpbb-api-extension/" target="_blank" className="text-primary hover:underline">phpBB API Extension</Link> by booskit.
-                                            </CardDescription>
-                                        </CardHeader>
-                                        <CardContent className="space-y-4">
-                                            <FormField
-                                                control={form.control}
-                                                name="phpbb_api_url"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>phpBB Forum URL</FormLabel>
-                                                        <FormControl>
-                                                            <Input placeholder="https://your-forum.com/phpbb/" {...field} value={field.value ?? ''} />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                             <FormField
-                                                control={form.control}
-                                                name="phpbb_api_key"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>phpBB API Key</FormLabel>
-                                                        <FormControl>
-                                                            <Input placeholder="Enter your API key" {...field} value={field.value ?? ''} />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <div>
-                                                <Label>REST API Endpoint Preview</Label>
-                                                <Input readOnly value={apiEndpointPreview} className="mt-1 font-mono text-xs" />
-                                            </div>
                                         </CardContent>
                                     </Card>
 

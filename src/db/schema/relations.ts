@@ -15,7 +15,11 @@ import {
   factionOrganizationCat1,
   factionOrganizationCat2,
   factionOrganizationCat3,
-  factionOrganizationMembership
+  factionOrganizationMembership,
+  factionOrganizationCat2Sections,
+  factionOrganizationCat3Sections,
+  factionOrganizationCat2Snapshots,
+  factionOrganizationCat3Snapshots
 } from './organization';
 import { organizationFavorites } from './organizationFavorites';
 import { factionBlockedUsers } from './factionBlockedUsers';
@@ -174,6 +178,8 @@ export const factionOrganizationCat2Relations = relations(factionOrganizationCat
   }),
   cat3s: many(factionOrganizationCat3),
   members: many(factionOrganizationMembership, { relationName: 'cat2_members' }),
+  sections: many(factionOrganizationCat2Sections),
+  snapshots: many(factionOrganizationCat2Snapshots),
 }));
 
 export const factionOrganizationCat3Relations = relations(factionOrganizationCat3, ({ one, many }) => ({
@@ -190,6 +196,8 @@ export const factionOrganizationCat3Relations = relations(factionOrganizationCat
     references: [users.id],
   }),
   members: many(factionOrganizationMembership, { relationName: 'cat3_members' }),
+  sections: many(factionOrganizationCat3Sections),
+  snapshots: many(factionOrganizationCat3Snapshots),
 }));
 
 export const factionOrganizationMembershipRelations = relations(factionOrganizationMembership, ({ one }) => ({
@@ -207,6 +215,50 @@ export const factionOrganizationMembershipRelations = relations(factionOrganizat
     references: [factionOrganizationCat3.id],
     relationName: 'cat3_members'
   }),
+}));
+
+export const factionOrganizationCat2SectionsRelations = relations(factionOrganizationCat2Sections, ({ one }) => ({
+    category: one(factionOrganizationCat2, {
+      fields: [factionOrganizationCat2Sections.category_id],
+      references: [factionOrganizationCat2.id],
+    }),
+}));
+
+export const factionOrganizationCat3SectionsRelations = relations(factionOrganizationCat3Sections, ({ one }) => ({
+    category: one(factionOrganizationCat3, {
+        fields: [factionOrganizationCat3Sections.category_id],
+        references: [factionOrganizationCat3.id],
+    }),
+}));
+
+export const factionOrganizationCat2SnapshotsRelations = relations(factionOrganizationCat2Snapshots, ({ one }) => ({
+    faction: one(factions, {
+        fields: [factionOrganizationCat2Snapshots.faction_id],
+        references: [factions.id],
+    }),
+    sourceCategory: one(factionOrganizationCat2, {
+        fields: [factionOrganizationCat2Snapshots.source_category_id],
+        references: [factionOrganizationCat2.id],
+    }),
+    creator: one(users, {
+        fields: [factionOrganizationCat2Snapshots.created_by],
+        references: [users.id],
+    }),
+}));
+
+export const factionOrganizationCat3SnapshotsRelations = relations(factionOrganizationCat3Snapshots, ({ one }) => ({
+    faction: one(factions, {
+        fields: [factionOrganizationCat3Snapshots.faction_id],
+        references: [factions.id],
+    }),
+    sourceCategory: one(factionOrganizationCat3, {
+        fields: [factionOrganizationCat3Snapshots.source_category_id],
+        references: [factionOrganizationCat3.id],
+    }),
+    creator: one(users, {
+        fields: [factionOrganizationCat3Snapshots.created_by],
+        references: [users.id],
+    }),
 }));
 
 export const organizationFavoritesRelations = relations(organizationFavorites, ({ one }) => ({

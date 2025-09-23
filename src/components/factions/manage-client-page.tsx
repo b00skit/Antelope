@@ -2,7 +2,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -92,6 +92,7 @@ export function ManageFactionClientPage({ faction }: ManageFactionClientPageProp
     
     const watchUrl = form.watch('phpbb_api_url');
     const watchKey = form.watch('phpbb_api_key');
+    const unitsDivisionsEnabled = form.watch('units_divisions_enabled');
 
     const apiEndpointPreview = React.useMemo(() => {
         if (watchUrl && watchKey) {
@@ -105,6 +106,17 @@ export function ManageFactionClientPage({ faction }: ManageFactionClientPageProp
         }
         return "Fill out both URL and Key to see the preview.";
     }, [watchUrl, watchKey]);
+    
+     useEffect(() => {
+        if (unitsDivisionsEnabled && (!watchUrl || !watchKey)) {
+            form.setValue('units_divisions_enabled', false);
+            toast({
+                variant: 'destructive',
+                title: 'Forum Required',
+                description: 'Units & Divisions requires Forum Integration to be enabled first.'
+            });
+        }
+    }, [unitsDivisionsEnabled, watchUrl, watchKey, form, toast]);
 
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
@@ -265,7 +277,55 @@ export function ManageFactionClientPage({ faction }: ManageFactionClientPageProp
                                 />
                             </div>
 
-                            <Card>
+                             <Card>
+                                <CardHeader>
+                                    <CardTitle>Forum Integration (Optional)</CardTitle>
+                                    <CardDescription>
+                                        Connect your phpBB forum to enable roster syncing and more. This requires the{' '}
+                                        <Link href="https://github.com/b00skit/phpbb-api-extension/" target="_blank" className="text-primary hover:underline">phpBB API Extension</Link> by booskit.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="phpbb_api_url"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>phpBB Forum URL</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="https://your-forum.com/phpbb/" {...field} value={field.value ?? ''} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                     <FormField
+                                        control={form.control}
+                                        name="phpbb_api_key"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>phpBB API Key</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="Enter your API key" {...field} value={field.value ?? ''} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <div>
+                                        <Label>REST API Endpoint Preview</Label>
+                                        <Input readOnly value={apiEndpointPreview} className="mt-1 font-mono text-xs" />
+                                    </div>
+                                    <div className="pt-2">
+                                        <Button type="button" variant="secondary" onClick={() => setIsForumGroupsOpen(true)} disabled={!watchUrl || !watchKey}>
+                                            <Users className="mr-2 h-4 w-4" />
+                                            Manage Forum Groups
+                                        </Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                            
+                             <Card>
                                 <CardHeader>
                                     <CardTitle>Feature Flags</CardTitle>
                                     <CardDescription>Enable or disable specific features for this faction.</CardDescription>
@@ -339,13 +399,14 @@ export function ManageFactionClientPage({ faction }: ManageFactionClientPageProp
                                                 <div className="space-y-0.5">
                                                     <FormLabel>Units & Divisions</FormLabel>
                                                     <FormDescription>
-                                                        Enable the organizational structure module.
+                                                        Enable the organizational structure module. Requires Forum Integration.
                                                     </FormDescription>
                                                 </div>
                                                 <FormControl>
                                                     <Switch
                                                         checked={field.value}
                                                         onCheckedChange={field.onChange}
+                                                        disabled={!watchUrl || !watchKey}
                                                     />
                                                 </FormControl>
                                             </FormItem>
@@ -374,54 +435,6 @@ export function ManageFactionClientPage({ faction }: ManageFactionClientPageProp
                                 </CardContent>
                             </Card>
 
-                             <Card>
-                                <CardHeader>
-                                    <CardTitle>Forum Integration (Optional)</CardTitle>
-                                    <CardDescription>
-                                        Connect your phpBB forum to enable roster syncing and more. This requires the{' '}
-                                        <Link href="https://github.com/b00skit/phpbb-api-extension/" target="_blank" className="text-primary hover:underline">phpBB API Extension</Link> by booskit.
-                                    </CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <FormField
-                                        control={form.control}
-                                        name="phpbb_api_url"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>phpBB Forum URL</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="https://your-forum.com/phpbb/" {...field} value={field.value ?? ''} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                     <FormField
-                                        control={form.control}
-                                        name="phpbb_api_key"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>phpBB API Key</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="Enter your API key" {...field} value={field.value ?? ''} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <div>
-                                        <Label>REST API Endpoint Preview</Label>
-                                        <Input readOnly value={apiEndpointPreview} className="mt-1 font-mono text-xs" />
-                                    </div>
-                                    <div className="pt-2">
-                                        <Button type="button" variant="secondary" onClick={() => setIsForumGroupsOpen(true)} disabled={!watchUrl || !watchKey}>
-                                            <Users className="mr-2 h-4 w-4" />
-                                            Manage Forum Groups
-                                        </Button>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                            
                             {form.formState.errors.root && (
                                 <Alert variant="destructive">
                                     <AlertTriangle className="h-4 w-4" />
