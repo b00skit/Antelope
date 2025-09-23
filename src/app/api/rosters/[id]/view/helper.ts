@@ -1,9 +1,13 @@
 'use server';
 
 import { getRosterViewData as getRosterViewDataInternal } from '@/api/rosters/[id]/view/helper';
+import type { IronSession } from 'iron-session';
+import type { SessionData } from '@/lib/session';
 
 export async function getRosterViewData(
-    ...args: Parameters<typeof getRosterViewDataInternal>
+    rosterId: number,
+    session: IronSession<SessionData>,
+    _forceSync = false,
 ) {
-    return getRosterViewDataInternal(...args);
+    return getRosterViewDataInternal(rosterId, session, _forceSync);
 }
