@@ -138,6 +138,7 @@ export function Cat2ClientPage({ cat1Id, cat2Id }: Cat2ClientPageProps) {
                 parentCat2={data.unit}
                 settings={{ category_3_name: 'Detail' }} // This should be dynamic later
                 factionUsers={data.factionUsers}
+                syncableForumGroups={[]} // This should be passed if available
             />
              <Breadcrumb>
                 <BreadcrumbList>
@@ -173,6 +174,7 @@ export function Cat2ClientPage({ cat1Id, cat2Id }: Cat2ClientPageProps) {
                 onDataChange={fetchData}
                 allUnitsAndDetails={data.allUnitsAndDetails}
                 isSecondary={data.unit.settings_json?.secondary ?? false}
+                forumGroupId={data.unit.forum_group_id}
             />
 
             {data.unit.settings_json?.allow_cat3 && (

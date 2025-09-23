@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
 import { users, factionOrganizationCat2, factionOrganizationCat3, forumApiCache, factionMembersCache, factionOrganizationMembership } from '@/db/schema';
-import { eq, inArray, and, or } from 'drizzle-orm';
+import { eq, inArray, and, or, isNotNull } from 'drizzle-orm';
 
 interface Diff {
     added: any[];
@@ -33,8 +33,8 @@ export async function GET(request: NextRequest) {
         const factionId = user.selectedFaction.id;
 
         const [cat2s, cat3s, factionCache] = await Promise.all([
-            db.query.factionOrganizationCat2.findMany({ where: and(eq(factionOrganizationCat2.faction_id, factionId), eq(factionOrganizationCat2.forum_group_id, 0)) }),
-            db.query.factionOrganizationCat3.findMany({ where: and(eq(factionOrganizationCat3.faction_id, factionId), eq(factionOrganizationCat3.forum_group_id, 0)) }),
+            db.query.factionOrganizationCat2.findMany({ where: and(eq(factionOrganizationCat2.faction_id, factionId), isNotNull(factionOrganizationCat2.forum_group_id)) }),
+            db.query.factionOrganizationCat3.findMany({ where: and(eq(factionOrganizationCat3.faction_id, factionId), isNotNull(factionOrganizationCat3.forum_group_id)) }),
             db.query.factionMembersCache.findFirst({ where: eq(factionMembersCache.faction_id, factionId) }),
         ]);
 
@@ -51,14 +51,14 @@ export async function GET(request: NextRequest) {
         const [forumCaches, currentMemberships] = await Promise.all([
              db.query.forumApiCache.findMany({ where: and(eq(forumApiCache.faction_id, factionId), inArray(forumApiCache.group_id, groupIds))}),
              db.query.factionOrganizationMembership.findMany({ where: or(
-                inArray(factionOrganizationMembership.category_id, cat2s.map(c => c.id)),
-                inArray(factionOrganizationMembership.category_id, cat3s.map(c => c.id))
+                cat2s.length > 0 ? inArray(factionOrganizationMembership.category_id, cat2s.map(c => c.id)) : undefined,
+                cat3s.length > 0 ? inArray(factionOrganizationMembership.category_id, cat3s.map(c => c.id)) : undefined
              )})
         ]);
-
+        
+        const allFactionMembers = factionCache?.members || [];
         const forumCacheMap = new Map(forumCaches.map(fc => [fc.group_id, fc]));
-        const factionMembersMap = new Map((factionCache?.members || []).map((m: any) => [m.character_name, m.character_id]));
-        const currentMembershipMap = new Map(currentMemberships.map(m => [`${m.type}-${m.category_id}-${m.character_id}`, m]));
+        const factionMembersMap = new Map((allFactionMembers).map((m: any) => [m.character_name, m.character_id]));
         
         const diff: Diff = { added: [], updated: [], removed: [], sourceData: [] };
 
@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
             
             const currentUnitCharacterIds = new Set(
                 currentMemberships
-                    .filter(m => m.category_id === unit.id && m.type === unitType)
+                    .filter(m => m.category_id === unit.id && m.type === unitType && !m.manual)
                     .map(m => m.character_id)
             );
 

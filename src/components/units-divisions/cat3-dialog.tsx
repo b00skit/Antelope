@@ -62,7 +62,7 @@ export function Cat3Dialog({ open, onOpenChange, onSave, cat3, parentCat2, setti
                 name: cat3.name,
                 short_name: cat3.short_name,
                 access_json: cat3.access_json,
-                forum_group_id: cat3.settings_json?.forum_group_id,
+                forum_group_id: cat3.forum_group_id,
                 secondary: cat3.settings_json?.secondary ?? false,
                 mark_alternative_characters: cat3.settings_json?.mark_alternative_characters ?? true,
                 allow_roster_snapshots: cat3.settings_json?.allow_roster_snapshots ?? false,
@@ -90,8 +90,8 @@ export function Cat3Dialog({ open, onOpenChange, onSave, cat3, parentCat2, setti
                 name: values.name,
                 short_name: values.short_name,
                 access_json: values.access_json,
+                forum_group_id: values.forum_group_id,
                 settings_json: {
-                    forum_group_id: values.forum_group_id,
                     secondary: values.secondary,
                     mark_alternative_characters: values.mark_alternative_characters,
                     allow_roster_snapshots: values.allow_roster_snapshots,

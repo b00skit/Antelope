@@ -13,8 +13,8 @@ const cat3Schema = z.object({
     name: z.string().min(1, "Name cannot be empty."),
     short_name: z.string().optional().nullable(),
     access_json: z.array(z.number()).optional().nullable(),
+    forum_group_id: z.coerce.number().optional().nullable(),
     settings_json: z.object({
-        forum_group_id: z.coerce.number().optional().nullable(),
         secondary: z.boolean().optional(),
         mark_alternative_characters: z.boolean().optional(),
         allow_roster_snapshots: z.boolean().optional(),
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Invalid input.', details: parsed.error.flatten() }, { status: 400 });
     }
 
-    const { cat2_id, name, short_name, access_json, settings_json } = parsed.data;
+    const { cat2_id, name, short_name, access_json, settings_json, forum_group_id } = parsed.data;
 
     const user = await db.query.users.findFirst({
         where: eq(users.id, session.userId),
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
             short_name,
             access_json,
             settings_json,
-            forum_group_id: settings_json?.forum_group_id,
+            forum_group_id,
             created_by: session.userId,
         }).returning();
 
