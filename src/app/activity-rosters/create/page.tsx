@@ -67,6 +67,7 @@ interface BasicFilters {
     forum_groups_excluded: number[];
     show_assignment_titles: boolean;
     mark_alternative_characters: boolean;
+    allow_roster_snapshots: boolean;
     labels: LabelConfig[];
 }
 
@@ -97,6 +98,7 @@ export default function CreateRosterPage() {
         forum_groups_excluded: [],
         show_assignment_titles: true,
         mark_alternative_characters: true,
+        allow_roster_snapshots: false,
         labels: [],
     });
 
@@ -148,6 +150,7 @@ export default function CreateRosterPage() {
                 forum_groups_excluded: json.forum_groups_excluded || [],
                 show_assignment_titles: json.show_assignment_titles ?? true,
                 mark_alternative_characters: json.mark_alternative_characters ?? true,
+                allow_roster_snapshots: json.allow_roster_snapshots ?? false,
                 labels: json.labels ? Object.entries(json.labels).map(([color, title]) => ({ color, title: title as string })) : [],
             });
         } catch (e) {
@@ -179,6 +182,7 @@ export default function CreateRosterPage() {
                 forum_groups_excluded: basicFilters.forum_groups_excluded,
                 show_assignment_titles: basicFilters.show_assignment_titles,
                 mark_alternative_characters: basicFilters.mark_alternative_characters,
+                allow_roster_snapshots: basicFilters.allow_roster_snapshots,
                 labels: parseLabels(basicFilters.labels),
             };
             form.setValue('roster_setup_json', JSON.stringify(newJson, null, 2), { shouldValidate: true });
@@ -374,6 +378,12 @@ export default function CreateRosterPage() {
                                                         <FormLabel>Mark Alternative Characters</FormLabel>
                                                     </div>
                                                     <Switch checked={basicFilters.mark_alternative_characters} onCheckedChange={(checked) => setBasicFilters(f => ({...f, mark_alternative_characters: checked}))} />
+                                                </FormItem>
+                                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                                    <div className="space-y-0.5">
+                                                        <FormLabel>Allow Roster Snapshots</FormLabel>
+                                                    </div>
+                                                    <Switch checked={basicFilters.allow_roster_snapshots} onCheckedChange={(checked) => setBasicFilters(f => ({...f, allow_roster_snapshots: checked}))} />
                                                 </FormItem>
                                             </CardContent>
                                         </Card>
