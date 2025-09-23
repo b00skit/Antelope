@@ -1,3 +1,4 @@
+
 'use server';
 
 import { db } from '@/db';
@@ -13,7 +14,6 @@ import {
 import { and, asc, eq, inArray, or } from 'drizzle-orm';
 import type { IronSession } from 'iron-session';
 import type { SessionData } from '@/lib/session';
-import { canUserManage } from './[cat1Id]/[cat2Id]/helpers';
 
 type CategoryType = 'cat_2' | 'cat_3';
 
@@ -120,6 +120,44 @@ function computeMissingForumUsers(
                 .filter((name): name is string => !!name);
             return usernames.filter(name => !rosterByName.has(name.toLowerCase()));
         });
+}
+
+export async function canUserManage(
+    session: IronSession<SessionData>,
+    factionId: number,
+    type: 'cat_2' | 'cat_3',
+    id: number
+) {
+    if (!session?.isLoggedIn || !session.userId) {
+        return { authorized: false, message: 'Unauthorized' };
+    }
+
+    const user = await db.query.users.findFirst({ where: eq(users.id, session.userId), with: { selectedFaction: true } });
+    const membership = await db.query.factionMembers.findFirst({ where: and(eq(factionMembers.userId, session.userId), eq(factionMembers.factionId, factionId)) });
+
+    if (!user || !membership || !user.selectedFaction) {
+        return { authorized: false, message: 'Invalid session.' };
+    }
+
+    if (membership.rank >= (user.selectedFaction.administration_rank ?? 15)) {
+        return { authorized: true, user, membership, faction: user.selectedFaction };
+    }
+
+    if (type === 'cat_2') {
+        const cat2 = await db.query.factionOrganizationCat2.findFirst({ where: eq(factionOrganizationCat2.id, id), with: { cat1: true } });
+        if (!cat2) return { authorized: false, message: 'Not found.' };
+        if (cat2.access_json?.includes(session.userId) || cat2.cat1.access_json?.includes(session.userId)) {
+            return { authorized: true, user, membership, faction: user.selectedFaction };
+        }
+    } else { // cat_3
+        const cat3 = await db.query.factionOrganizationCat3.findFirst({ where: eq(factionOrganizationCat3.id, id), with: { cat2: { with: { cat1: true } } } });
+        if (!cat3) return { authorized: false, message: 'Not found.' };
+        if (cat3.access_json?.includes(session.userId) || cat3.cat2.access_json?.includes(session.userId) || cat3.cat2.cat1.access_json?.includes(session.userId)) {
+            return { authorized: true, user, membership, faction: user.selectedFaction };
+        }
+    }
+
+    return { authorized: false, message: 'Permission denied.' };
 }
 
 export async function getCatViewData(
@@ -256,6 +294,7 @@ export async function getCatViewData(
                     },
                     orderBy: [asc(factionOrganizationCat3.name)],
                 },
+                sections: true,
             },
         });
 
@@ -293,26 +332,14 @@ export async function getCatViewData(
 
         return {
             unit: {
-                id: unit.id,
-                faction_id: unit.faction_id,
-                cat1_id: unit.cat1_id,
-                name: unit.name,
-                short_name: unit.short_name,
-                forum_group_id: unit.forum_group_id,
-                access_json: unit.access_json,
-                settings_json: unit.settings_json,
-                created_by: unit.created_by,
-                created_at: unit.created_at,
-                updated_at: unit.updated_at,
-                cat1: unit.cat1 ? { id: unit.cat1.id, name: unit.cat1.name } : null,
-                cat3s: unit.cat3s.map(cat3 => ({
+                ...unit,
+                cat3s: (unit.cat3s || []).map(cat3 => ({
                     ...cat3,
                     settings_json: {
                         ...cat3.settings_json,
                         forum_group_id: cat3.forum_group_id ?? cat3.settings_json?.forum_group_id ?? null,
                     },
                 })),
-                creator: unit.creator,
             },
             members,
             allFactionMembers,
@@ -346,6 +373,7 @@ export async function getCatViewData(
                     },
                 },
             },
+            sections: true,
         },
     });
 
@@ -372,9 +400,7 @@ export async function getCatViewData(
 
     const canManageResult = await canUserManage(
         session,
-        user,
-        membership,
-        user.selectedFaction,
+        factionId,
         'cat_3',
         categoryId,
     );
