@@ -69,6 +69,8 @@ interface BasicFilters {
     exclude_ranks: string;
     include_members: string;
     exclude_members: string;
+    include_cat2_ids: number[];
+    include_cat3_ids: number[];
     forum_groups_included: number[];
     forum_groups_excluded: number[];
     show_assignment_titles: boolean;
@@ -100,11 +102,14 @@ export default function EditRosterPage() {
     const [initialVisibility, setInitialVisibility] = useState<string | null>(null);
     const [factionUsers, setFactionUsers] = useState<{ id: number; username: string }[]>([]);
     const [syncableForumGroups, setSyncableForumGroups] = useState<{ value: string; label: string; }[]>([]);
+    const [organizationalUnits, setOrganizationalUnits] = useState<{ value: string; label: string; }[]>([]);
     const [basicFilters, setBasicFilters] = useState<BasicFilters>({
         include_ranks: '',
         exclude_ranks: '',
         include_members: '',
         exclude_members: '',
+        include_cat2_ids: [],
+        include_cat3_ids: [],
         forum_groups_included: [],
         forum_groups_excluded: [],
         show_assignment_titles: true,
@@ -125,12 +130,16 @@ export default function EditRosterPage() {
         const fetchRosterData = async () => {
             setIsLoading(true);
             try {
-                const res = await fetch(`/api/rosters/${rosterId}`);
-                if (!res.ok) {
-                    const err = await res.json();
+                const [rosterRes, orgUnitsRes] = await Promise.all([
+                    fetch(`/api/rosters/${rosterId}`),
+                    fetch('/api/units-divisions/list-for-rosters')
+                ]);
+
+                if (!rosterRes.ok) {
+                    const err = await rosterRes.json();
                     throw new Error(err.error || 'Failed to fetch roster data.');
                 }
-                const data = await res.json();
+                const data = await rosterRes.json();
                 const rosterJson = data.roster.roster_setup_json ? JSON.stringify(JSON.parse(data.roster.roster_setup_json), null, 2) : '';
                 setFactionUsers(data.factionUsers || []);
 
@@ -150,6 +159,8 @@ export default function EditRosterPage() {
                         exclude_ranks: (json.exclude_ranks || []).join(','),
                         include_members: (json.include_members || []).join('\n'),
                         exclude_members: (json.exclude_members || []).join('\n'),
+                        include_cat2_ids: json.include_cat2_ids || [],
+                        include_cat3_ids: json.include_cat3_ids || [],
                         forum_groups_included: json.forum_groups_included || [],
                         forum_groups_excluded: json.forum_groups_excluded || [],
                         show_assignment_titles: json.show_assignment_titles ?? true,
@@ -169,6 +180,20 @@ export default function EditRosterPage() {
                     if (groupsRes.ok) {
                         setSyncableForumGroups((groupsData.syncableGroups || []).map((g: any) => ({ value: g.id.toString(), label: g.name })));
                     }
+                }
+
+                 const orgUnitsData = await orgUnitsRes.json();
+                if (orgUnitsRes.ok) {
+                    const options: { value: string; label: string; }[] = [];
+                    (orgUnitsData.allUnits || []).forEach((cat1: any) => {
+                        (cat1.cat2s || []).forEach((cat2: any) => {
+                            options.push({ value: `cat2-${cat2.id}`, label: `${cat1.name} / ${cat2.name}`});
+                            (cat2.cat3s || []).forEach((cat3: any) => {
+                                options.push({ value: `cat3-${cat3.id}`, label: `${cat1.name} / ${cat2.name} / ${cat3.name}`});
+                            });
+                        });
+                    });
+                    setOrganizationalUnits(options);
                 }
             } catch (err: any) {
                 toast({ variant: 'destructive', title: 'Error', description: err.message });
@@ -190,6 +215,8 @@ export default function EditRosterPage() {
                 exclude_ranks: (json.exclude_ranks || []).join(','),
                 include_members: (json.include_members || []).join('\n'),
                 exclude_members: (json.exclude_members || []).join('\n'),
+                include_cat2_ids: json.include_cat2_ids || [],
+                include_cat3_ids: json.include_cat3_ids || [],
                 forum_groups_included: json.forum_groups_included || [],
                 forum_groups_excluded: json.forum_groups_excluded || [],
                 show_assignment_titles: json.show_assignment_titles ?? true,
@@ -222,6 +249,8 @@ export default function EditRosterPage() {
                 exclude_ranks: parseRanks(basicFilters.exclude_ranks),
                 include_members: parseMembers(basicFilters.include_members),
                 exclude_members: parseMembers(basicFilters.exclude_members),
+                include_cat2_ids: basicFilters.include_cat2_ids,
+                include_cat3_ids: basicFilters.include_cat3_ids,
                 forum_groups_included: basicFilters.forum_groups_included,
                 forum_groups_excluded: basicFilters.forum_groups_excluded,
                 show_assignment_titles: basicFilters.show_assignment_titles,
@@ -233,6 +262,17 @@ export default function EditRosterPage() {
         } catch (e) {
             // Could happen if json is malformed, but we proceed anyway
         }
+    };
+    
+    const handleOrgUnitChange = (selected: string[]) => {
+        const cat2_ids: number[] = [];
+        const cat3_ids: number[] = [];
+        selected.forEach(s => {
+            const [type, id] = s.split('-');
+            if (type === 'cat2') cat2_ids.push(Number(id));
+            if (type === 'cat3') cat3_ids.push(Number(id));
+        });
+        setBasicFilters(f => ({ ...f, include_cat2_ids: cat2_ids, include_cat3_ids: cat3_ids }));
     };
 
 
@@ -419,6 +459,19 @@ export default function EditRosterPage() {
                                                         defaultValue={basicFilters.forum_groups_excluded.map(String)}
                                                         placeholder="Select groups..."
                                                     />
+                                                </FormItem>
+                                                <FormItem className="col-span-1 md:col-span-2">
+                                                    <FormLabel>Include Units / Divisions</FormLabel>
+                                                     <MultiSelect
+                                                        options={organizationalUnits}
+                                                        onValueChange={handleOrgUnitChange}
+                                                        defaultValue={[
+                                                            ...basicFilters.include_cat2_ids.map(id => `cat2-${id}`),
+                                                            ...basicFilters.include_cat3_ids.map(id => `cat3-${id}`),
+                                                        ]}
+                                                        placeholder="Select units/details..."
+                                                    />
+                                                    <FormDescription>Include all members from the selected organizational units or details.</FormDescription>
                                                 </FormItem>
                                             </CardContent>
                                         </Card>

@@ -1,3 +1,4 @@
+
 'use server';
 
 import { db } from '@/db';
@@ -39,6 +40,8 @@ interface RosterFilters {
     exclude_ranks?: number[];
     include_members?: string[];
     exclude_members?: string[];
+    include_cat2_ids?: number[];
+    include_cat3_ids?: number[];
     forum_groups_included?: number[];
     forum_groups_excluded?: number[];
     forum_users_included?: number[];
@@ -116,8 +119,45 @@ export async function getRosterViewData(
         return { error: 'Faction data has not been synced. Please go to Sync Management.' };
     }
 
-    let members: Member[] = cachedFaction.members || [];
+    let members: Member[] = [];
+    let rosterConfig: RosterFilters = {};
+    
+    // Parse config first to see if we need to add members from units/divisions
+    if (roster.roster_setup_json) {
+        try {
+             rosterConfig = JSON.parse(roster.roster_setup_json);
+        } catch (e) {
+            console.error(`[API Roster View] Invalid JSON in roster ${rosterId}:`, e);
+        }
+    }
 
+    if (rosterConfig.include_cat2_ids?.length || rosterConfig.include_cat3_ids?.length) {
+        const unitMemberIds = new Set<number>();
+        if (rosterConfig.include_cat2_ids && rosterConfig.include_cat2_ids.length > 0) {
+            const cat2Members = await db.query.factionOrganizationMembership.findMany({
+                where: and(
+                    eq(factionOrganizationMembership.type, 'cat_2'),
+                    inArray(factionOrganizationMembership.category_id, rosterConfig.include_cat2_ids)
+                )
+            });
+            cat2Members.forEach(m => unitMemberIds.add(m.character_id));
+        }
+        if (rosterConfig.include_cat3_ids && rosterConfig.include_cat3_ids.length > 0) {
+            const cat3Members = await db.query.factionOrganizationMembership.findMany({
+                where: and(
+                    eq(factionOrganizationMembership.type, 'cat_3'),
+                    inArray(factionOrganizationMembership.category_id, rosterConfig.include_cat3_ids)
+                )
+            });
+            cat3Members.forEach(m => unitMemberIds.add(m.character_id));
+        }
+
+        const additionalMembers = cachedFaction.members.filter((m: Member) => unitMemberIds.has(m.character_id));
+        members = [...members, ...additionalMembers];
+    } else {
+        members = cachedFaction.members || [];
+    }
+    
     const memberIds = members.map(m => m.character_id);
     if (memberIds.length > 0) {
         const [abasCache, labels] = await Promise.all([
@@ -152,7 +192,6 @@ export async function getRosterViewData(
     let missingForumUsers: string[] = [];
     let includedUsernames = new Set<string>();
     let excludedUsernames = new Set<string>();
-    let rosterConfig: RosterFilters = {};
     let usernameToGroupsMap = new Map<string, number[]>();
     let showAssignmentTitles = false;
     let canEdit = roster.created_by === session.userId || roster.access_json?.includes(session.userId!);
@@ -160,8 +199,7 @@ export async function getRosterViewData(
 
     if (roster.roster_setup_json) {
         try {
-            const filters: RosterFilters = JSON.parse(roster.roster_setup_json);
-            rosterConfig = filters;
+            const filters: RosterFilters = rosterConfig; // Already parsed
             showAssignmentTitles = !!(
                 roster.faction.feature_flags?.units_divisions_enabled && filters.show_assignment_titles
             );

@@ -29,3 +29,6 @@
 
 ### Phase 6:
 - Add a new option in activity rosters, if the Units & Divisions are setup and enabled, that you can select which cat2 or cat3 you wish to include in the activity roster.
+
+### Phase 7:
+- Double check all the phases and ensure that the implementation is as described, make any functional changes and any code refactors to ensure smooth working.
