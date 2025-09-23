@@ -8,6 +8,13 @@
       "when": 1758567525967,
       "tag": "0000_curious_glorian",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1758642030490,
+      "tag": "0001_even_joshua_kane",
+      "breakpoints": true
     }
   ]
 }

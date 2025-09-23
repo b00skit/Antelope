@@ -1,3 +1,4 @@
+
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
@@ -33,6 +34,7 @@ export async function GET(request: NextRequest) {
                 orderBy: [desc(factionMembersAbasCache.last_sync_timestamp)],
             }),
              db.query.forumApiCache.findFirst({
+                where: eq(forumApiCache.faction_id, factionId),
                 orderBy: [desc(forumApiCache.last_sync_timestamp)],
             })
         ]);
@@ -42,6 +44,7 @@ export async function GET(request: NextRequest) {
             abasLastSync: abasCache?.last_sync_timestamp || null,
             forumLastSync: forumCache?.last_sync_timestamp || null,
             isForumEnabled: !!(user.selectedFaction.phpbb_api_url && user.selectedFaction.phpbb_api_key),
+            isOrgEnabled: user.selectedFaction.feature_flags?.units_divisions_enabled,
         });
 
     } catch (error) {

@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, Loader2, RefreshCw, Users, Activity, MessageSquare, Check, X, ArrowRight, Save, ArrowLeft } from 'lucide-react';
+import { AlertTriangle, Loader2, RefreshCw, Users, Activity, MessageSquare, Check, X, ArrowRight, Save, ArrowLeft, Building } from 'lucide-react';
 import { Skeleton } from '../ui/skeleton';
 import { useSession } from '@/hooks/use-session';
 import { Button } from '../ui/button';
@@ -20,6 +20,7 @@ interface SyncStatus {
     abasLastSync: string | null;
     forumLastSync: string | null;
     isForumEnabled: boolean;
+    isOrgEnabled: boolean;
 }
 
 const SyncCardSkeleton = () => (
@@ -60,7 +61,7 @@ const DiffCell = ({ value }: { value: any }) => {
 };
 
 
-const DiffTable = ({ diff, type }: { diff: any, type: 'members' | 'abas' | 'forum' }) => {
+const DiffTable = ({ diff, type }: { diff: any, type: 'members' | 'abas' | 'forum' | 'organization' }) => {
     if (!diff) return null;
     
      const allChanges = [
@@ -73,13 +74,13 @@ const DiffTable = ({ diff, type }: { diff: any, type: 'members' | 'abas' | 'foru
         return <p className="text-sm text-center text-muted-foreground p-4">No changes detected.</p>
     }
     
-    if (type === 'forum') {
+    if (type === 'forum' || type === 'organization') {
          return (
             <Table>
                 <TableHeader>
                     <TableRow>
                         <TableHead>Status</TableHead>
-                        <TableHead>Group</TableHead>
+                        <TableHead>Group/Unit</TableHead>
                         <TableHead>Character</TableHead>
                         <TableHead>Change</TableHead>
                     </TableRow>
@@ -91,7 +92,7 @@ const DiffTable = ({ diff, type }: { diff: any, type: 'members' | 'abas' | 'foru
                                 {item.changeType === 'added' && <Badge variant="secondary" className="bg-green-500/10 text-green-500 border-green-500/50"><Check className="mr-1" /> Added</Badge>}
                                 {item.changeType === 'removed' && <Badge variant="destructive"><X className="mr-1" /> Removed</Badge>}
                             </TableCell>
-                            <TableCell>{item.group_name}</TableCell>
+                            <TableCell>{item.group_name || item.unit_name}</TableCell>
                             <TableCell>{item.character_name}</TableCell>
                             <TableCell>{item.change_summary}</TableCell>
                         </TableRow>
@@ -150,7 +151,7 @@ export function SyncManagementClientPage() {
     const [status, setStatus] = useState<SyncStatus | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isPreviewLoading, setIsPreviewLoading] = useState(false);
-    const [previewing, setPreviewing] = useState< 'members' | 'abas' | 'forum' | null>(null);
+    const [previewing, setPreviewing] = useState< 'members' | 'abas' | 'forum' | 'organization' | null>(null);
     const [previewData, setPreviewData] = useState<any | null>(null);
     const [error, setError] = useState<string | null>(null);
     const { toast } = useToast();
@@ -176,7 +177,7 @@ export function SyncManagementClientPage() {
         }
     }, [session]);
 
-    const handlePreview = async (type: 'members' | 'abas' | 'forum') => {
+    const handlePreview = async (type: 'members' | 'abas' | 'forum' | 'organization') => {
         setPreviewing(type);
         setIsPreviewLoading(true);
         setError(null);
@@ -304,12 +305,24 @@ export function SyncManagementClientPage() {
                         {status.isForumEnabled && (
                             <Card>
                                 <CardHeader>
-                                    <CardTitle className="flex items-center gap-2"><MessageSquare /> Forum Data Sync</CardTitle>
+                                    <CardTitle className="flex items-center gap-2"><MessageSquare /> Forum Group Data</CardTitle>
                                     <CardDescription>Syncs memberships from your selected forum groups into the cache.</CardDescription>
                                 </CardHeader>
                                 <CardContent className="flex items-center justify-between">
                                      <p className="text-sm text-muted-foreground">Last synced: {formatTimestamp(status.forumLastSync)}</p>
                                     <Button onClick={() => handlePreview('forum')}>Preview Sync</Button>
+                                </CardContent>
+                            </Card>
+                        )}
+                        {status.isForumEnabled && status.isOrgEnabled && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2"><Building /> Organizational Rosters</CardTitle>
+                                    <CardDescription>Syncs organizational rosters based on their assigned forum groups.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="flex items-center justify-between">
+                                     <p className="text-sm text-muted-foreground">Last synced: {formatTimestamp(status.forumLastSync)}</p>
+                                    <Button onClick={() => handlePreview('organization')}>Preview Sync</Button>
                                 </CardContent>
                             </Card>
                         )}
