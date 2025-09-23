@@ -1,1 +1,6 @@
-Follow the instructions as presented in the prompt. Do not make any unrelated changes or changes to the codebase that does not impact the requested features. Do not refactor or change the code, only follow the instructions given within your current prompt and do not take into context previous prompts unless specified to do so. Do not try to fix things outside the scope of what was requested. In terms of testing, it can be skipped, the script automatically runs on the server anyway. Assume everything will be tested.
+- Follow the instructions as presented in the prompt. 
+- Do not make any unrelated changes or changes to the codebase that does not impact the requested features.
+- Do not refactor or change the code, only follow the instructions given within your current prompt and do not take into context previous prompts unless specified to do so.
+- Do not try to fix things outside the scope of what was requested.
+- Do not create new files outside of src unless explicitly instructed to do so.
+- When making database changes, use await statements carefully, it must account for sqlite as it can often result in this error: TypeError: Transaction function cannot return a promise
