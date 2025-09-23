@@ -128,6 +128,7 @@ export function Cat3ClientPage({ cat1Id, cat2Id, cat3Id }: Cat3ClientPageProps) 
             />
             <Cat3MembersTable 
                 members={data.members}
+                sections={data.detail.sections}
                 allFactionMembers={data.allFactionMembers}
                 allAssignedCharacterIds={data.allAssignedCharacterIds}
                 canManage={data.canManage}

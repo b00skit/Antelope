@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Loader2 } from "lucide-react";
+import { PlusCircle, Loader2, Move } from "lucide-react";
 import { Combobox } from '../ui/combobox';
 import { Input } from '../ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -12,10 +12,9 @@ import { TransferMemberDialog } from './transfer-member-dialog';
 import { SectionDialog } from './section-dialog';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { RosterSection } from '../activity-rosters/roster-section';
+import { RosterSection } from '@/components/activity-rosters/roster-section';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '../ui/dropdown-menu';
-import { Move } from 'lucide-react';
 
 
 interface Member {
@@ -54,7 +53,7 @@ interface Cat3MembersTableProps {
     isSecondary: boolean;
 }
 
-export function Cat3MembersTable({ members, sections: initialSections, allFactionMembers, allAssignedCharacterIds, canManage, cat1Id, cat2Id, cat3Id, onDataChange, allUnitsAndDetails, forumGroupId, isSecondary }: Cat3MembersTableProps) {
+export function Cat3MembersTable({ members, sections: initialSections = [], allFactionMembers, allAssignedCharacterIds, canManage, cat1Id, cat2Id, cat3Id, onDataChange, allUnitsAndDetails, forumGroupId, isSecondary }: Cat3MembersTableProps) {
     const [isAdding, setIsAdding] = useState(false);
     const [selectedCharacterId, setSelectedCharacterId] = useState<string>('');
     const [newTitle, setNewTitle] = useState('');
@@ -67,6 +66,9 @@ export function Cat3MembersTable({ members, sections: initialSections, allFactio
     const [selectedMemberIds, setSelectedMemberIds] = useState<Set<number>>(new Set());
     const { toast } = useToast();
 
+    const assignedMemberIds = new Set(sections.flatMap(s => s.character_ids_json));
+    const unassignedMembers = members.filter(m => !assignedMemberIds.has(m.character_id));
+
     const currentMemberIds = new Set(members.map(m => m.character_id));
     const assignedIds = new Set(allAssignedCharacterIds);
     const characterOptions = allFactionMembers
@@ -76,8 +78,6 @@ export function Cat3MembersTable({ members, sections: initialSections, allFactio
         })
         .map(fm => fm.character_name);
         
-    const assignedMemberIds = new Set(sections.flatMap(s => s.character_ids_json));
-    const unassignedMembers = members.filter(m => !assignedMemberIds.has(m.character_id));
 
 
     const handleAddMember = async () => {
