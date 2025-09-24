@@ -166,9 +166,9 @@ export default function EditRosterPage() {
                 if(session?.hasActiveFaction) {
                     const groupsRes = await fetch(`/api/factions/${session.activeFaction?.id}/forum-groups`);
                     const groupsData = await groupsRes.json();
-                    if (groupsRes.ok) {
-                        setSyncableForumGroups((groupsData.syncableGroups || []).map((g: any) => ({ value: g.id.toString(), label: g.name })));
-                    }
+                if (groupsRes.ok) {
+                    setSyncableForumGroups((groupsData.syncableGroups || []).map((g: any) => ({ value: g.group_id.toString(), label: g.name })));
+                }
                 }
             } catch (err: any) {
                 toast({ variant: 'destructive', title: 'Error', description: err.message });
