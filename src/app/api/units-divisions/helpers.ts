@@ -14,6 +14,7 @@ import {
 import { and, asc, eq, inArray, or } from 'drizzle-orm';
 import type { IronSession } from 'iron-session';
 import type { SessionData } from '@/lib/session';
+import { hasUserAccess } from '@/lib/auth-helpers';
 
 type CategoryType = 'cat_2' | 'cat_3';
 
@@ -92,7 +93,7 @@ function buildUnitsAndDetails(allCat2s: (typeof factionOrganizationCat2.$inferSe
     return options;
 }
 
-function computeMissingForumUsers(
+async function computeMissingForumUsers(
     forumGroupId: number | null | undefined,
     factionId: number,
     rosterByName: Set<string>,
@@ -146,13 +147,20 @@ export async function canUserManage(
     if (type === 'cat_2') {
         const cat2 = await db.query.factionOrganizationCat2.findFirst({ where: eq(factionOrganizationCat2.id, id), with: { cat1: true } });
         if (!cat2) return { authorized: false, message: 'Not found.' };
-        if (cat2.access_json?.includes(session.userId) || cat2.cat1.access_json?.includes(session.userId)) {
+        if (
+            hasUserAccess(cat2.access_json, session.userId)
+            || hasUserAccess(cat2.cat1?.access_json, session.userId)
+        ) {
             return { authorized: true, user, membership, faction: user.selectedFaction };
         }
     } else { // cat_3
         const cat3 = await db.query.factionOrganizationCat3.findFirst({ where: eq(factionOrganizationCat3.id, id), with: { cat2: { with: { cat1: true } } } });
         if (!cat3) return { authorized: false, message: 'Not found.' };
-        if (cat3.access_json?.includes(session.userId) || cat3.cat2.access_json?.includes(session.userId) || cat3.cat2.cat1.access_json?.includes(session.userId)) {
+        if (
+            hasUserAccess(cat3.access_json, session.userId)
+            || hasUserAccess(cat3.cat2?.access_json, session.userId)
+            || hasUserAccess(cat3.cat2?.cat1?.access_json, session.userId)
+        ) {
             return { authorized: true, user, membership, faction: user.selectedFaction };
         }
     }
@@ -327,8 +335,8 @@ export async function getCatViewData(
 
         const canAdminister = membership.rank >= (user.selectedFaction.administration_rank ?? 15);
         const canManage = canAdminister
-            || unit.access_json?.includes(session.userId)
-            || unit.cat1?.access_json?.includes(session.userId) || false;
+            || hasUserAccess(unit.access_json, session.userId)
+            || hasUserAccess(unit.cat1?.access_json, session.userId);
 
         return {
             unit: {

@@ -6,7 +6,7 @@ import { db } from '@/db';
 import { users, factionOrganizationCat2Snapshots } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { getCat2ViewData } from '../helpers';
+import { getCat2ViewData } from '../../helpers';
 
 interface RouteParams {
     params: {

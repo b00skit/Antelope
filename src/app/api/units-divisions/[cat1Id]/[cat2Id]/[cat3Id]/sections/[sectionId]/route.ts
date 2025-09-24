@@ -5,7 +5,7 @@ import { getSession } from '@/lib/session';
 import { db } from '@/db';
 import { factionOrganizationCat3, factionOrganizationCat3Sections } from '@/db/schema';
 import { and, eq } from 'drizzle-orm';
-import { canUserManage } from '../../../../helpers';
+import { canUserManage } from '../../../../../../helpers';
 import { z } from 'zod';
 
 interface RouteParams {
@@ -43,7 +43,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const cat3 = await db.query.factionOrganizationCat3.findFirst({ where: eq(factionOrganizationCat3.id, cat3Id), with: { cat2: { with: { cat1: true }}}});
     if (!cat3) return NextResponse.json({ error: 'Detail not found.' }, { status: 404 });
 
-    const { authorized, message, user, membership, faction } = await canUserManage(session, cat3.faction_id, 'cat_3', cat3Id);
+    const { authorized, message } = await canUserManage(session, cat3.faction_id, 'cat_3', cat3Id);
     if (!authorized) {
         return NextResponse.json({ error: message }, { status: 403 });
     }
