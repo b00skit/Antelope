@@ -14,6 +14,7 @@ import {
 import { and, asc, eq, inArray, or } from 'drizzle-orm';
 import type { IronSession } from 'iron-session';
 import type { SessionData } from '@/lib/session';
+import { hasUserAccess } from '@/lib/auth-helpers';
 
 type CategoryType = 'cat_2' | 'cat_3';
 
@@ -92,7 +93,7 @@ function buildUnitsAndDetails(allCat2s: (typeof factionOrganizationCat2.$inferSe
     return options;
 }
 
-function computeMissingForumUsers(
+async function computeMissingForumUsers(
     forumGroupId: number | null | undefined,
     factionId: number,
     rosterByName: Set<string>,
@@ -120,28 +121,6 @@ function computeMissingForumUsers(
                 .filter((name): name is string => !!name);
             return usernames.filter(name => !rosterByName.has(name.toLowerCase()));
         });
-}
-
-export function hasUserAccess(
-    accessList: (number | string | null | undefined)[] | null | undefined,
-    userId: number,
-): boolean {
-    if (!Array.isArray(accessList)) {
-        return false;
-    }
-
-    return accessList.some((value) => {
-        if (typeof value === 'number') {
-            return value === userId;
-        }
-
-        if (typeof value === 'string') {
-            const parsed = Number.parseInt(value, 10);
-            return Number.isInteger(parsed) && parsed === userId;
-        }
-
-        return false;
-    });
 }
 
 export async function canUserManage(
