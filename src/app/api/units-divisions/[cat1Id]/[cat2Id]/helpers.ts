@@ -1,8 +1,10 @@
 
+'use server';
+
 import { db } from '@/db';
-import { users, factionMembers, factionOrganizationCat1, factionOrganizationCat2, factionOrganizationCat3 } from '@/db/schema';
+import { users, factionMembers, factionOrganizationCat1, factionOrganizationCat2 } from '@/db/schema';
 import { and, eq } from 'drizzle-orm';
-import { hasUserAccess } from '../../helpers';
+import { hasUserAccess } from '@/lib/auth-helpers';
 
 export async function canManageCat2(session: any, cat2Id: number) {
     if (!session.isLoggedIn || !session.userId) {
