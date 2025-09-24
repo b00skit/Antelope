@@ -1,3 +1,4 @@
+
 'use server';
 
 import { db } from '@/db';
@@ -11,6 +12,7 @@ import {
     activityRosterLabels,
     apiCacheAlternativeCharacters,
     forumApiCache,
+    apiForumSyncableGroups,
 } from '@/db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import type { IronSession } from 'iron-session';
@@ -155,7 +157,7 @@ export async function getRosterViewData(
     let rosterConfig: RosterFilters = {};
     let usernameToGroupsMap = new Map<string, number[]>();
     let showAssignmentTitles = false;
-    let canEdit = roster.created_by === session.userId || roster.access_json?.includes(session.userId!);
+    let canEdit = roster.created_by === session.userId || (roster.access_json && Array.isArray(roster.access_json) && roster.access_json.includes(session.userId!));
     let canCreateSnapshot = false;
 
     if (roster.roster_setup_json) {
@@ -206,18 +208,18 @@ export async function getRosterViewData(
                 });
             }
 
+            const sectionGroupIds = roster.sections
+                .flatMap(section => section.configuration_json?.include_forum_groups || [])
+                .filter((groupId): groupId is number => typeof groupId === 'number');
+
             const isForumFilterActive =
                 filters.forum_groups_included?.length ||
                 filters.forum_groups_excluded?.length ||
                 filters.forum_users_included?.length ||
                 filters.forum_users_excluded?.length ||
-                roster.sections.some(section => section.configuration_json?.include_forum_groups?.length);
+                sectionGroupIds.length > 0;
 
             if (isForumFilterActive) {
-                const sectionGroupIds = roster.sections
-                    .flatMap(section => section.configuration_json?.include_forum_groups || [])
-                    .filter((groupId): groupId is number => typeof groupId === 'number');
-
                 const groupIdSet = new Set<number>([
                     ...(filters.forum_groups_included || []),
                     ...(filters.forum_groups_excluded || []),
@@ -236,7 +238,7 @@ export async function getRosterViewData(
                     });
 
                     if (cachedForumGroups.length !== relevantGroupIds.length) {
-                        return { error: 'Forum data has not been synced. Please go to Sync Management.' };
+                        return { error: 'Forum data has not been synced for all required groups. Please go to Sync Management.' };
                     }
                 }
 
@@ -296,13 +298,7 @@ export async function getRosterViewData(
                 forum_groups: usernameToGroupsMap.get(m.character_name.replace('_', ' ')) || [],
             }));
 
-            if (filters.alert_forum_users_missing && (
-                filters.forum_groups_included?.length ||
-                filters.forum_groups_excluded?.length ||
-                filters.forum_users_included?.length ||
-                filters.forum_users_excluded?.length ||
-                roster.sections.some(s => s.configuration_json?.include_forum_groups?.length)
-            )) {
+            if (filters.alert_forum_users_missing && isForumFilterActive) {
                 const gtawUsernames = new Set(members.map(m => m.character_name.replace('_', ' ')));
                 const finalIncluded = new Set([...includedUsernames].filter(u => !excludedUsernames.has(u)));
                 missingForumUsers = [...finalIncluded].filter(fu => !gtawUsernames.has(fu));
@@ -328,13 +324,7 @@ export async function getRosterViewData(
                     return false;
                 }
 
-                if (
-                    filters.forum_groups_included?.length ||
-                    filters.forum_groups_excluded?.length ||
-                    filters.forum_users_included?.length ||
-                    filters.forum_users_excluded?.length ||
-                    roster.sections.some(s => s.configuration_json?.include_forum_groups?.length)
-                ) {
+                if (isForumFilterActive) {
                     if (excludedUsernames.has(charName)) return false;
                     if (includedUsernames.size > 0 && !includedUsernames.has(charName)) return false;
                 }
