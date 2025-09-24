@@ -3,8 +3,35 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { users, factionMembersCache, factionMembersAbasCache, apiCacheAlternativeCharacters } from '@/db/schema';
+import { users, factionMembersCache, factionMembersAbasCache, apiCacheAlternativeCharacters, factions } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import * as XLSX from 'xlsx';
+import { z } from 'zod';
+import { subDays } from 'date-fns';
+
+const columnSchema = z.object({
+    key: z.string(),
+    label: z.string(),
+});
+
+const filterSchema = z.object({
+    onlyWithAlts: z.boolean(),
+    dutyActiveDays: z.string(), // 'all', '7', '14', '30'
+    belowMinimumAbas: z.boolean(),
+    rank: z.string(),
+});
+
+const sheetSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    columns: z.array(columnSchema),
+    filters: filterSchema,
+});
+
+const exportSchema = z.object({
+    sheets: z.array(sheetSchema),
+});
+
 
 interface Member {
     character_id: number;
@@ -12,15 +39,43 @@ interface Member {
     user_id: number;
     last_online: string | null;
     last_duty: string | null;
+    [key: string]: any;
 }
 
-export async function GET(request: NextRequest) {
+const formatDate = (timestamp: string | null): string => {
+    if (!timestamp) return 'N/A';
+    try {
+        return new Date(timestamp).toLocaleDateString();
+    } catch (e) {
+        return 'Invalid Date';
+    }
+};
+
+const formatTime = (timestamp: string | null): string => {
+    if (!timestamp) return 'N/A';
+    try {
+        return new Date(timestamp).toLocaleTimeString();
+    } catch (e) {
+        return 'Invalid Time';
+    }
+};
+
+
+export async function POST(request: NextRequest) {
     const cookieStore = await cookies();
     const session = await getSession(cookieStore);
 
     if (!session.isLoggedIn || !session.userId) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const body = await request.json();
+    const parsed = exportSchema.safeParse(body);
+    if (!parsed.success) {
+        return NextResponse.json({ error: 'Invalid configuration.', details: parsed.error.flatten() }, { status: 400 });
+    }
+    const { sheets } = parsed.data;
+
 
     try {
         const user = await db.query.users.findFirst({
@@ -38,59 +93,103 @@ export async function GET(request: NextRequest) {
 
         const factionId = user.selectedFaction.id;
 
-        const [membersCache, abasCache, altCache] = await Promise.all([
+        const [membersCache, abasCache, altCache, faction] = await Promise.all([
             db.query.factionMembersCache.findFirst({ where: eq(factionMembersCache.faction_id, factionId) }),
             db.query.factionMembersAbasCache.findMany({ where: eq(factionMembersAbasCache.faction_id, factionId) }),
-            db.query.apiCacheAlternativeCharacters.findMany({ where: eq(apiCacheAlternativeCharacters.faction_id, factionId) })
+            db.query.apiCacheAlternativeCharacters.findMany({ where: eq(apiCacheAlternativeCharacters.faction_id, factionId) }),
+            db.query.factions.findFirst({ where: eq(factions.id, factionId) }),
         ]);
 
         if (!membersCache || !membersCache.members) {
             return NextResponse.json({ error: 'No member data found to export.' }, { status: 404 });
+        }
+        if (!faction) {
+            return NextResponse.json({ error: 'Faction settings not found.' }, { status: 404 });
         }
 
         const abasMap = new Map(abasCache.map(a => [a.character_id, a.abas]));
         const altMap = new Map(altCache.map(a => [a.user_id, a]));
         
         const allMembers: Member[] = membersCache.members;
-
-        const csvHeader = "Character ID,Name,User ID,Alternative Character,ABAS,Last Logged In,Last Duty\n";
-
-        const csvRows = allMembers.map(member => {
+        
+        const baseProcessedData = allMembers.map(member => {
             const abas = abasMap.get(member.character_id) ?? '0.00';
-            const lastOnline = member.last_online ? new Date(member.last_online).toLocaleString() : 'N/A';
-            const lastDuty = member.last_duty ? new Date(member.last_duty).toLocaleString() : 'N/A';
+            const lastOnlineDate = formatDate(member.last_online);
+            const lastOnlineTime = formatTime(member.last_online);
+            const lastDutyDate = formatDate(member.last_duty);
+            const lastDutyTime = formatTime(member.last_duty);
             
-            let altStatus = 'N/A';
+            let primaryCharacterName = '';
+            let isAlternative = false;
             const altInfo = altMap.get(member.user_id);
-            if (altInfo) {
-                if (altInfo.character_id === member.character_id) {
-                    altStatus = 'Primary Character';
-                } else {
-                    altStatus = `Yes - ${altInfo.character_name}`;
-                }
+            if (altInfo && Array.isArray(altInfo.alternative_characters_json) && altInfo.alternative_characters_json.length > 0) {
+                primaryCharacterName = altInfo.character_name;
+                isAlternative = altInfo.character_id !== member.character_id;
             }
 
-            // Escape commas in names
-            const name = `"${member.character_name.replace(/"/g, '""')}"`;
+            const isSupervisor = member.rank >= (faction.supervisor_rank ?? 10);
+            const requiredAbas = isSupervisor ? (faction.minimum_supervisor_abas ?? 0) : (faction.minimum_abas ?? 0);
+            const isBelowMinimumAbas = parseFloat(abas) < requiredAbas;
 
-            return [
-                member.character_id,
-                name,
-                member.user_id,
-                altStatus,
+
+            return {
+                ...member,
+                primary_character: primaryCharacterName,
+                is_alternative: isAlternative,
+                is_below_min_abas: isBelowMinimumAbas,
                 abas,
-                lastOnline,
-                lastDuty
-            ].join(',');
+                last_online_date: lastOnlineDate,
+                last_online_time: lastOnlineTime,
+                last_duty_date: lastDutyDate,
+                last_duty_time: lastDutyTime,
+            };
         });
-        
-        const csvContent = csvHeader + csvRows.join('\n');
 
-        return new Response(csvContent, {
+        const workbook = XLSX.utils.book_new();
+
+        for (const sheetConfig of sheets) {
+            if (sheetConfig.columns.length === 0) continue;
+
+            let processedData = [...baseProcessedData];
+            const { filters } = sheetConfig;
+
+            // Apply filters for this specific sheet
+            if (filters.onlyWithAlts) {
+                processedData = processedData.filter(row => row.is_alternative);
+            }
+            if (filters.belowMinimumAbas) {
+                processedData = processedData.filter(row => row.is_below_min_abas);
+            }
+            if (filters.dutyActiveDays !== 'all') {
+                const days = parseInt(filters.dutyActiveDays, 10);
+                if (!isNaN(days)) {
+                    const cutoffDate = subDays(new Date(), days);
+                    processedData = processedData.filter(row => row.last_duty && new Date(row.last_duty) > cutoffDate);
+                }
+            }
+            if (filters.rank && filters.rank !== 'all' && filters.rank.trim() !== '') {
+                processedData = processedData.filter(row => row.rank_name.toLowerCase() === filters.rank.toLowerCase().trim());
+            }
+
+            const worksheetData = processedData.map(row => {
+                const newRow: Record<string, any> = {};
+                for (const col of sheetConfig.columns) {
+                    newRow[col.label] = row[col.key] ?? '';
+                }
+                return newRow;
+            });
+            const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+            const sheetName = sheetConfig.name.replace(/[*?:/\\\[\]]/g, '').substring(0, 31) || `Sheet ${sheets.indexOf(sheetConfig) + 1}`;
+            XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+        }
+
+        const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+
+        return new Response(Buffer.from(buffer), {
             status: 200,
             headers: {
-                'Content-Type': 'text/csv',
-                'Content-Disposition': `attachment; filename="faction-roster-${new Date().toISOString().split('T')[0]}.csv"`,
+                'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Disposition': `attachment; filename="faction-roster-${new Date().toISOString().split('T')[0]}.xlsx"`,
             },
         });
 

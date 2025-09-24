@@ -9,7 +9,7 @@ import { activityRosterFavorites } from './activityRosterFavorites';
 import { activityRosterSections } from './activityRosterSections';
 import { activityRosterLabels } from './activityRosterLabels';
 import { activityRosterSnapshots } from './activityRosterSnapshots';
-import { forumApiCache } from './forumApiCache';
+import { apiForumSyncableGroups } from './apiForumSyncableGroups';
 import { 
   factionOrganizationSettings, 
   factionOrganizationCat1,
@@ -31,12 +31,14 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   favoriteRosters: many(activityRosterFavorites),
   organizationFavorites: many(organizationFavorites),
   blockedEntries: many(factionBlockedUsers),
+  createdSyncableForumGroups: many(apiForumSyncableGroups),
 }));
 
 export const factionsRelations = relations(factions, ({ one, many }) => ({
   factionMembers: many(factionMembers),
   activityRosters: many(activityRosters),
   activityRosterSnapshots: many(activityRosterSnapshots),
+  syncableForumGroups: many(apiForumSyncableGroups),
   organizationSettings: one(factionOrganizationSettings, {
     fields: [factions.id],
     references: [factionOrganizationSettings.faction_id],
@@ -64,10 +66,6 @@ export const activityRostersRelations = relations(activityRosters, ({ one, many 
   author: one(users, {
     fields: [activityRosters.created_by],
     references: [users.id],
-  }),
-  forumCache: one(forumApiCache, {
-    fields: [activityRosters.id],
-    references: [forumApiCache.activity_roster_id],
   }),
   sections: many(activityRosterSections),
   labels: many(activityRosterLabels),
@@ -130,11 +128,15 @@ export const activityRosterSnapshotsRelations = relations(activityRosterSnapshot
   }),
 }));
 
-export const forumApiCacheRelations = relations(forumApiCache, ({ one }) => ({
-  activityRoster: one(forumApiCache, {
-    fields: [forumApiCache.activity_roster_id],
-    references: [activityRosters.id],
-  }),
+export const apiForumSyncableGroupsRelations = relations(apiForumSyncableGroups, ({ one }) => ({
+    faction: one(factions, {
+        fields: [apiForumSyncableGroups.faction_id],
+        references: [factions.id],
+    }),
+    creator: one(users, {
+        fields: [apiForumSyncableGroups.created_by],
+        references: [users.id],
+    }),
 }));
 
 // Organization Relations

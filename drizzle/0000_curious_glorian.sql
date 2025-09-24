@@ -20,7 +20,7 @@ CREATE TABLE `factions` (
 	`supervisor_rank` integer DEFAULT 10,
 	`minimum_abas` real DEFAULT 0,
 	`minimum_supervisor_abas` real DEFAULT 0,
-	`feature_flags` text DEFAULT '{"activity_rosters_enabled":true,"character_sheets_enabled":true,"statistics_enabled":true,"units_divisions_enabled":false}',
+	`feature_flags` text DEFAULT '{"activity_rosters_enabled":true,"character_sheets_enabled":true,"statistics_enabled":true,"units_divisions_enabled":false,"data_exports_enabled":false}',
 	`phpbb_api_url` text,
 	`phpbb_api_key` text
 );
@@ -80,6 +80,28 @@ CREATE TABLE `activity_roster_sections` (
 	FOREIGN KEY (`activity_roster_id`) REFERENCES `activity_rosters`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
+CREATE TABLE `activity_roster_labels` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`activity_roster_id` integer NOT NULL,
+	`character_id` integer NOT NULL,
+	`color` text NOT NULL,
+	FOREIGN KEY (`activity_roster_id`) REFERENCES `activity_rosters`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `roster_character_label_unique_idx` ON `activity_roster_labels` (`activity_roster_id`,`character_id`);--> statement-breakpoint
+CREATE TABLE `activity_roster_snapshots` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`faction_id` integer NOT NULL,
+	`source_roster_id` integer NOT NULL,
+	`name` text NOT NULL,
+	`created_by` integer NOT NULL,
+	`created_at` integer DEFAULT (strftime('%s', 'now')),
+	`data_json` text NOT NULL,
+	FOREIGN KEY (`faction_id`) REFERENCES `factions`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`source_roster_id`) REFERENCES `activity_rosters`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action
+);
+--> statement-breakpoint
 CREATE TABLE `api_cache_factions` (
 	`faction_id` integer PRIMARY KEY NOT NULL,
 	`members` text,
@@ -96,11 +118,37 @@ CREATE TABLE `api_cache_abas` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `api_cache_abas_character_id_faction_id_unique` ON `api_cache_abas` (`character_id`,`faction_id`);--> statement-breakpoint
+CREATE TABLE `api_cache_alternative_characters` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`character_id` integer NOT NULL,
+	`user_id` integer NOT NULL,
+	`faction_id` integer NOT NULL,
+	`character_name` text NOT NULL,
+	`rank` integer NOT NULL,
+	`manually_set` integer DEFAULT false NOT NULL,
+	`alternative_characters_json` text DEFAULT '[]'
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `user_faction_alt_cache_unique_idx` ON `api_cache_alternative_characters` (`user_id`,`faction_id`);--> statement-breakpoint
 CREATE TABLE `api_cache_forums` (
-	`activity_roster_id` integer PRIMARY KEY NOT NULL,
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`faction_id` integer NOT NULL,
+	`group_id` integer NOT NULL,
 	`data` text,
-	`last_sync_timestamp` integer,
-	FOREIGN KEY (`activity_roster_id`) REFERENCES `activity_rosters`(`id`) ON UPDATE no action ON DELETE cascade
+	`last_sync_timestamp` integer
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `faction_forum_group_unique_idx` ON `api_cache_forums` (`faction_id`,`group_id`);--> statement-breakpoint
+CREATE TABLE `api_forum_syncable_groups` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`faction_id` integer NOT NULL,
+	`group_id` integer NOT NULL,
+	`name` text NOT NULL,
+	`created_at` integer DEFAULT (strftime('%s', 'now')),
+	`updated_at` integer DEFAULT (strftime('%s', 'now')),
+	`created_by` integer NOT NULL,
+	FOREIGN KEY (`faction_id`) REFERENCES `factions`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
 CREATE TABLE `faction_organization_cat1` (

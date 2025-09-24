@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "44fae011-81d4-4d07-abcd-76871ff6dfa5",
+  "id": "0908cd55-ebaf-40ad-bc41-43b78c7410c3",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "users": {
@@ -163,7 +163,7 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false,
-          "default": "'{\"activity_rosters_enabled\":true,\"character_sheets_enabled\":true,\"statistics_enabled\":true,\"units_divisions_enabled\":false}'"
+          "default": "'{\"activity_rosters_enabled\":true,\"character_sheets_enabled\":true,\"statistics_enabled\":true,\"units_divisions_enabled\":false,\"data_exports_enabled\":false}'"
         },
         "phpbb_api_url": {
           "name": "phpbb_api_url",
@@ -588,6 +588,167 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
+    "activity_roster_labels": {
+      "name": "activity_roster_labels",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "activity_roster_id": {
+          "name": "activity_roster_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "character_id": {
+          "name": "character_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "color": {
+          "name": "color",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "roster_character_label_unique_idx": {
+          "name": "roster_character_label_unique_idx",
+          "columns": [
+            "activity_roster_id",
+            "character_id"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "activity_roster_labels_activity_roster_id_activity_rosters_id_fk": {
+          "name": "activity_roster_labels_activity_roster_id_activity_rosters_id_fk",
+          "tableFrom": "activity_roster_labels",
+          "tableTo": "activity_rosters",
+          "columnsFrom": [
+            "activity_roster_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "activity_roster_snapshots": {
+      "name": "activity_roster_snapshots",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "faction_id": {
+          "name": "faction_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "source_roster_id": {
+          "name": "source_roster_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(strftime('%s', 'now'))"
+        },
+        "data_json": {
+          "name": "data_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "activity_roster_snapshots_faction_id_factions_id_fk": {
+          "name": "activity_roster_snapshots_faction_id_factions_id_fk",
+          "tableFrom": "activity_roster_snapshots",
+          "tableTo": "factions",
+          "columnsFrom": [
+            "faction_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "activity_roster_snapshots_source_roster_id_activity_rosters_id_fk": {
+          "name": "activity_roster_snapshots_source_roster_id_activity_rosters_id_fk",
+          "tableFrom": "activity_roster_snapshots",
+          "tableTo": "activity_rosters",
+          "columnsFrom": [
+            "source_roster_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "activity_roster_snapshots_created_by_users_id_fk": {
+          "name": "activity_roster_snapshots_created_by_users_id_fk",
+          "tableFrom": "activity_roster_snapshots",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
     "api_cache_factions": {
       "name": "api_cache_factions",
       "columns": {
@@ -680,13 +841,104 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
+    "api_cache_alternative_characters": {
+      "name": "api_cache_alternative_characters",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "character_id": {
+          "name": "character_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "faction_id": {
+          "name": "faction_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "character_name": {
+          "name": "character_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "rank": {
+          "name": "rank",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "manually_set": {
+          "name": "manually_set",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "alternative_characters_json": {
+          "name": "alternative_characters_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "'[]'"
+        }
+      },
+      "indexes": {
+        "user_faction_alt_cache_unique_idx": {
+          "name": "user_faction_alt_cache_unique_idx",
+          "columns": [
+            "user_id",
+            "faction_id"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
     "api_cache_forums": {
       "name": "api_cache_forums",
       "columns": {
-        "activity_roster_id": {
-          "name": "activity_roster_id",
+        "id": {
+          "name": "id",
           "type": "integer",
           "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "faction_id": {
+          "name": "faction_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "group_id": {
+          "name": "group_id",
+          "type": "integer",
+          "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
@@ -705,19 +957,102 @@
           "autoincrement": false
         }
       },
+      "indexes": {
+        "faction_forum_group_unique_idx": {
+          "name": "faction_forum_group_unique_idx",
+          "columns": [
+            "faction_id",
+            "group_id"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "api_forum_syncable_groups": {
+      "name": "api_forum_syncable_groups",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "faction_id": {
+          "name": "faction_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "group_id": {
+          "name": "group_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(strftime('%s', 'now'))"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(strftime('%s', 'now'))"
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
       "indexes": {},
       "foreignKeys": {
-        "api_cache_forums_activity_roster_id_activity_rosters_id_fk": {
-          "name": "api_cache_forums_activity_roster_id_activity_rosters_id_fk",
-          "tableFrom": "api_cache_forums",
-          "tableTo": "activity_rosters",
+        "api_forum_syncable_groups_faction_id_factions_id_fk": {
+          "name": "api_forum_syncable_groups_faction_id_factions_id_fk",
+          "tableFrom": "api_forum_syncable_groups",
+          "tableTo": "factions",
           "columnsFrom": [
-            "activity_roster_id"
+            "faction_id"
           ],
           "columnsTo": [
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "api_forum_syncable_groups_created_by_users_id_fk": {
+          "name": "api_forum_syncable_groups_created_by_users_id_fk",
+          "tableFrom": "api_forum_syncable_groups",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
           "onUpdate": "no action"
         }
       },

@@ -71,7 +71,7 @@ export default function FactionsPage() {
     const router = useRouter();
     const { toast } = useToast();
 
-    const fetchAndSyncFactions = async () => {
+    const fetchFactions = async () => {
         setIsLoading(true);
         setError(null);
         try {
@@ -96,7 +96,7 @@ export default function FactionsPage() {
     };
 
     useEffect(() => {
-        fetchAndSyncFactions();
+        fetchFactions();
     }, [router]);
 
     const handleJoin = async (factionId: number) => {
@@ -106,7 +106,7 @@ export default function FactionsPage() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
             toast({ title: 'Success', description: data.message });
-            await fetchAndSyncFactions(); // Refresh data
+            await fetchFactions(); // Refresh data
             await refreshSession(); // Also refresh global session
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Error', description: err.message });

@@ -20,13 +20,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useFavorites } from '@/hooks/use-favorites';
 import { cn } from '@/lib/utils';
-import config from '@config';
 
 interface RosterViewPageProps {
     rosterId: number;
 }
-
-const COOLDOWN_MINUTES = config.GTAW_API_REFRESH_MINUTES_FACTIONS;
 
 interface Member {
     character_id: number;
@@ -150,11 +147,8 @@ const SnapshotDialog = ({
 export function RosterViewPage({ rosterId }: RosterViewPageProps) {
     const [data, setData] = useState<RosterData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [isSyncing, setIsSyncing] = useState(false);
     const [requiresPassword, setRequiresPassword] = useState(false);
     const [isVerifying, setIsVerifying] = useState(false);
-    const [lastSyncTime, setLastSyncTime] = useState<number | null>(null);
-    const [showSlowLoadMessage, setShowSlowLoadMessage] = useState(false);
     const [isSnapshotDialogOpen, setIsSnapshotDialogOpen] = useState(false);
     const [isCreatingSnapshot, setIsCreatingSnapshot] = useState(false);
     const router = useRouter();
@@ -162,30 +156,18 @@ export function RosterViewPage({ rosterId }: RosterViewPageProps) {
     const { favorites, toggleFavorite } = useFavorites();
 
     const isFavorited = favorites.some(f => f.activity_roster_id === rosterId);
-    
-    const canSync = !lastSyncTime || (Date.now() - lastSyncTime > COOLDOWN_MINUTES * 60 * 1000);
 
-    const fetchData = async (forceSync = false) => {
-        if (forceSync) {
-            setIsSyncing(true);
-        } else {
-            setIsLoading(true);
-        }
-        setShowSlowLoadMessage(false);
-
-        const slowLoadTimer = setTimeout(() => {
-            setShowSlowLoadMessage(true);
-        }, 5000);
-
+    const fetchData = async () => {
+        setIsLoading(true);
         try {
-            const url = `/api/rosters/${rosterId}/view${forceSync ? '?forceSync=true' : ''}`;
+            const url = `/api/rosters/${rosterId}/view`;
             const res = await fetch(url);
             const result = await res.json();
             
             if (!res.ok) {
                 if (result.requiresPassword) {
                     setRequiresPassword(true);
-                    setData({ roster: { id: rosterId, name: 'Private Roster', isPrivate: true } } as RosterData); // Set dummy data
+                    setData({ roster: { id: rosterId, name: 'Private Roster', isPrivate: true } } as RosterData);
                 } else {
                     throw new Error(result.error || 'Failed to fetch roster data.');
                 }
@@ -193,34 +175,18 @@ export function RosterViewPage({ rosterId }: RosterViewPageProps) {
                 setData(result);
                 setRequiresPassword(false);
             }
-            
-            if (forceSync) {
-                const now = Date.now();
-                setLastSyncTime(now);
-                localStorage.setItem(`lastSyncTime_${rosterId}`, now.toString());
-            }
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Error', description: err.message });
             router.push('/activity-rosters');
         } finally {
-            clearTimeout(slowLoadTimer);
             setIsLoading(false);
-            setIsSyncing(false);
         }
     };
 
     useEffect(() => {
-        const storedSyncTime = localStorage.getItem(`lastSyncTime_${rosterId}`);
-        if (storedSyncTime) {
-            setLastSyncTime(parseInt(storedSyncTime, 10));
-        }
         fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [rosterId]);
-
-    const handleForceSync = () => {
-        fetchData(true);
-    };
 
     const handlePasswordSubmit = async (password: string) => {
         setIsVerifying(true);
@@ -235,7 +201,7 @@ export function RosterViewPage({ rosterId }: RosterViewPageProps) {
             
             toast({ title: 'Success', description: 'Access granted.' });
             setRequiresPassword(false);
-            await fetchData(); // Refetch data now that we have access
+            await fetchData();
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Error', description: err.message });
         } finally {
@@ -273,15 +239,7 @@ export function RosterViewPage({ rosterId }: RosterViewPageProps) {
     if (isLoading) {
         return (
             <div className="container mx-auto p-4 md:p-6 lg:p-8 flex justify-center items-center h-full">
-                <div className="flex flex-col items-center gap-4 text-center">
-                    <Loader2 className="h-8 w-8 animate-spin" />
-                    {showSlowLoadMessage && (
-                        <p className="text-sm text-muted-foreground animate-in fade-in duration-500">
-                            Loading is taking a bit longer than usual.<br/>
-                            This can happen when fetching a lot of data from the game server.
-                        </p>
-                    )}
-                </div>
+                <Loader2 className="h-8 w-8 animate-spin" />
             </div>
         );
     }
@@ -327,10 +285,6 @@ export function RosterViewPage({ rosterId }: RosterViewPageProps) {
                         >
                             <Star className={cn("h-4 w-4", isFavorited ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground")} />
                             <span className="sr-only">{isFavorited ? 'Unfavorite' : 'Favorite'}</span>
-                        </Button>
-                         <Button onClick={handleForceSync} disabled={isSyncing || !canSync || requiresPassword}>
-                            {isSyncing ? <Loader2 className="animate-spin" /> : <RefreshCw />}
-                            Force Sync
                         </Button>
                     </div>
                 }

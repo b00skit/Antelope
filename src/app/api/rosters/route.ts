@@ -2,11 +2,10 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { users, factionMembers, activityRosters, activityRosterFavorites, factionMembersCache, apiCacheAlternativeCharacters } from '@/db/schema';
+import { users, activityRosters, activityRosterFavorites, factionMembersCache, apiCacheAlternativeCharacters } from '@/db/schema';
 import { and, eq, or, desc } from 'drizzle-orm';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
-import config from '@config';
 import { processFactionMemberAlts } from '@/lib/faction-sync';
 
 const jsonString = z.string().refine((value) => {
@@ -49,8 +48,6 @@ export async function GET(request: NextRequest) {
         }
 
         const factionId = user.selected_faction_id;
-        const now = new Date();
-        const membersRefreshThreshold = now.getTime() - config.GTAW_API_REFRESH_MINUTES_FACTIONS * 60 * 1000;
 
         const [cachedFaction, cachedAlt] = await Promise.all([
             db.query.factionMembersCache.findFirst({
@@ -62,48 +59,7 @@ export async function GET(request: NextRequest) {
             }),
         ]);
 
-        const shouldSyncMembers =
-            !cachedFaction ||
-            !cachedFaction.last_sync_timestamp ||
-            new Date(cachedFaction.last_sync_timestamp).getTime() < membersRefreshThreshold;
-        const shouldSyncAlts = !cachedAlt;
-
-        let altsSynced = false;
-
-        if (shouldSyncMembers && session.gtaw_access_token) {
-            try {
-                const response = await fetch(`https://ucp.gta.world/api/faction/${factionId}`, {
-                    headers: {
-                        Authorization: `Bearer ${session.gtaw_access_token}`,
-                        Accept: 'application/json',
-                    },
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    const members = Array.isArray(data?.data?.members) ? data.data.members : [];
-
-                    await db.insert(factionMembersCache)
-                        .values({ faction_id: factionId, members, last_sync_timestamp: now })
-                        .onConflictDoUpdate({
-                            target: factionMembersCache.faction_id,
-                            set: { members, last_sync_timestamp: now },
-                        });
-
-                    await processFactionMemberAlts(factionId, members);
-                    altsSynced = true;
-                } else {
-                    const errorBody = await response.text();
-                    console.error(`[API Rosters GET] Failed to sync faction ${factionId}. Status: ${response.status}`, errorBody);
-                }
-            } catch (error) {
-                console.error(`[API Rosters GET] Error syncing faction ${factionId}:`, error);
-            }
-        } else if (shouldSyncMembers && !session.gtaw_access_token) {
-            console.warn(`[API Rosters GET] Missing GTA:W access token, unable to sync faction ${factionId}.`);
-        }
-
-        if (!altsSynced && shouldSyncAlts && cachedFaction?.members && Array.isArray(cachedFaction.members)) {
+        if (!cachedAlt && cachedFaction?.members && Array.isArray(cachedFaction.members)) {
             await processFactionMemberAlts(factionId, cachedFaction.members);
         }
 

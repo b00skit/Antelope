@@ -3,7 +3,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { PageHeader } from '@/components/dashboard/page-header';
@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { AlertTriangle, Loader2, Plus, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Form,
@@ -28,6 +28,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useState, useEffect } from 'react';
 import { useSession } from '@/hooks/use-session';
 import { MultiSelect } from '@/components/ui/multi-select';
+import { Switch } from '@/components/ui/switch';
+import { cn } from '@/lib/utils';
 
 const jsonString = z.string().refine((value) => {
     if (!value) return true; // Allow empty string
@@ -51,34 +53,23 @@ const formSchema = z.object({
     path: ["password"],
 });
 
-const jsonExample = `{
-  "include_ranks": [1, 2, 3],
-  "exclude_ranks": [4],
-  "include_members": ["First_Name"],
-  "exclude_members": ["Another_Name"],
-  "forum_groups_included": [5, 8],
-  "forum_groups_excluded": [10],
-  "forum_users_included": [2, 123],
-  "forum_users_excluded": [45],
-  "alert_forum_users_missing": true,
-  "show_assignment_titles": true,
-  "allow_roster_snapshots": true,
-  "mark_alternative_characters": true,
-  "abas_standards": {
-    "by_rank": {
-      "10": 5.0,
-      "12": 7.5
-    },
-    "by_name": {
-      "John_Doe": 10.0
-    }
-  },
-  "labels": {
-    "red": "High Priority",
-    "blue": "Training",
-    "green": "Field Training Officer"
-  }
-}`;
+interface LabelConfig {
+    color: string;
+    title: string;
+}
+
+interface BasicFilters {
+    include_ranks: string;
+    exclude_ranks: string;
+    include_members: string;
+    exclude_members: string;
+    forum_groups_included: number[];
+    forum_groups_excluded: number[];
+    show_assignment_titles: boolean;
+    mark_alternative_characters: boolean;
+    allow_roster_snapshots: boolean;
+    labels: LabelConfig[];
+}
 
 const visibilityOptions = [
     { value: 'personal', label: 'Personal', description: 'Only you can see this roster.' },
@@ -87,29 +78,30 @@ const visibilityOptions = [
     { value: 'public', label: 'Public', description: 'Everyone in the faction can see this roster.' },
 ];
 
+const labelColors = [
+    "red", "orange", "amber", "yellow", "lime", "green", "emerald", "teal", "cyan",
+    "sky", "blue", "indigo", "violet", "purple", "fuchsia", "pink", "rose"
+];
+
 export default function CreateRosterPage() {
     const router = useRouter();
     const { toast } = useToast();
     const { session } = useSession();
-    const [basicIncludeMembers, setBasicIncludeMembers] = useState('');
     const [factionUsers, setFactionUsers] = useState<{ id: number; username: string }[]>([]);
+    const [syncableForumGroups, setSyncableForumGroups] = useState<{ value: string; label: string; }[]>([]);
+    const [basicFilters, setBasicFilters] = useState<BasicFilters>({
+        include_ranks: '',
+        exclude_ranks: '',
+        include_members: '',
+        exclude_members: '',
+        forum_groups_included: [],
+        forum_groups_excluded: [],
+        show_assignment_titles: true,
+        mark_alternative_characters: true,
+        allow_roster_snapshots: false,
+        labels: [],
+    });
 
-    useEffect(() => {
-        const fetchUsers = async () => {
-            if (!session?.hasActiveFaction) return;
-            try {
-                const res = await fetch('/api/rosters');
-                const data = await res.json();
-                if (res.ok) {
-                    setFactionUsers(data.factionUsers || []);
-                }
-            } catch (e) {
-                console.error("Failed to fetch faction users");
-            }
-        };
-        fetchUsers();
-    }, [session]);
-    
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -122,42 +114,89 @@ export default function CreateRosterPage() {
     });
 
     const watchVisibility = form.watch('visibility');
-    const watchJson = form.watch('roster_setup_json');
+    
+    useEffect(() => {
+        const fetchData = async () => {
+            if (!session?.hasActiveFaction) return;
+            try {
+                const [usersRes, groupsRes] = await Promise.all([
+                    fetch('/api/rosters'),
+                    fetch(`/api/factions/${session.activeFaction?.id}/forum-groups`)
+                ]);
+                const usersData = await usersRes.json();
+                if (usersRes.ok) setFactionUsers(usersData.factionUsers || []);
 
-    const handleTabChange = (newTab: string) => {
-        if (newTab === 'basic') {
-            try {
-                const json = watchJson ? JSON.parse(watchJson) : {};
-                const members = json.include_members || [];
-                setBasicIncludeMembers(members.join('\n'));
+                const groupsData = await groupsRes.json();
+                if (groupsRes.ok) {
+                    setSyncableForumGroups((groupsData.syncableGroups || []).map((g: any) => ({ value: g.id.toString(), label: g.name })));
+                }
             } catch (e) {
-                setBasicIncludeMembers('');
+                console.error("Failed to fetch initial data for roster creation");
             }
-        } else if (newTab === 'advanced') {
-            try {
-                const json = watchJson ? JSON.parse(watchJson) : {};
-                const members = basicIncludeMembers.split('\n').map(m => m.trim()).filter(Boolean);
-                json.include_members = members;
-                form.setValue('roster_setup_json', JSON.stringify(json, null, 2), { shouldValidate: true });
-            } catch (e) {
-                // If current JSON is invalid, do nothing
-            }
+        };
+        fetchData();
+    }, [session]);
+    
+    const syncJsonToBasic = () => {
+        try {
+            const jsonString = form.getValues('roster_setup_json');
+            const json = jsonString ? JSON.parse(jsonString) : {};
+            setBasicFilters({
+                include_ranks: (json.include_ranks || []).join(','),
+                exclude_ranks: (json.exclude_ranks || []).join(','),
+                include_members: (json.include_members || []).join('\n'),
+                exclude_members: (json.exclude_members || []).join('\n'),
+                forum_groups_included: json.forum_groups_included || [],
+                forum_groups_excluded: json.forum_groups_excluded || [],
+                show_assignment_titles: json.show_assignment_titles ?? true,
+                mark_alternative_characters: json.mark_alternative_characters ?? true,
+                allow_roster_snapshots: json.allow_roster_snapshots ?? false,
+                labels: json.labels ? Object.entries(json.labels).map(([color, title]) => ({ color, title: title as string })) : [],
+            });
+        } catch (e) {
+            // Invalid JSON, do nothing
+        }
+    };
+
+    const syncBasicToJson = () => {
+        try {
+            const jsonString = form.getValues('roster_setup_json');
+            const currentJson = jsonString ? JSON.parse(jsonString) : {};
+            
+            const parseRanks = (rankString: string) => rankString.split(',').map(r => parseInt(r.trim(), 10)).filter(r => !isNaN(r));
+            const parseMembers = (memberString: string) => memberString.split('\n').map(m => m.trim()).filter(Boolean);
+            const parseLabels = (labels: LabelConfig[]) => labels.reduce((acc, label) => {
+                if (label.color && label.title) {
+                    acc[label.color] = label.title;
+                }
+                return acc;
+            }, {} as Record<string, string>);
+
+            const newJson = {
+                ...currentJson,
+                include_ranks: parseRanks(basicFilters.include_ranks),
+                exclude_ranks: parseRanks(basicFilters.exclude_ranks),
+                include_members: parseMembers(basicFilters.include_members),
+                exclude_members: parseMembers(basicFilters.exclude_members),
+                forum_groups_included: basicFilters.forum_groups_included,
+                forum_groups_excluded: basicFilters.forum_groups_excluded,
+                show_assignment_titles: basicFilters.show_assignment_titles,
+                mark_alternative_characters: basicFilters.mark_alternative_characters,
+                allow_roster_snapshots: basicFilters.allow_roster_snapshots,
+                labels: parseLabels(basicFilters.labels),
+            };
+            form.setValue('roster_setup_json', JSON.stringify(newJson, null, 2), { shouldValidate: true });
+        } catch (e) {
+            // Could happen if json is malformed, but we proceed anyway
         }
     };
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         try {
-            // Ensure the final JSON is up-to-date before submitting
-            const finalValues = { ...values };
-            try {
-                const json = finalValues.roster_setup_json ? JSON.parse(finalValues.roster_setup_json) : {};
-                const members = basicIncludeMembers.split('\n').map(m => m.trim()).filter(Boolean);
-                json.include_members = members;
-                finalValues.roster_setup_json = JSON.stringify(json);
-            } catch (e) {
-                // Ignore if JSON is malformed, it will be caught by validation
-            }
-
+            // Ensure latest basic filters are synced to JSON before submitting
+            syncBasicToJson();
+            const finalValues = form.getValues();
+            
             const response = await fetch('/api/rosters', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -183,6 +222,21 @@ export default function CreateRosterPage() {
     
     const userOptions = factionUsers.map(user => ({ value: user.id.toString(), label: user.username }));
 
+    const handleLabelChange = (index: number, field: 'color' | 'title', value: string) => {
+        const newLabels = [...basicFilters.labels];
+        newLabels[index][field] = value;
+        setBasicFilters(f => ({ ...f, labels: newLabels }));
+    };
+
+    const addLabel = () => {
+        setBasicFilters(f => ({ ...f, labels: [...f.labels, { color: 'red', title: '' }] }));
+    };
+
+    const removeLabel = (index: number) => {
+        const newLabels = basicFilters.labels.filter((_, i) => i !== index);
+        setBasicFilters(f => ({ ...f, labels: newLabels }));
+    };
+
     return (
         <div className="container mx-auto p-4 md:p-6 lg:p-8">
             <PageHeader title="Create New Roster" description="Set up a new activity roster for your faction." />
@@ -200,7 +254,6 @@ export default function CreateRosterPage() {
                                         <FormControl>
                                             <Input placeholder="e.g., Weekly Patrol Roster" {...field} />
                                         </FormControl>
-                                        <FormDescription>A descriptive name for this roster.</FormDescription>
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -268,11 +321,108 @@ export default function CreateRosterPage() {
                             )}
                             <FormItem>
                                 <FormLabel>Roster Configuration (Optional)</FormLabel>
-                                <Tabs defaultValue="advanced" className="w-full" onValueChange={handleTabChange}>
+                                <Tabs defaultValue="basic" className="w-full" onValueChange={(tab) => tab === 'basic' ? syncJsonToBasic() : syncBasicToJson()}>
                                     <TabsList>
+                                        <TabsTrigger value="basic">Basic</TabsTrigger>
                                         <TabsTrigger value="advanced">Advanced (JSON)</TabsTrigger>
-                                        <TabsTrigger value="basic">Basic (Included Members)</TabsTrigger>
                                     </TabsList>
+                                    <TabsContent value="basic" className="space-y-4 pt-2">
+                                        <Card>
+                                            <CardHeader>
+                                                <CardTitle className="text-base">Filters</CardTitle>
+                                            </CardHeader>
+                                            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <FormItem>
+                                                    <FormLabel>Include Ranks</FormLabel>
+                                                    <Input value={basicFilters.include_ranks} onChange={(e) => setBasicFilters(f => ({...f, include_ranks: e.target.value}))} placeholder="e.g., 1,5,10" />
+                                                    <FormDescription>Comma-separated rank IDs to include.</FormDescription>
+                                                </FormItem>
+                                                <FormItem>
+                                                    <FormLabel>Exclude Ranks</FormLabel>
+                                                    <Input value={basicFilters.exclude_ranks} onChange={(e) => setBasicFilters(f => ({...f, exclude_ranks: e.target.value}))} placeholder="e.g., 14,15" />
+                                                    <FormDescription>Comma-separated rank IDs to exclude.</FormDescription>
+                                                </FormItem>
+                                                <FormItem>
+                                                    <FormLabel>Include Forum Groups</FormLabel>
+                                                    <MultiSelect
+                                                        options={syncableForumGroups}
+                                                        onValueChange={(selected) => setBasicFilters(f => ({...f, forum_groups_included: selected.map(Number)}))}
+                                                        defaultValue={basicFilters.forum_groups_included.map(String)}
+                                                        placeholder="Select groups..."
+                                                    />
+                                                </FormItem>
+                                                <FormItem>
+                                                    <FormLabel>Exclude Forum Groups</FormLabel>
+                                                    <MultiSelect
+                                                        options={syncableForumGroups}
+                                                        onValueChange={(selected) => setBasicFilters(f => ({...f, forum_groups_excluded: selected.map(Number)}))}
+                                                        defaultValue={basicFilters.forum_groups_excluded.map(String)}
+                                                        placeholder="Select groups..."
+                                                    />
+                                                </FormItem>
+                                            </CardContent>
+                                        </Card>
+                                         <Card>
+                                            <CardHeader>
+                                                <CardTitle className="text-base">Display Options</CardTitle>
+                                            </CardHeader>
+                                            <CardContent className="space-y-4">
+                                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                                    <div className="space-y-0.5">
+                                                        <FormLabel>Show Assignment Titles</FormLabel>
+                                                    </div>
+                                                    <Switch checked={basicFilters.show_assignment_titles} onCheckedChange={(checked) => setBasicFilters(f => ({...f, show_assignment_titles: checked}))} />
+                                                </FormItem>
+                                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                                    <div className="space-y-0.5">
+                                                        <FormLabel>Mark Alternative Characters</FormLabel>
+                                                    </div>
+                                                    <Switch checked={basicFilters.mark_alternative_characters} onCheckedChange={(checked) => setBasicFilters(f => ({...f, mark_alternative_characters: checked}))} />
+                                                </FormItem>
+                                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                                    <div className="space-y-0.5">
+                                                        <FormLabel>Allow Roster Snapshots</FormLabel>
+                                                    </div>
+                                                    <Switch checked={basicFilters.allow_roster_snapshots} onCheckedChange={(checked) => setBasicFilters(f => ({...f, allow_roster_snapshots: checked}))} />
+                                                </FormItem>
+                                            </CardContent>
+                                        </Card>
+                                         <Card>
+                                            <CardHeader>
+                                                <CardTitle className="text-base">Labels</CardTitle>
+                                                <CardDescription>Create color-coded labels for members on this roster.</CardDescription>
+                                            </CardHeader>
+                                            <CardContent className="space-y-2">
+                                                {basicFilters.labels.map((label, index) => (
+                                                    <div key={index} className="flex items-center gap-2">
+                                                        <Select value={label.color} onValueChange={(value) => handleLabelChange(index, 'color', value)}>
+                                                            <SelectTrigger className="w-[120px]">
+                                                                <SelectValue>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className={cn('h-2 w-2 rounded-full', `bg-${label.color}-500`)} />
+                                                                        {label.color}
+                                                                    </div>
+                                                                </SelectValue>
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {labelColors.map(color => (
+                                                                    <SelectItem key={color} value={color}>
+                                                                         <div className="flex items-center gap-2">
+                                                                            <span className={cn('h-2 w-2 rounded-full', `bg-${color}-500`)} />
+                                                                            {color}
+                                                                        </div>
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <Input value={label.title} onChange={(e) => handleLabelChange(index, 'title', e.target.value)} placeholder="Label Title" />
+                                                        <Button variant="ghost" size="icon" onClick={() => removeLabel(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                                    </div>
+                                                ))}
+                                                <Button type="button" variant="outline" size="sm" onClick={addLabel}><Plus className="mr-2" /> Add Label</Button>
+                                            </CardContent>
+                                        </Card>
+                                    </TabsContent>
                                     <TabsContent value="advanced">
                                          <FormField
                                             control={form.control}
@@ -282,33 +432,15 @@ export default function CreateRosterPage() {
                                                     <FormControl>
                                                         <Textarea
                                                             placeholder='Paste your JSON configuration here...'
-                                                            className="font-mono min-h-[150px]"
+                                                            className="font-mono min-h-[250px]"
                                                             {...field}
                                                             value={field.value ?? ''}
                                                         />
                                                     </FormControl>
-                                                    <FormDescription>
-                                                        Use this to filter the roster by rank, name, or forum groups/users.
-                                                    </FormDescription>
-                                                    <details className="text-sm">
-                                                        <summary className="cursor-pointer text-muted-foreground">View Example</summary>
-                                                        <pre className="mt-2 p-2 bg-muted rounded-md text-xs">{jsonExample}</pre>
-                                                    </details>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
                                         />
-                                    </TabsContent>
-                                    <TabsContent value="basic">
-                                         <Textarea
-                                            placeholder='Enter one character name per line...'
-                                            className="font-mono min-h-[150px]"
-                                            value={basicIncludeMembers}
-                                            onChange={(e) => setBasicIncludeMembers(e.target.value)}
-                                        />
-                                        <FormDescription>
-                                            Only members with these names will be shown. This will only affect the `include_members` field.
-                                        </FormDescription>
                                     </TabsContent>
                                 </Tabs>
                             </FormItem>
