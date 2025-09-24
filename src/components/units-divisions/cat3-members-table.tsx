@@ -78,6 +78,7 @@ export function Cat3MembersTable({ members, sections: initialSections = [], allF
         })
         .map(fm => fm.character_name);
         
+    const getAbasClass = () => '';
 
 
     const handleAddMember = async () => {
@@ -355,14 +356,13 @@ export function Cat3MembersTable({ members, sections: initialSections = [], allF
                             onEdit={() => { setEditingSection(section); setIsSectionDialogOpen(true); }}
                             onDelete={() => handleDeleteSection(section.id as number)}
                             onReorder={handleReorderSections}
-                            onUpdateTitle={handleUpdateTitle}
-                            onRemoveMember={handleDelete}
-                            onTransferMember={handleOpenTransferDialog}
-                            canManage={canManage}
+                            getAbasClass={getAbasClass}
+                            showAssignmentTitles={false}
                             selectedMemberIds={selectedMemberIds}
                             onToggleSelection={handleToggleSelection}
-                            onSelectAll={handleSelectAllInSection}
-                            isSecondary={isSecondary}
+                            labels={{}}
+                            onSetLabel={() => {}}
+                            readOnly={!canManage}
                         />
                     ))}
 
@@ -371,15 +371,14 @@ export function Cat3MembersTable({ members, sections: initialSections = [], allF
                         members={unassignedMembers}
                         allSections={sections}
                         onMoveMember={handleMoveMember}
-                        onUpdateTitle={handleUpdateTitle}
-                        onRemoveMember={handleDelete}
-                        onTransferMember={handleOpenTransferDialog}
-                        canManage={canManage}
                         isUnassigned
+                        getAbasClass={getAbasClass}
+                        showAssignmentTitles={false}
                         selectedMemberIds={selectedMemberIds}
                         onToggleSelection={handleToggleSelection}
-                        onSelectAll={handleSelectAllInSection}
-                        isSecondary={isSecondary}
+                        labels={{}}
+                        onSetLabel={() => {}}
+                        readOnly={!canManage}
                     />
 
                 </CardContent>
