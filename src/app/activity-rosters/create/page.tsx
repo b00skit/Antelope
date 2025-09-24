@@ -128,7 +128,7 @@ export default function CreateRosterPage() {
 
                 const groupsData = await groupsRes.json();
                 if (groupsRes.ok) {
-                    setSyncableForumGroups((groupsData.syncableGroups || []).map((g: any) => ({ value: g.id.toString(), label: g.name })));
+                    setSyncableForumGroups((groupsData.syncableGroups || []).map((g: any) => ({ value: g.group_id.toString(), label: g.name })));
                 }
             } catch (e) {
                 console.error("Failed to fetch initial data for roster creation");
