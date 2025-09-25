@@ -18,6 +18,7 @@ import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { MultiSelect } from '../ui/multi-select';
 import { Switch } from '../ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const cat3FormSchema = z.object({
     name: z.string().min(1, "Name cannot be empty."),
@@ -35,9 +36,10 @@ interface Cat3DialogProps {
     parentCat2: Cat2;
     settings: { category_3_name: string };
     factionUsers: FactionUser[];
+    syncableForumGroups: { value: string, label: string }[];
 }
 
-export function Cat3Dialog({ open, onOpenChange, onSave, cat3, parentCat2, settings, factionUsers }: Cat3DialogProps) {
+export function Cat3Dialog({ open, onOpenChange, onSave, cat3, parentCat2, settings, factionUsers, syncableForumGroups }: Cat3DialogProps) {
     const { toast } = useToast();
     const form = useForm<z.infer<typeof cat3FormSchema>>({
         resolver: zodResolver(cat3FormSchema),
@@ -164,8 +166,22 @@ export function Cat3Dialog({ open, onOpenChange, onSave, cat3, parentCat2, setti
                             name="forum_group_id"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Forum Group ID (Optional)</FormLabel>
-                                    <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
+                                    <FormLabel>Forum Group (Optional)</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value?.toString()}>
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select a forum group..." />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="0">None</SelectItem>
+                                            {syncableForumGroups.map(group => (
+                                                <SelectItem key={group.value} value={group.value}>
+                                                    {group.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                     <FormDescription>Sync this detail with a phpBB forum group.</FormDescription>
                                     <FormMessage />
                                 </FormItem>
