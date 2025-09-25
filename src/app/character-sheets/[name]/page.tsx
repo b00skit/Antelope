@@ -1,3 +1,4 @@
+
 import { notFound } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { getSession } from '@/lib/session';
@@ -219,6 +220,7 @@ async function getCharacterData(name: string) {
     };
     
     let forumData: ForumData | null = null;
+    let forumProfileUrl: string | null = null;
     if (selectedFaction.phpbb_api_url && selectedFaction.phpbb_api_key) {
         try {
             const forumUsername = characterName;
@@ -231,6 +233,7 @@ async function getCharacterData(name: string) {
                 const data = await forumApiResponse.json();
                 if (data.user) {
                     forumData = data.user;
+                    forumProfileUrl = `${baseUrl}memberlist.php?mode=viewprofile&u=${data.user.id}`;
                 }
             } else {
                 console.warn(`[Forum API] Failed to fetch data for ${forumUsername}. Status: ${forumApiResponse.status}`);
@@ -349,8 +352,21 @@ async function getCharacterData(name: string) {
         }
     }
 
+    const mdcRecordUrl = `https://mdc.gta.world/records/${character.firstname}_${character.lastname}`;
 
-    return { character: { ...charData.data, id: characterId }, totalAbas, characterSheetsEnabled, forumData, abasSettings, assignment, canManageAssignments, allUnitsAndDetails, secondaryAssignments };
+    return { 
+        character: { ...charData.data, id: characterId }, 
+        totalAbas, 
+        characterSheetsEnabled, 
+        forumData, 
+        abasSettings, 
+        assignment, 
+        canManageAssignments, 
+        allUnitsAndDetails, 
+        secondaryAssignments,
+        forumProfileUrl,
+        mdcRecordUrl,
+    };
 }
 
 
@@ -371,3 +387,5 @@ export default async function CharacterSheetPage({ params }: PageProps) {
 
     return <CharacterSheetClientPage initialData={data} />;
 }
+
+    

@@ -1,11 +1,10 @@
 
-
 'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/dashboard/page-header';
-import { User, Briefcase, Users, Hash, Calendar, Clock, Sigma, BookUser, Building, Move, Award } from 'lucide-react';
+import { User, Briefcase, Users, Hash, Calendar, Clock, Sigma, BookUser, Building, Move, Award, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
@@ -61,7 +60,7 @@ export function CharacterSheetClientPage({ initialData }: CharacterSheetClientPa
         return null;
     }
 
-    const { character, totalAbas, characterSheetsEnabled, forumData, abasSettings, assignment, canManageAssignments, allUnitsAndDetails, secondaryAssignments } = data;
+    const { character, totalAbas, characterSheetsEnabled, forumData, abasSettings, assignment, canManageAssignments, allUnitsAndDetails, secondaryAssignments, forumProfileUrl, mdcRecordUrl } = data;
     const characterImage = `https://mdc.gta.world/img/persons/${character.firstname}_${character.lastname}.png?${Date.now()}`;
     
     const handleTransferSuccess = () => {
@@ -99,7 +98,7 @@ export function CharacterSheetClientPage({ initialData }: CharacterSheetClientPa
             />
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                 <div className={cn(forumData ? 'lg:col-span-2' : 'lg:col-span-3')}>
+                 <div className="lg:col-span-2 space-y-6">
                     <Card className="h-full">
                         <CardHeader>
                             <CardTitle>Personnel File</CardTitle>
@@ -201,8 +200,29 @@ export function CharacterSheetClientPage({ initialData }: CharacterSheetClientPa
                         </CardContent>
                     </Card>
                 </div>
-                {forumData && (
-                    <div className="lg:col-span-1 space-y-6">
+                <div className="lg:col-span-1 space-y-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Actions</CardTitle>
+                        </CardHeader>
+                        <CardContent className="flex flex-col gap-2">
+                             <Button asChild>
+                                <Link href={mdcRecordUrl} target="_blank" rel="noopener noreferrer">
+                                    <ExternalLink className="mr-2" />
+                                    Open MDC Record
+                                </Link>
+                            </Button>
+                            {forumProfileUrl && (
+                                <Button asChild variant="secondary">
+                                    <Link href={forumProfileUrl} target="_blank" rel="noopener noreferrer">
+                                        <ExternalLink className="mr-2" />
+                                        Open Forum Profile
+                                    </Link>
+                                </Button>
+                            )}
+                        </CardContent>
+                    </Card>
+                     {forumData && (
                          <Card className="h-full flex flex-col">
                              <CardHeader>
                                  <CardTitle className="flex items-center gap-2"><BookUser /> Forum Profile</CardTitle>
@@ -224,8 +244,8 @@ export function CharacterSheetClientPage({ initialData }: CharacterSheetClientPa
                                  </ScrollArea>
                              </CardContent>
                          </Card>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
             
             {secondaryAssignments && secondaryAssignments.length > 0 && (
@@ -304,3 +324,5 @@ export function CharacterSheetClientPage({ initialData }: CharacterSheetClientPa
         </div>
     );
 }
+
+    
