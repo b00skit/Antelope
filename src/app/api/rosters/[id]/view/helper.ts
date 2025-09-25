@@ -35,6 +35,7 @@ interface Member {
     label?: string | null;
     isPrimary?: boolean;
     isAlternative?: boolean;
+    membershipId?: number;
 }
 
 interface RosterFilters {
@@ -126,13 +127,19 @@ export async function getRosterViewData(
 
     const factionId = roster.factionId;
     let members: Member[] = [];
+    let orgMemberships: { character_id: number; id: number, title: string | null }[] = [];
 
     if (roster.organization_category_type && roster.organization_category_id) {
-        const orgMemberships = await db.query.factionOrganizationMembership.findMany({
+        orgMemberships = await db.query.factionOrganizationMembership.findMany({
             where: and(
                 eq(factionOrganizationMembership.type, roster.organization_category_type),
                 eq(factionOrganizationMembership.category_id, roster.organization_category_id)
-            )
+            ),
+            columns: {
+                id: true,
+                character_id: true,
+                title: true,
+            }
         });
         const orgMemberIds = orgMemberships.map(m => m.character_id);
 
@@ -177,6 +184,8 @@ export async function getRosterViewData(
             abasCache.map(a => [a.character_id, { abas: a.abas, last_sync: a.last_sync_timestamp, total_abas: a.total_abas }]),
         );
         const labelMap = new Map(labels.map(l => [l.character_id, l.color]));
+        const orgMembershipMap = new Map(orgMemberships.map(m => [m.character_id, m]));
+
 
         members = members.map(member => ({
             ...member,
@@ -184,6 +193,8 @@ export async function getRosterViewData(
             abas_last_sync: abasMap.get(member.character_id)?.last_sync,
             total_abas: abasMap.get(member.character_id)?.total_abas,
             label: labelMap.get(member.character_id),
+            membershipId: orgMembershipMap.get(member.character_id)?.id,
+            assignmentTitle: orgMembershipMap.get(member.character_id)?.title ?? member.assignmentTitle,
         }));
     }
 
@@ -371,7 +382,7 @@ export async function getRosterViewData(
         }
     }
 
-    if (showAssignmentTitles && memberIds.length > 0) {
+    if (showAssignmentTitles && memberIds.length > 0 && !roster.organization_category_type) {
         const assignments = await db.query.factionOrganizationMembership.findMany({
             where: and(
                 inArray(factionOrganizationMembership.character_id, memberIds),
@@ -389,6 +400,11 @@ export async function getRosterViewData(
             id: roster.id,
             name: roster.name,
             isPrivate: roster.visibility === 'private',
+            isOrganizational: roster.visibility === 'organization',
+            organizationInfo: {
+                type: roster.organization_category_type,
+                id: roster.organization_category_id,
+            },
         },
         faction: {
             id: roster.faction.id,

@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { activityRosters, users as usersTable, factionMembers } from '@/db/schema';
+import { activityRosters, users, factionMembers } from '@/db/schema';
 import { and, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
@@ -63,8 +63,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             return NextResponse.json({ error: 'Roster not found.' }, { status: 404 });
         }
         
-        const user = await db.query.usersTable.findFirst({
-            where: eq(usersTable.id, session.userId),
+        const user = await db.query.users.findFirst({
+            where: eq(users.id, session.userId),
         });
 
         if (!user || !user.selected_faction_id) {
@@ -90,8 +90,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         
         const { password, ...rosterData } = roster;
         
-        const factionUsers = await db.query.usersTable.findMany({
-            where: eq(usersTable.selected_faction_id, user.selected_faction_id)
+        const factionUsers = await db.query.users.findMany({
+            where: eq(users.selected_faction_id, user.selected_faction_id)
         });
 
         return NextResponse.json({ roster: rosterData, factionUsers });
@@ -136,7 +136,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
         let hasAccess = false;
         if (roster.visibility === 'organization' && roster.organization_category_type && roster.organization_category_id) {
-            const user = await db.query.usersTable.findFirst({ where: eq(usersTable.id, session.userId) });
+            const user = await db.query.users.findFirst({ where: eq(users.id, session.userId) });
             const userMembership = await db.query.factionMembers.findFirst({
                 where: and(eq(factionMembers.userId, session.userId!), eq(factionMembers.factionId, roster.factionId))
             });
