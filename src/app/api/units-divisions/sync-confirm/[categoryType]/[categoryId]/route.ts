@@ -1,10 +1,11 @@
+
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
 import { z } from 'zod';
 import { canManageCat2 } from '../../../[cat1Id]/[cat2Id]/helpers';
-import { factionOrganizationMembership } from '@/db/schema';
+import { factionOrganizationMembership, factionOrganizationCat3 } from '@/db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 
 interface RouteParams {
@@ -55,9 +56,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     try {
-        await db.transaction(async (tx) => {
+        db.transaction((tx) => {
             if (addIds.length > 0) {
-                await tx.insert(factionOrganizationMembership).values(
+                tx.insert(factionOrganizationMembership).values(
                     addIds.map(charId => ({
                         type: categoryType,
                         category_id: categoryIdNum,
@@ -65,18 +66,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
                         created_by: session.userId!,
                         manual: false,
                     }))
-                );
+                ).run();
             }
 
             if (removeIds.length > 0) {
-                await tx.delete(factionOrganizationMembership).where(
+                tx.delete(factionOrganizationMembership).where(
                     and(
                         eq(factionOrganizationMembership.category_id, categoryIdNum),
                         eq(factionOrganizationMembership.type, categoryType),
                         inArray(factionOrganizationMembership.character_id, removeIds),
                         eq(factionOrganizationMembership.manual, false)
                     )
-                );
+                ).run();
             }
         });
 
