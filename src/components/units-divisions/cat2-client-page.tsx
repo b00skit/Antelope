@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, Loader2, PlusCircle, Building, MoreVertical, Pencil, Trash2, Eye, Star, Users, BarChart, UserCog, Trophy } from "lucide-react";
+import { AlertTriangle, Loader2, PlusCircle, Building, MoreVertical, Pencil, Trash2, Eye, Star, Users, BarChart, UserCog, Trophy, ClipboardList } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
 import type { Cat2, FactionUser } from "./units-divisions-client-page";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
@@ -63,6 +63,7 @@ interface Cat2ClientPageProps {
 export function Cat2ClientPage({ cat1Id, cat2Id }: Cat2ClientPageProps) {
     const [data, setData] = useState<PageData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isActionLoading, setIsActionLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isCat3DialogOpen, setIsCat3DialogOpen] = useState(false);
     const [editingCat3, setEditingCat3] = useState<Cat3 | null>(null);
@@ -106,6 +107,21 @@ export function Cat2ClientPage({ cat1Id, cat2Id }: Cat2ClientPageProps) {
             toast({ variant: 'destructive', title: 'Error', description: err.message });
         }
     };
+
+    const handleCreateRoster = async () => {
+        setIsActionLoading(true);
+        try {
+            const res = await fetch(`/api/units-divisions/${cat1Id}/${cat2Id}/roster`, { method: 'POST' });
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error);
+            toast({ title: 'Success', description: 'Organizational roster created.' });
+            fetchData();
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Error', description: err.message });
+        } finally {
+            setIsActionLoading(false);
+        }
+    }
     
     const favoriteIdsCat3 = new Set(favorites.filter(f => f.category_type === 'cat_3').map(f => f.category_id));
 
@@ -229,6 +245,32 @@ export function Cat2ClientPage({ cat1Id, cat2Id }: Cat2ClientPageProps) {
                     </CardContent>
                 </Card>
             </div>
+
+            {canManage && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Roster Management</CardTitle>
+                        <CardDescription>Manage the dedicated activity roster for this unit.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {unit.activity_roster_id ? (
+                            <div className="flex items-center gap-4">
+                                <Button asChild>
+                                    <Link href={`/activity-rosters/${unit.activity_roster_id}`}>View Roster</Link>
+                                </Button>
+                                <Button asChild variant="outline">
+                                    <Link href={`/activity-rosters/edit/${unit.activity_roster_id}`}>Modify Roster</Link>
+                                </Button>
+                            </div>
+                        ) : (
+                            <Button onClick={handleCreateRoster} disabled={isActionLoading}>
+                                {isActionLoading ? <Loader2 className="mr-2 animate-spin" /> : <ClipboardList className="mr-2" />}
+                                Create Organizational Roster
+                            </Button>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
 
 
             {data.unit.settings_json?.allow_cat3 && (

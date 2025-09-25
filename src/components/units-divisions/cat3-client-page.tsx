@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, Loader2, Building, BarChart, Users, UserCog, Trophy } from "lucide-react";
+import { AlertTriangle, Loader2, Building, BarChart, Users, UserCog, Trophy, ClipboardList } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
 import type { FactionUser } from "./units-divisions-client-page";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
@@ -13,6 +13,7 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbP
 import Link from "next/link";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { ForumSyncDialog } from "./forum-sync-dialog";
+import { useToast } from "@/hooks/use-toast";
 
 interface Member {
     id: number;
@@ -31,6 +32,7 @@ interface Cat3 {
     id: number;
     name: string;
     settings_json: { forum_group_id?: number; secondary?: boolean; } | null;
+    activity_roster_id: number | null;
     cat2: {
         id: number;
         name: string;
@@ -57,8 +59,10 @@ interface Cat3ClientPageProps {
 export function Cat3ClientPage({ cat1Id, cat2Id, cat3Id }: Cat3ClientPageProps) {
     const [data, setData] = useState<PageData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isActionLoading, setIsActionLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isSyncDialogOpen, setIsSyncDialogOpen] = useState(false);
+    const { toast } = useToast();
 
     const fetchData = async () => {
         setIsLoading(true);
@@ -79,6 +83,21 @@ export function Cat3ClientPage({ cat1Id, cat2Id, cat3Id }: Cat3ClientPageProps) 
         fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [cat1Id, cat2Id, cat3Id]);
+
+    const handleCreateRoster = async () => {
+        setIsActionLoading(true);
+        try {
+            const res = await fetch(`/api/units-divisions/${cat1Id}/${cat2Id}/${cat3Id}/roster`, { method: 'POST' });
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error);
+            toast({ title: 'Success', description: 'Organizational roster created.' });
+            fetchData();
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Error', description: err.message });
+        } finally {
+            setIsActionLoading(false);
+        }
+    }
 
     if (isLoading) {
         return (
@@ -195,6 +214,32 @@ export function Cat3ClientPage({ cat1Id, cat2Id, cat3Id }: Cat3ClientPageProps) 
                     </CardContent>
                 </Card>
             </div>
+
+             {canManage && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Roster Management</CardTitle>
+                        <CardDescription>Manage the dedicated activity roster for this detail.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {detail.activity_roster_id ? (
+                            <div className="flex items-center gap-4">
+                                <Button asChild>
+                                    <Link href={`/activity-rosters/${detail.activity_roster_id}`}>View Roster</Link>
+                                </Button>
+                                <Button asChild variant="outline">
+                                    <Link href={`/activity-rosters/edit/${detail.activity_roster_id}`}>Modify Roster</Link>
+                                </Button>
+                            </div>
+                        ) : (
+                            <Button onClick={handleCreateRoster} disabled={isActionLoading}>
+                                {isActionLoading ? <Loader2 className="mr-2 animate-spin" /> : <ClipboardList className="mr-2" />}
+                                Create Organizational Roster
+                            </Button>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
             
             <Card>
                 <CardHeader>
