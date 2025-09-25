@@ -1,10 +1,10 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/dashboard/page-header';
-import { User, Briefcase, Users, Hash, Calendar, Clock, Sigma, BookUser, Building, Move, Award, ExternalLink, Plane } from 'lucide-react';
+import { User, Briefcase, Users, Hash, Calendar, Clock, Sigma, BookUser, Building, Move, Award, ExternalLink, Plane, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
@@ -21,6 +21,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { TransferMemberDialog } from '@/components/units-divisions/transfer-member-dialog';
 import { Button } from '@/components/ui/button';
+import { LoaTopic } from '@/app/character-sheets/[name]/page';
+import config from '@config';
 
 interface CharacterSheetClientPageProps {
     initialData: any;
@@ -49,6 +51,82 @@ const formatAbas = (abas: string | number | null | undefined) => {
     return num.toFixed(2);
 }
 
+const LoaSection = ({ characterName, factionForumSettings }: { characterName: string, factionForumSettings: any }) => {
+    const [loaRecords, setLoaRecords] = useState<LoaTopic[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchLoaData = async () => {
+            if (!factionForumSettings?.phpbb_api_url || !factionForumSettings?.phpbb_api_key || !factionForumSettings?.phpbb_loa_forum_id) {
+                setIsLoading(false);
+                return;
+            }
+
+            setIsLoading(true);
+            try {
+                const baseUrl = factionForumSettings.phpbb_api_url.endsWith('/') ? factionForumSettings.phpbb_api_url : `${factionForumSettings.phpbb_api_url}/`;
+                const apiKey = factionForumSettings.phpbb_api_key;
+                const loaForumUrl = `${baseUrl}app.php/booskit/phpbbapi/forum/${factionForumSettings.phpbb_loa_forum_id}?key=${apiKey}`;
+                
+                const loaResponse = await fetch(loaForumUrl, { next: { revalidate: config.FORUM_API_REFRESH_MINUTES * 60 } });
+                if (loaResponse.ok) {
+                    const data = await loaResponse.json();
+                    if (data.forum?.topics) {
+                        const records = data.forum.topics.filter((topic: LoaTopic) => {
+                            const match = topic.title.match(/\[.*?\]\s*(.*?)\s*\[/);
+                            return match && match[1].toLowerCase() === characterName.toLowerCase();
+                        });
+                        setLoaRecords(records);
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to fetch LOA records", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchLoaData();
+    }, [characterName, factionForumSettings]);
+
+    if (!factionForumSettings?.phpbb_loa_forum_id) return null;
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Leave of Absence Records</CardTitle>
+                <CardDescription>LOA records found on the forums for this character.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {isLoading ? (
+                    <div className="flex justify-center items-center h-24">
+                        <Loader2 className="animate-spin" />
+                    </div>
+                ) : loaRecords.length > 0 ? (
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Title</TableHead>
+                                <TableHead>Author</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {loaRecords.map((record: any) => (
+                                <TableRow key={record.id}>
+                                    <TableCell className="font-medium">{record.title}</TableCell>
+                                    <TableCell>{record.author}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">No LOA records found.</p>
+                )}
+            </CardContent>
+        </Card>
+    );
+};
+
 
 export function CharacterSheetClientPage({ initialData }: CharacterSheetClientPageProps) {
     const router = useRouter();
@@ -60,11 +138,10 @@ export function CharacterSheetClientPage({ initialData }: CharacterSheetClientPa
         return null;
     }
 
-    const { character, totalAbas, characterSheetsEnabled, forumData, abasSettings, assignment, canManageAssignments, allUnitsAndDetails, secondaryAssignments, forumProfileUrl, mdcRecordUrl, loaRecords } = data;
+    const { character, totalAbas, characterSheetsEnabled, forumData, abasSettings, assignment, canManageAssignments, allUnitsAndDetails, secondaryAssignments, forumProfileUrl, mdcRecordUrl, factionForumSettings } = data;
     const characterImage = `https://mdc.gta.world/img/persons/${character.firstname}_${character.lastname}.png?${Date.now()}`;
     
     const handleTransferSuccess = () => {
-        // Simple reload to get fresh data
         window.location.reload();
     }
     
@@ -281,32 +358,7 @@ export function CharacterSheetClientPage({ initialData }: CharacterSheetClientPa
                         </Card>
                     )}
 
-                    {loaRecords && loaRecords.length > 0 && (
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Leave of Absence Records</CardTitle>
-                                <CardDescription>LOA records found on the forums for this character.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Title</TableHead>
-                                            <TableHead>Author</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {loaRecords.map((record: any) => (
-                                            <TableRow key={record.id}>
-                                                <TableCell className="font-medium">{record.title}</TableCell>
-                                                <TableCell>{record.author}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </CardContent>
-                        </Card>
-                    )}
+                    <LoaSection characterName={`${character.firstname} ${character.lastname}`} factionForumSettings={factionForumSettings} />
 
                     <Card className="lg:col-span-3">
                         <CardHeader>

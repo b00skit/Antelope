@@ -44,7 +44,7 @@ interface SecondaryAssignmentData {
     title: string | null;
 }
 
-interface LoaTopic {
+export interface LoaTopic {
     id: number;
     title: string;
     author: string;
@@ -222,7 +222,6 @@ async function getCharacterData(name: string) {
     
     let forumData: ForumData | null = null;
     let forumProfileUrl: string | null = null;
-    let loaRecords: LoaTopic[] = [];
 
     if (selectedFaction.phpbb_api_url && selectedFaction.phpbb_api_key) {
         const baseUrl = selectedFaction.phpbb_api_url.endsWith('/') ? selectedFaction.phpbb_api_url : `${selectedFaction.phpbb_api_url}/`;
@@ -244,26 +243,6 @@ async function getCharacterData(name: string) {
             }
         } catch (error) {
             console.error(`[Forum API] Error fetching forum data:`, error);
-        }
-
-        if (selectedFaction.phpbb_loa_forum_id) {
-            try {
-                const loaForumUrl = `${baseUrl}app.php/booskit/phpbbapi/forum/${selectedFaction.phpbb_loa_forum_id}?key=${apiKey}`;
-                const loaResponse = await fetch(loaForumUrl, { next: { revalidate: config.FORUM_API_REFRESH_MINUTES * 60 } });
-                if (loaResponse.ok) {
-                    const data = await loaResponse.json();
-                    if (data.forum?.topics) {
-                        loaRecords = data.forum.topics.filter((topic: LoaTopic) => {
-                            const match = topic.title.match(/\[.*?\]\s*(.*?)\s*\[/);
-                            return match && match[1].toLowerCase() === characterName.toLowerCase();
-                        });
-                    }
-                } else {
-                     console.warn(`[Forum API] Failed to fetch LOA data. Status: ${loaResponse.status}`);
-                }
-            } catch (error) {
-                console.error(`[Forum API] Error fetching LOA data:`, error);
-            }
         }
     }
     
@@ -378,6 +357,12 @@ async function getCharacterData(name: string) {
 
     const mdcRecordUrl = `https://mdc.gta.world/record/${nameParts.firstname}_${nameParts.lastname}`;
 
+    const factionForumSettings = {
+        phpbb_api_url: selectedFaction.phpbb_api_url,
+        phpbb_api_key: selectedFaction.phpbb_api_key,
+        phpbb_loa_forum_id: selectedFaction.phpbb_loa_forum_id,
+    };
+
     return { 
         character: { ...charData.data, id: characterId }, 
         totalAbas, 
@@ -390,7 +375,7 @@ async function getCharacterData(name: string) {
         secondaryAssignments,
         forumProfileUrl,
         mdcRecordUrl,
-        loaRecords,
+        factionForumSettings,
     };
 }
 

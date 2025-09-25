@@ -15,6 +15,13 @@
       "when": 1758792873838,
       "tag": "0001_kind_madelyne_pryor",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1758799048110,
+      "tag": "0002_awesome_supernaut",
+      "breakpoints": true
     }
   ]
 }
