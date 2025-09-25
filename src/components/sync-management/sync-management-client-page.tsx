@@ -201,7 +201,7 @@ export function SyncManagementClientPage() {
             const res = await fetch(`/api/sync-management/trigger/${previewing}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(previewData.sourceData),
+                body: JSON.stringify(previewData),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
