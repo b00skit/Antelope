@@ -16,4 +16,5 @@ export * from './schema/organization';
 export * from './schema/organizationFavorites';
 export * from './schema/setup';
 export * from './schema/factionBlockedUsers';
+export * from './schema/auditLogs';
 export * from './schema/relations';

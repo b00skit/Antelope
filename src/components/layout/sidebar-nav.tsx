@@ -290,6 +290,20 @@ export function SidebarNav() {
                 </SidebarMenuButton>
             </SidebarMenuItem>
           )}
+          {session?.hasActiveFaction && (
+            <SidebarMenuItem>
+                <SidebarMenuButton
+                asChild
+                isActive={isActive('/audit-logs')}
+                tooltip="Audit Logs"
+                >
+                <Link href="/audit-logs">
+                    <History />
+                    <span>Audit Logs</span>
+                </Link>
+                </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
            {showDataExports && (
             <SidebarMenuItem>
                 <SidebarMenuButton
