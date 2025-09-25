@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, Loader2, PlusCircle, Building, MoreVertical, Pencil, Trash2, Eye, Star, Users, BarChart, UserCog } from "lucide-react";
+import { AlertTriangle, Loader2, PlusCircle, Building, MoreVertical, Pencil, Trash2, Eye, Star, Users, BarChart, UserCog, Trophy } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
 import type { Cat2, FactionUser } from "./units-divisions-client-page";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
