@@ -1,3 +1,4 @@
+
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
@@ -72,6 +73,7 @@ export async function GET(request: NextRequest) {
                     or(
                         eq(activityRosters.visibility, 'public'),
                         eq(activityRosters.visibility, 'private'),
+                        eq(activityRosters.visibility, 'organization'),
                         eq(activityRosters.created_by, session.userId)
                     )
                 ),
