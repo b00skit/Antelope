@@ -4,12 +4,14 @@
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { AlertTriangle, Loader2, UserX } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
 import { MembersTable } from "./members-table";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../ui/breadcrumb";
 import Link from "next/link";
 import { FactionUser } from "./units-divisions-client-page";
+import { Button } from "../ui/button";
+import { SyncExclusionsDialog } from "./sync-exclusions-dialog";
 
 interface Member {
     id: number;
@@ -54,6 +56,7 @@ export function Cat2MembersPage({ cat1Id, cat2Id }: Cat2MembersPageProps) {
     const [data, setData] = useState<PageData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isExclusionsOpen, setIsExclusionsOpen] = useState(false);
 
     const fetchData = async () => {
         setIsLoading(true);
@@ -100,6 +103,12 @@ export function Cat2MembersPage({ cat1Id, cat2Id }: Cat2MembersPageProps) {
     
     return (
         <div className="container mx-auto p-4 md:p-6 lg:p-8 space-y-6">
+            <SyncExclusionsDialog 
+                open={isExclusionsOpen}
+                onOpenChange={setIsExclusionsOpen}
+                categoryType="cat_2"
+                categoryId={cat2Id}
+            />
             <Breadcrumb>
                 <BreadcrumbList>
                     <BreadcrumbItem>
@@ -122,6 +131,14 @@ export function Cat2MembersPage({ cat1Id, cat2Id }: Cat2MembersPageProps) {
             <PageHeader
                 title="Member Management"
                 description={`Manage members for ${data.unit.name}`}
+                actions={
+                    data.canManage && data.unit.settings_json?.forum_group_id ? (
+                        <Button variant="outline" onClick={() => setIsExclusionsOpen(true)}>
+                            <UserX className="mr-2" />
+                            Manage Sync Exclusions
+                        </Button>
+                    ) : null
+                }
             />
             <MembersTable 
                 members={data.members}

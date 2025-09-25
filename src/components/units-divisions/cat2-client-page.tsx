@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, Loader2, PlusCircle, Building, MoreVertical, Pencil, Trash2, Eye, Star, Users, BarChart, UserCog, Trophy, ClipboardList } from "lucide-react";
+import { AlertTriangle, Loader2, PlusCircle, Building, MoreVertical, Pencil, Trash2, Eye, Star, Users, BarChart, UserCog, Trophy, ClipboardList, UserX } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
 import type { Cat2, FactionUser } from "./units-divisions-client-page";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "../ui/breadcrumb";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { ForumSyncDialog } from "./forum-sync-dialog";
+import { SyncExclusionsDialog } from "./sync-exclusions-dialog";
 
 interface Member {
     id: number;
@@ -68,6 +69,7 @@ export function Cat2ClientPage({ cat1Id, cat2Id }: Cat2ClientPageProps) {
     const [isCat3DialogOpen, setIsCat3DialogOpen] = useState(false);
     const [editingCat3, setEditingCat3] = useState<Cat3 | null>(null);
     const [isSyncDialogOpen, setIsSyncDialogOpen] = useState(false);
+    const [isExclusionsOpen, setIsExclusionsOpen] = useState(false);
     const { toast } = useToast();
     const { favorites, toggleFavorite } = useOrganizationFavorites();
 
@@ -173,6 +175,12 @@ export function Cat2ClientPage({ cat1Id, cat2Id }: Cat2ClientPageProps) {
                 categoryId={cat2Id}
                 allFactionMembers={data.allFactionMembers}
             />
+            <SyncExclusionsDialog 
+                open={isExclusionsOpen}
+                onOpenChange={setIsExclusionsOpen}
+                categoryType="cat_2"
+                categoryId={cat2Id}
+            />
 
              <Breadcrumb>
                 <BreadcrumbList>
@@ -193,7 +201,13 @@ export function Cat2ClientPage({ cat1Id, cat2Id }: Cat2ClientPageProps) {
                     canManage && (
                         <div className="flex gap-2">
                             {unit.settings_json?.forum_group_id && (
+                                <>
+                                <Button variant="secondary" onClick={() => setIsExclusionsOpen(true)}>
+                                    <UserX className="mr-2" />
+                                    Manage Exclusions
+                                </Button>
                                 <Button variant="secondary" onClick={() => setIsSyncDialogOpen(true)}>Compare & Sync</Button>
+                                </>
                             )}
                             <Button asChild>
                                 <Link href={`/units-divisions/${cat1Id}/${cat2Id}/members`}>

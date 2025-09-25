@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, Loader2, Building, BarChart, Users, UserCog, Trophy, ClipboardList } from "lucide-react";
+import { AlertTriangle, Loader2, Building, BarChart, Users, UserCog, Trophy, ClipboardList, UserX } from "lucide-react";
 import { Skeleton } from "../ui/skeleton";
 import type { FactionUser } from "./units-divisions-client-page";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
@@ -14,6 +14,7 @@ import Link from "next/link";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { ForumSyncDialog } from "./forum-sync-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { SyncExclusionsDialog } from "./sync-exclusions-dialog";
 
 interface Member {
     id: number;
@@ -62,6 +63,7 @@ export function Cat3ClientPage({ cat1Id, cat2Id, cat3Id }: Cat3ClientPageProps) 
     const [isActionLoading, setIsActionLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isSyncDialogOpen, setIsSyncDialogOpen] = useState(false);
+    const [isExclusionsOpen, setIsExclusionsOpen] = useState(false);
     const { toast } = useToast();
 
     const fetchData = async () => {
@@ -137,6 +139,12 @@ export function Cat3ClientPage({ cat1Id, cat2Id, cat3Id }: Cat3ClientPageProps) 
                 categoryId={cat3Id}
                 allFactionMembers={data.allFactionMembers}
             />
+            <SyncExclusionsDialog 
+                open={isExclusionsOpen}
+                onOpenChange={setIsExclusionsOpen}
+                categoryType="cat_3"
+                categoryId={cat3Id}
+            />
              <Breadcrumb>
                 <BreadcrumbList>
                     <BreadcrumbItem>
@@ -162,7 +170,13 @@ export function Cat3ClientPage({ cat1Id, cat2Id, cat3Id }: Cat3ClientPageProps) 
                     canManage && (
                         <div className="flex gap-2">
                             {detail.settings_json?.forum_group_id && (
+                                <>
+                                <Button variant="secondary" onClick={() => setIsExclusionsOpen(true)}>
+                                    <UserX className="mr-2" />
+                                    Manage Exclusions
+                                </Button>
                                 <Button variant="secondary" onClick={() => setIsSyncDialogOpen(true)}>Compare & Sync</Button>
+                                </>
                             )}
                             <Button asChild>
                                 <Link href={`/units-divisions/${cat1Id}/${cat2Id}/${cat3Id}/members`}>
