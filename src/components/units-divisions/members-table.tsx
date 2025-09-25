@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, MoreVertical, Pencil, Trash2, User, Loader2, Move, RefreshCw } from "lucide-react";
+import { PlusCircle, MoreVertical, Pencil, Trash2, User, Loader2, Move, UserCog } from "lucide-react";
 import { format } from "date-fns";
 import { Combobox } from '../ui/combobox';
 import { Input } from '../ui/input';
@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from '@/lib/utils';
 import { TransferMemberDialog } from './transfer-member-dialog';
+import { Badge } from '../ui/badge';
 
 
 interface Member {
@@ -40,7 +41,8 @@ interface Member {
     created_at: string;
     creator: {
         username: string;
-    }
+    },
+    manual: boolean;
 }
 
 interface MembersTableProps {
@@ -65,7 +67,6 @@ export function MembersTable({ members, allFactionMembers, allAssignedCharacterI
     const [isDeleting, setIsDeleting] = useState<number | null>(null);
     const [transferringMember, setTransferringMember] = useState<Member | null>(null);
     const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
-    const [isSyncing, setIsSyncing] = useState(false);
     const { toast } = useToast();
 
     const currentMemberIds = new Set(members.map(m => m.character_id));
@@ -90,7 +91,7 @@ export function MembersTable({ members, allFactionMembers, allAssignedCharacterI
             const res = await fetch(`/api/units-divisions/${cat1Id}/${cat2Id}/members`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ character_id: character.character_id, title: newTitle }),
+                body: JSON.stringify({ character_id: character.character_id, title: newTitle, manual: true }),
             });
             const result = await res.json();
             if (!res.ok) throw new Error(result.error);
@@ -147,26 +148,6 @@ export function MembersTable({ members, allFactionMembers, allAssignedCharacterI
         setTransferringMember(member);
         setIsTransferDialogOpen(true);
     }
-    
-    const handleSync = async () => {
-        setIsSyncing(true);
-        try {
-            const res = await fetch('/api/units-divisions/sync-forum-group', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ categoryType: 'cat_2', categoryId: cat2Id }),
-            });
-            const result = await res.json();
-            if (!res.ok) throw new Error(result.error);
-            toast({ title: 'Success', description: result.message });
-            onDataChange();
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Error', description: err.message });
-        } finally {
-            setIsSyncing(false);
-        }
-    }
-
 
     return (
         <>
@@ -189,12 +170,6 @@ export function MembersTable({ members, allFactionMembers, allAssignedCharacterI
                     </div>
                     {canManage && (
                         <div className="flex gap-2">
-                             {forumGroupId && (
-                                <Button variant="secondary" onClick={handleSync} disabled={isSyncing}>
-                                    {isSyncing ? <Loader2 className="mr-2 animate-spin" /> : <RefreshCw className="mr-2" />}
-                                    Sync with Forum
-                                </Button>
-                             )}
                              <Button onClick={() => setIsAdding(!isAdding)}>
                                 <PlusCircle className="mr-2" />
                                 {isAdding ? 'Cancel' : 'Add Member'}
@@ -235,7 +210,10 @@ export function MembersTable({ members, allFactionMembers, allAssignedCharacterI
                         <TableBody>
                             {members.map(member => (
                                 <TableRow key={member.id}>
-                                    <TableCell>{member.character_name}</TableCell>
+                                    <TableCell className="flex items-center gap-2">
+                                        {member.character_name}
+                                        {member.manual && <Badge variant="secondary"><UserCog className="mr-1 h-3 w-3" /> Manual</Badge>}
+                                    </TableCell>
                                     <TableCell>{member.rank_name}</TableCell>
                                     <TableCell>
                                         {editingMember?.id === member.id ? (

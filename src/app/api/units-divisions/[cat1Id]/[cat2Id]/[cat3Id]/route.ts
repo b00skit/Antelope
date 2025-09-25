@@ -3,8 +3,8 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { factionOrganizationCat1, factionOrganizationCat2, factionOrganizationCat3, factionMembersCache, factionOrganizationMembership, factionMembers } from '@/db/schema';
-import { and, eq } from 'drizzle-orm';
+import { factionOrganizationCat1, factionOrganizationCat2, factionOrganizationCat3, factionMembersCache, factionOrganizationMembership, factionMembers, forumApiCache } from '@/db/schema';
+import { and, eq, inArray } from 'drizzle-orm';
 import { canManageCat2, canUserManage } from '../helpers';
 
 interface RouteParams {
@@ -15,10 +15,73 @@ interface RouteParams {
     }
 }
 
+async function autoSyncForumGroup(cat3: any, sessionUserId: number) {
+    const forumGroupId = cat3.settings_json?.forum_group_id;
+    if (!forumGroupId) return;
+
+    const [forumCache, factionCache] = await Promise.all([
+        db.query.forumApiCache.findFirst({
+            where: and(
+                eq(forumApiCache.faction_id, cat3.faction_id),
+                eq(forumApiCache.group_id, forumGroupId)
+            )
+        }),
+        db.query.factionMembersCache.findFirst({
+            where: eq(factionMembersCache.faction_id, cat3.faction_id)
+        })
+    ]);
+
+    if (!forumCache?.data?.members || !factionCache?.members) {
+        console.warn(`[Auto-Sync Cat3 ${cat3.id}] Missing forum or faction cache. Skipping sync.`);
+        return;
+    }
+
+    const forumUsernames = new Set(forumCache.data.members.map((m: any) => m.username.replace(/_/g, ' ')));
+    const factionMembersMap = new Map(factionCache.members.map((m: any) => [m.character_name, m.character_id]));
+
+    const characterIdsInForumGroup = new Set(
+        Array.from(forumUsernames)
+            .map(username => factionMembersMap.get(username))
+            .filter((id): id is number => id !== undefined)
+    );
+    
+    const existingMemberships = await db.query.factionOrganizationMembership.findMany({
+        where: and(
+            eq(factionOrganizationMembership.category_id, cat3.id),
+            eq(factionOrganizationMembership.type, 'cat_3')
+        )
+    });
+    
+    const existingMemberIds = new Set(existingMemberships.map(m => m.character_id));
+    
+    // Add new members from forum group
+    const membersToAdd = [...characterIdsInForumGroup].filter(id => !existingMemberIds.has(id));
+    if (membersToAdd.length > 0) {
+        await db.insert(factionOrganizationMembership).values(
+            membersToAdd.map(charId => ({
+                type: 'cat_3',
+                category_id: cat3.id,
+                character_id: charId,
+                created_by: sessionUserId,
+                manual: false,
+            }))
+        );
+    }
+    
+    // Remove members who are no longer in the forum group (but were not added manually)
+    const membersToRemove = existingMemberships
+        .filter(m => !m.manual && !characterIdsInForumGroup.has(m.character_id))
+        .map(m => m.id);
+
+    if (membersToRemove.length > 0) {
+        await db.delete(factionOrganizationMembership).where(inArray(factionOrganizationMembership.id, membersToRemove));
+    }
+}
+
 export async function GET(request: NextRequest, { params }: RouteParams) {
     const cookieStore = await cookies();
     const session = await getSession(cookieStore);
-    if (!session.isLoggedIn) {
+    if (!session.isLoggedIn || !session.userId) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
@@ -43,6 +106,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     if (!cat3) {
         return NextResponse.json({ error: 'Detail not found.' }, { status: 404 });
     }
+
+    // Auto-sync before fetching the rest of the data
+    await autoSyncForumGroup(cat3, session.userId);
 
     const { authorized, user, membership, faction } = await canManageCat2(session, cat3.cat2_id);
 
