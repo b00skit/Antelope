@@ -172,7 +172,19 @@ export function RosterMember({
             </TableCell>
             <TableCell>{member.rank_name}</TableCell>
             {showAssignmentTitles && (
-                <TableCell>{member.assignmentTitle || <span className="text-muted-foreground/50">N/A</span>}</TableCell>
+                <TableCell>
+                    <div 
+                        className={cn(isOrganizational && !readOnly && "cursor-pointer group")}
+                        onClick={() => {
+                            if (isOrganizational && !readOnly && onEditTitle) {
+                                onEditTitle(member);
+                            }
+                        }}
+                    >
+                        {member.assignmentTitle || <span className="text-muted-foreground/50">N/A</span>}
+                         {isOrganizational && !readOnly && <Pencil className="inline ml-2 h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />}
+                    </div>
+                </TableCell>
             )}
             <TableCell>{formatTimestamp(member.last_duty)}</TableCell>
             <TableCell className={abasClass}>{member.abas ?? 'N/A'}</TableCell>

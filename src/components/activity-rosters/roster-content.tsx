@@ -553,7 +553,7 @@ export function RosterContent({ initialData, rosterId, readOnly = false, onRefre
                         className="fixed bottom-4 left-0 right-0 w-full flex justify-center z-50 pointer-events-none"
                     >
                         <div className="bg-card border shadow-lg rounded-lg p-2 flex items-center gap-4 pointer-events-auto">
-                            <p className="text-sm font-medium px-2">{selectedMemberIds.size} selected</p>
+                            <p className="text-sm font-medium px-2 flex-1 text-center">{selectedMemberIds.size} selected</p>
                             <div className="flex items-center gap-2">
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
