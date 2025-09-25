@@ -28,7 +28,7 @@ const cat2UpdateSchema = z.object({
 });
 
 
-export async function PUT(request: NextRequest, { params }: RouteParams) {
+export async function PUT(request: NextRequest, { params }: { params: RouteParams }) {
     const cookieStore = await cookies();
     const session = await getSession(cookieStore);
 
@@ -68,7 +68,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 }
 
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(request: NextRequest, { params }: { params: RouteParams }) {
     const cookieStore = await cookies();
     const session = await getSession(cookieStore);
     if (!session.isLoggedIn || !session.userId) {

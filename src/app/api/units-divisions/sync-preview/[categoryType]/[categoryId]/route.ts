@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { factionOrganizationMembership, factionOrganizationCat2, factionOrganizationCat3, factionMembersCache, forumApiCache } from '@/db/schema';
+import { factionOrganizationMembership, factionOrganizationCat2, factionOrganizationCat3, factionMembersCache, forumApiCache, factionOrganizationSyncExclusions } from '@/db/schema';
 import { and, eq, inArray, not } from 'drizzle-orm';
 import { canManageCat2 } from '../../../[cat1Id]/[cat2Id]/helpers';
 
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         return NextResponse.json({ error: 'No forum group is configured.' }, { status: 400 });
     }
 
-    const [forumCache, factionCache, existingMemberships, allPrimaryMemberships] = await Promise.all([
+    const [forumCache, factionCache, existingMemberships, allPrimaryMemberships, exclusions] = await Promise.all([
         db.query.forumApiCache.findFirst({
             where: and(
                 eq(forumApiCache.faction_id, category.faction_id),
@@ -82,6 +82,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
                 )
             )
         }),
+        db.query.factionOrganizationSyncExclusions.findMany({
+            where: and(
+                eq(factionOrganizationSyncExclusions.category_id, categoryIdNum),
+                eq(factionOrganizationSyncExclusions.category_type, categoryType)
+            )
+        })
     ]);
 
     if (!forumCache?.data?.members) return NextResponse.json({ error: 'Forum group cache not found or empty. Please sync it on the Sync Management page first.' }, { status: 404 });
@@ -99,6 +105,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const existingMemberIds = new Set(existingMemberships.map(m => m.character_id));
     const manuallyAddedMemberIds = new Set(existingMemberships.filter(m => m.manual).map(m => m.character_id));
     const alreadyAssignedPrimaryIds = new Set(allPrimaryMemberships.map(m => m.character_id));
+    const excludedNames = new Set(exclusions.map(e => e.character_name));
 
     const toAddIds = [...characterIdsInForumGroup].filter(id => !existingMemberIds.has(id));
     const toRemoveIds = [...existingMemberIds].filter(id => !characterIdsInForumGroup.has(id) && !manuallyAddedMemberIds.has(id));
@@ -112,6 +119,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             character_name: memberInfo?.character_name || `ID: ${id}`, 
             rank_name: memberInfo?.rank_name || 'N/A',
             isAlreadyAssigned: !isCurrentUnitSecondary && alreadyAssignedPrimaryIds.has(id),
+            isExcluded: excludedNames.has(memberInfo?.character_name),
         };
     });
 

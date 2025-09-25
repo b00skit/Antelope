@@ -110,7 +110,7 @@ export function Cat2MembersPage({ cat1Id, cat2Id }: Cat2MembersPageProps) {
                     <BreadcrumbSeparator />
                     <BreadcrumbItem>
                         <BreadcrumbLink asChild>
-                           <Link href={`/units-divisions/${data.unit.cat1.id}/${data.unit.id}`}>{data.unit.name}</Link>
+                           <Link href={`/units-divisions/${cat1Id}/${data.unit.id}`}>{data.unit.name}</Link>
                         </BreadcrumbLink>
                     </BreadcrumbItem>
                      <BreadcrumbSeparator />

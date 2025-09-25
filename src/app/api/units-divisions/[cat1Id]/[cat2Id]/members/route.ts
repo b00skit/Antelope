@@ -21,7 +21,7 @@ const addMemberSchema = z.object({
     manual: z.boolean().default(false),
 });
 
-export async function POST(request: NextRequest, { params }: RouteParams) {
+export async function POST(request: NextRequest, { params }: { params: RouteParams }) {
     const cookieStore = await cookies();
     const session = await getSession(cookieStore);
     if (!session.isLoggedIn || !session.userId) {

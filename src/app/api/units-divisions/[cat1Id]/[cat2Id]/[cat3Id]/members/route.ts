@@ -1,6 +1,4 @@
 
-'use client';
-
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
@@ -10,13 +8,21 @@ import { z } from 'zod';
 import { canManageCat2 } from '../../helpers';
 import { eq, and, inArray } from 'drizzle-orm';
 
+interface RouteParams {
+    params: {
+        cat1Id: string;
+        cat2Id: string;
+        cat3Id: string;
+    }
+}
+
 const addMemberSchema = z.object({
     character_ids: z.array(z.number().int()),
     title: z.string().optional().nullable(),
     manual: z.boolean().default(false),
 });
 
-export async function POST(request: NextRequest, { params }: RouteParams) {
+export async function POST(request: NextRequest, { params }: { params: RouteParams }) {
     const cookieStore = await cookies();
     const session = await getSession(cookieStore);
     if (!session.isLoggedIn || !session.userId) {
