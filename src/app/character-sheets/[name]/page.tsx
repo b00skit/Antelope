@@ -352,7 +352,7 @@ async function getCharacterData(name: string) {
         }
     }
 
-    const mdcRecordUrl = `https://mdc.gta.world/records/${character.firstname}_${character.lastname}`;
+    const mdcRecordUrl = `https://mdc.gta.world/records/${nameParts.firstname}_${nameParts.lastname}`;
 
     return { 
         character: { ...charData.data, id: characterId }, 
@@ -387,5 +387,3 @@ export default async function CharacterSheetPage({ params }: PageProps) {
 
     return <CharacterSheetClientPage initialData={data} />;
 }
-
-    
