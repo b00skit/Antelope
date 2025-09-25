@@ -24,6 +24,7 @@ interface Member {
     character_name: string;
     rank_name: string;
     isAlreadyAssigned?: boolean;
+    isExcluded?: boolean;
 }
 
 interface DiffData {
@@ -60,8 +61,8 @@ export function ForumSyncDialog({ open, onOpenChange, onSyncSuccess, categoryTyp
                     if (!res.ok) throw new Error(data.error);
                     
                     setDiffData(data);
-                    // Pre-select only those who are not already assigned to another primary unit
-                    setSelectedAdd(new Set(data.toAdd.filter((m: Member) => !m.isAlreadyAssigned).map((m: Member) => m.character_id)));
+                    // Pre-select only those who are not already assigned to another primary unit and not excluded
+                    setSelectedAdd(new Set(data.toAdd.filter((m: Member) => !m.isAlreadyAssigned && !m.isExcluded).map((m: Member) => m.character_id)));
                     setSelectedRemove(new Set(data.toRemove.map((m: Member) => m.character_id)));
                 } catch (err: any) {
                     setError(err.message);
@@ -132,18 +133,18 @@ export function ForumSyncDialog({ open, onOpenChange, onSyncSuccess, categoryTyp
                         <TooltipProvider>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <h3 className="font-semibold mb-2">Members to Add ({selectedAdd.size}/{diffData.toAdd.filter(m => !m.isAlreadyAssigned).length})</h3>
+                                    <h3 className="font-semibold mb-2">Members to Add ({selectedAdd.size}/{diffData.toAdd.filter(m => !m.isAlreadyAssigned && !m.isExcluded).length})</h3>
                                     <ScrollArea className="h-64 border rounded-md">
                                         <Table>
                                             <TableHeader>
                                                 <TableRow>
-                                                    <TableHead className="w-12"><Checkbox checked={selectedAdd.size === diffData.toAdd.filter(m => !m.isAlreadyAssigned).length && diffData.toAdd.length > 0} onCheckedChange={(checked) => setSelectedAdd(new Set(checked ? diffData.toAdd.filter(m => !m.isAlreadyAssigned).map(m => m.character_id) : []))} /></TableHead>
+                                                    <TableHead className="w-12"><Checkbox checked={selectedAdd.size === diffData.toAdd.filter(m => !m.isAlreadyAssigned && !m.isExcluded).length && diffData.toAdd.length > 0} onCheckedChange={(checked) => setSelectedAdd(new Set(checked ? diffData.toAdd.filter(m => !m.isAlreadyAssigned && !m.isExcluded).map(m => m.character_id) : []))} /></TableHead>
                                                     <TableHead>Name</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
                                                 {diffData.toAdd.map(member => (
-                                                    <TableRow key={member.character_id}>
+                                                    <TableRow key={member.character_id} className={ (member.isAlreadyAssigned || member.isExcluded) ? 'bg-muted/50' : ''}>
                                                         <TableCell>
                                                             <Tooltip>
                                                                 <TooltipTrigger asChild>
@@ -151,14 +152,14 @@ export function ForumSyncDialog({ open, onOpenChange, onSyncSuccess, categoryTyp
                                                                         <Checkbox 
                                                                             checked={selectedAdd.has(member.character_id)} 
                                                                             onCheckedChange={() => toggleSelection(selectedAdd, setSelectedAdd, member.character_id)}
-                                                                            disabled={member.isAlreadyAssigned}
+                                                                            disabled={member.isAlreadyAssigned || member.isExcluded}
                                                                         />
-                                                                        {member.isAlreadyAssigned && <HelpCircle className="h-4 w-4 ml-2 text-muted-foreground" />}
+                                                                        {(member.isAlreadyAssigned || member.isExcluded) && <HelpCircle className="h-4 w-4 ml-2 text-muted-foreground" />}
                                                                     </div>
                                                                 </TooltipTrigger>
-                                                                {member.isAlreadyAssigned && (
+                                                                {(member.isAlreadyAssigned || member.isExcluded) && (
                                                                     <TooltipContent>
-                                                                        <p>This member is already in another primary assignment.</p>
+                                                                        <p>{member.isAlreadyAssigned ? 'This member is already in another primary assignment.' : 'This member is on the exclusion list.'}</p>
                                                                     </TooltipContent>
                                                                 )}
                                                             </Tooltip>

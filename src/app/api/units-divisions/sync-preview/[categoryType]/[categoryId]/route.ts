@@ -1,4 +1,6 @@
 
+'use client';
+
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
@@ -12,6 +14,14 @@ interface RouteParams {
         categoryType: 'cat_2' | 'cat_3';
         categoryId: string;
     }
+}
+
+interface Member {
+    character_id: number;
+    character_name: string;
+    rank_name: string;
+    isAlreadyAssigned?: boolean;
+    isExcluded?: boolean;
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
