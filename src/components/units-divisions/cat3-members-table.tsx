@@ -103,7 +103,7 @@ export function Cat3MembersTable({ members, allFactionMembers, allAssignedCharac
             setIsAdding(false);
             setNamesToAdd('');
             setNewTitle('');
-        } catch (err: any {
+        } catch (err: any) {
             toast({ variant: 'destructive', title: 'Error', description: err.message });
         } finally {
             setIsSubmitting(false);
