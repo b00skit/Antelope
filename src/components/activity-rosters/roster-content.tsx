@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, PlusCircle, MoreVertical, Pencil, Trash2, Filter, Loader2, Move, Tag } from 'lucide-react';
+import { AlertTriangle, PlusCircle, MoreVertical, Pencil, Trash2, Filter, Loader2, Move, Tag, Award } from 'lucide-react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { RosterSection } from './roster-section';
@@ -34,6 +34,8 @@ import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
+import { TitleEditDialog } from './title-edit-dialog';
+
 
 // Interfaces matching the API response
 interface Member {
@@ -48,7 +50,7 @@ interface Member {
     label?: string | null;
     isPrimary?: boolean;
     isAlternative?: boolean;
-    // Added for forum integration
+    membershipId?: number; // Added for org rosters
     forum_groups?: number[];
 }
 
@@ -73,7 +75,7 @@ interface RosterConfig {
 }
 
 interface RosterData {
-    roster: { id: number; name: string };
+    roster: { id: number; name: string, isOrganizational?: boolean; organizationInfo?: { type: 'cat_2' | 'cat_3', id: number } };
     faction: { id: number; name: string; supervisor_rank: number; minimum_abas: number; minimum_supervisor_abas: number; };
     members: Member[];
     missingForumUsers: string[];
@@ -85,6 +87,7 @@ interface RosterContentProps {
     initialData: RosterData;
     rosterId: number;
     readOnly?: boolean;
+    onRefresh: () => void;
 }
 
 // Dialog for creating/editing sections
@@ -165,7 +168,7 @@ const SectionDialog = ({
 
 
 // Main Roster Content Component
-export function RosterContent({ initialData, rosterId, readOnly = false }: RosterContentProps) {
+export function RosterContent({ initialData, rosterId, readOnly = false, onRefresh }: RosterContentProps) {
     const [sections, setSections] = useState<Section[]>((initialData.sections || []).sort((a,b) => a.order - b.order));
     const [members, setMembers] = useState<Member[]>(initialData.members);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -173,6 +176,8 @@ export function RosterContent({ initialData, rosterId, readOnly = false }: Roste
     const [isFiltering, setIsFiltering] = useState(false);
     const [selectedMemberIds, setSelectedMemberIds] = useState<Set<number>>(new Set());
     const [labelFilter, setLabelFilter] = useState<string | null>(null);
+    const [isTitleDialogOpen, setIsTitleDialogOpen] = useState(false);
+    const [editingMembersForTitle, setEditingMembersForTitle] = useState<Member[]>([]);
     const { toast } = useToast();
 
     const assignedMemberIds = new Set(sections.flatMap(s => s.character_ids_json));
@@ -182,15 +187,8 @@ export function RosterContent({ initialData, rosterId, readOnly = false }: Roste
 
     const unassignedMembers = filteredMembers.filter(m => !assignedMemberIds.has(m.character_id));
     
-    const showAssignmentTitles = React.useMemo(() => {
-        try {
-            return initialData.members.some(m => m.assignmentTitle);
-        } catch {
-            return false;
-        }
-    }, [initialData.members]);
-    
-    const markAlternativeCharacters = React.useMemo(() => initialData.rosterConfig?.mark_alternative_characters ?? false, [initialData.rosterConfig]);
+    const showAssignmentTitles = React.useMemo(() => initialData.rosterConfig?.show_assignment_titles, [initialData.rosterConfig]);
+    const markAlternativeCharacters = React.useMemo(() => initialData.rosterConfig?.mark_alternative_characters, [initialData.rosterConfig]);
 
     const getAbasClass = (member: Member): string => {
         const abasValue = parseFloat(member.abas || '0');
@@ -414,23 +412,12 @@ export function RosterContent({ initialData, rosterId, readOnly = false }: Roste
         }
     };
 
-    const handleSetLabel = async (characterId: number, color: string | null) => {
-        const originalMembers = [...members];
-        setMembers(prev => prev.map(m => m.character_id === characterId ? { ...m, label: color } : m));
-
-        try {
-            const res = await fetch(`/api/rosters/${rosterId}/label`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ characterId, color }),
-            });
-            if (!res.ok) throw new Error('Failed to set label.');
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Error', description: err.message });
-            setMembers(originalMembers);
-        }
+    const handleOpenTitleDialog = (member: Member | Member[]) => {
+        const membersToEdit = Array.isArray(member) ? member : [member];
+        setEditingMembersForTitle(membersToEdit);
+        setIsTitleDialogOpen(true);
     };
-    
+
     const handleBulkSetLabel = async (color: string | null) => {
         const characterIds = Array.from(selectedMemberIds);
         const originalMembers = [...members];
@@ -473,10 +460,12 @@ export function RosterContent({ initialData, rosterId, readOnly = false }: Roste
                                 <PlusCircle />
                                 Add Section
                             </Button>
-                            <Button variant="secondary" onClick={handleAutoFilter} disabled={isFiltering}>
-                                {isFiltering ? <Loader2 className="animate-spin" /> : <Filter />}
-                                Auto-Filter Roster
-                            </Button>
+                            {!initialData.roster.isOrganizational && (
+                                <Button variant="secondary" onClick={handleAutoFilter} disabled={isFiltering}>
+                                    {isFiltering ? <Loader2 className="animate-spin" /> : <Filter />}
+                                    Auto-Filter Roster
+                                </Button>
+                            )}
                         </div>
                     )}
                      {Object.keys(labels).length > 0 && (
@@ -516,9 +505,10 @@ export function RosterContent({ initialData, rosterId, readOnly = false }: Roste
                             selectedMemberIds={selectedMemberIds}
                             onToggleSelection={handleToggleSelection}
                             labels={labels}
-                            onSetLabel={handleSetLabel}
+                            onEditTitle={handleOpenTitleDialog}
                             readOnly={readOnly}
                             markAlts={markAlternativeCharacters}
+                            isOrganizational={initialData.roster.isOrganizational}
                         />
                     );
                 })}
@@ -534,9 +524,10 @@ export function RosterContent({ initialData, rosterId, readOnly = false }: Roste
                     selectedMemberIds={selectedMemberIds}
                     onToggleSelection={handleToggleSelection}
                     labels={labels}
-                    onSetLabel={handleSetLabel}
+                    onEditTitle={handleOpenTitleDialog}
                     readOnly={readOnly}
                     markAlts={markAlternativeCharacters}
+                    isOrganizational={initialData.roster.isOrganizational}
                 />
             </div>
              <SectionDialog
@@ -544,6 +535,13 @@ export function RosterContent({ initialData, rosterId, readOnly = false }: Roste
                 onClose={() => setIsDialogOpen(false)}
                 onSave={handleAddOrUpdateSection}
                 section={editingSection}
+            />
+             <TitleEditDialog
+                open={isTitleDialogOpen}
+                onOpenChange={setIsTitleDialogOpen}
+                members={editingMembersForTitle}
+                onSuccess={onRefresh}
+                organizationInfo={initialData.roster.organizationInfo}
             />
             <AnimatePresence>
                 {!readOnly && selectedMemberIds.size > 0 && (
@@ -593,6 +591,12 @@ export function RosterContent({ initialData, rosterId, readOnly = false }: Roste
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                          </DropdownMenu>
+                         {initialData.roster.isOrganizational && showAssignmentTitles && (
+                            <Button variant="outline" onClick={() => handleOpenTitleDialog(members.filter(m => selectedMemberIds.has(m.character_id)))}>
+                                <Award className="mr-2" />
+                                Mass Assign Title
+                            </Button>
+                         )}
                     </motion.div>
                 )}
             </AnimatePresence>

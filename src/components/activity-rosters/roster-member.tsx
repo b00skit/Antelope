@@ -8,7 +8,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { Checkbox } from '../ui/checkbox';
-import { MoreVertical, Move, Tag, User, UserCheck } from 'lucide-react';
+import { MoreVertical, Move, Tag, User, UserCheck, Award } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -38,6 +38,7 @@ interface Member {
     label?: string | null;
     isPrimary?: boolean;
     isAlternative?: boolean;
+    membershipId?: number;
 }
 
 interface Section {
@@ -55,9 +56,11 @@ interface RosterMemberProps {
     isSelected: boolean;
     onToggleSelection: (characterId: number) => void;
     labels: Record<string, string>;
-    onSetLabel: (characterId: number, color: string | null) => void;
+    onSetLabel?: (characterId: number, color: string | null) => void;
+    onEditTitle?: (member: Member) => void;
     readOnly?: boolean;
     markAlts?: boolean;
+    isOrganizational?: boolean;
 }
 
 const formatTimestamp = (timestamp: string | null) => {
@@ -78,8 +81,10 @@ export function RosterMember({
     onToggleSelection,
     labels,
     onSetLabel,
+    onEditTitle,
     readOnly = false,
     markAlts = false,
+    isOrganizational = false,
 }: RosterMemberProps) {
     const [{ isDragging }, drag] = useDrag({
         type: ItemTypes.MEMBER,
@@ -180,6 +185,14 @@ export function RosterMember({
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
+                             {isOrganizational && showAssignmentTitles && onEditTitle && (
+                                <>
+                                    <DropdownMenuItem onSelect={() => onEditTitle(member)}>
+                                        <Award className="mr-2" /> Edit Title
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                </>
+                            )}
                             <DropdownMenuSub>
                                 <DropdownMenuSubTrigger>
                                     <Move className="mr-2" /> Move To
@@ -197,23 +210,25 @@ export function RosterMember({
                                     )}
                                 </DropdownMenuSubContent>
                             </DropdownMenuSub>
-                            <DropdownMenuSub>
-                                <DropdownMenuSubTrigger>
-                                    <Tag className="mr-2" /> Set Label
-                                </DropdownMenuSubTrigger>
-                                <DropdownMenuSubContent>
-                                    {Object.entries(labels).map(([color, title]) => (
-                                        <DropdownMenuItem key={color} onSelect={() => onSetLabel(member.character_id, color)}>
-                                            <span className={cn('mr-2 h-2 w-2 rounded-full', `bg-${color}-500`)} />
-                                            {title}
+                            {onSetLabel && (
+                                <DropdownMenuSub>
+                                    <DropdownMenuSubTrigger>
+                                        <Tag className="mr-2" /> Set Label
+                                    </DropdownMenuSubTrigger>
+                                    <DropdownMenuSubContent>
+                                        {Object.entries(labels).map(([color, title]) => (
+                                            <DropdownMenuItem key={color} onSelect={() => onSetLabel(member.character_id, color)}>
+                                                <span className={cn('mr-2 h-2 w-2 rounded-full', `bg-${color}-500`)} />
+                                                {title}
+                                            </DropdownMenuItem>
+                                        ))}
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem onSelect={() => onSetLabel(member.character_id, null)}>
+                                            Clear Label
                                         </DropdownMenuItem>
-                                    ))}
-                                    <DropdownMenuSeparator />
-                                     <DropdownMenuItem onSelect={() => onSetLabel(member.character_id, null)}>
-                                        Clear Label
-                                    </DropdownMenuItem>
-                                </DropdownMenuSubContent>
-                            </DropdownMenuSub>
+                                    </DropdownMenuSubContent>
+                                </DropdownMenuSub>
+                            )}
                         </DropdownMenuContent>
                     </DropdownMenu>
                 )}
