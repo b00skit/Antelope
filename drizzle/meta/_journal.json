@@ -5,43 +5,8 @@
     {
       "idx": 0,
       "version": "6",
-      "when": 1758791544393,
-      "tag": "0000_slim_midnight",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1758792873838,
-      "tag": "0001_kind_madelyne_pryor",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1758799048110,
-      "tag": "0002_awesome_supernaut",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "6",
-      "when": 1758800046503,
-      "tag": "0003_kind_mathemanic",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "6",
-      "when": 1758800169389,
-      "tag": "0004_strange_magma",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "6",
-      "when": 1758801506203,
-      "tag": "0005_left_mimic",
+      "when": 1758802977586,
+      "tag": "0000_pink_talkback",
       "breakpoints": true
     }
   ]

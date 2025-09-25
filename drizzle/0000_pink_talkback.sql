@@ -22,7 +22,9 @@ CREATE TABLE `factions` (
 	`minimum_supervisor_abas` real DEFAULT 0,
 	`feature_flags` text DEFAULT '{"activity_rosters_enabled":true,"character_sheets_enabled":true,"statistics_enabled":true,"units_divisions_enabled":false,"data_exports_enabled":false}',
 	`phpbb_api_url` text,
-	`phpbb_api_key` text
+	`phpbb_api_key` text,
+	`phpbb_loa_forum_id` integer,
+	`phpbb_loa_archive_forum_id` integer
 );
 --> statement-breakpoint
 CREATE TABLE `faction_users` (
@@ -174,6 +176,7 @@ CREATE TABLE `faction_organization_cat2` (
 	`short_name` text,
 	`access_json` text,
 	`settings_json` text,
+	`activity_roster_id` integer,
 	`created_by` integer NOT NULL,
 	`created_at` integer DEFAULT (strftime('%s', 'now')),
 	`updated_at` integer DEFAULT (strftime('%s', 'now')),
@@ -190,6 +193,7 @@ CREATE TABLE `faction_organization_cat3` (
 	`short_name` text,
 	`access_json` text,
 	`settings_json` text,
+	`activity_roster_id` integer,
 	`created_by` integer NOT NULL,
 	`created_at` integer DEFAULT (strftime('%s', 'now')),
 	`updated_at` integer DEFAULT (strftime('%s', 'now')),
@@ -232,6 +236,13 @@ CREATE TABLE `organization_favorites` (
 	FOREIGN KEY (`faction_id`) REFERENCES `factions`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
+CREATE TABLE `faction_organization_sync_exclusions` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`category_type` text NOT NULL,
+	`category_id` integer NOT NULL,
+	`character_name` text NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE `setup` (
 	`completed` integer PRIMARY KEY DEFAULT false NOT NULL
 );
@@ -245,4 +256,16 @@ CREATE TABLE `faction_blocked_users` (
 	FOREIGN KEY (`faction_id`) REFERENCES `factions`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`blocked_by_user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE TABLE `faction_audit_logs` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`faction_id` integer NOT NULL,
+	`user_id` integer NOT NULL,
+	`category` text NOT NULL,
+	`action` text NOT NULL,
+	`details` text,
+	`created_at` integer DEFAULT (strftime('%s', 'now')),
+	FOREIGN KEY (`faction_id`) REFERENCES `factions`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade
 );
