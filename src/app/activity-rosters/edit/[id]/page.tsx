@@ -121,6 +121,7 @@ export default function EditRosterPage() {
     
     const watchVisibility = form.watch('visibility');
     const watchOrganization = form.watch('organization');
+    const isOrgSelected = watchOrganization !== 'none' && !!watchOrganization;
 
     useEffect(() => {
         if (!rosterId) return;
@@ -233,19 +234,23 @@ export default function EditRosterPage() {
                 return acc;
             }, {} as Record<string, string>);
 
-            const newJson = {
+            const newJson: any = {
                 ...currentJson,
-                include_ranks: parseRanks(basicFilters.include_ranks),
-                exclude_ranks: parseRanks(basicFilters.exclude_ranks),
-                include_members: parseMembers(basicFilters.include_members),
-                exclude_members: parseMembers(basicFilters.exclude_members),
-                forum_groups_included: basicFilters.forum_groups_included,
-                forum_groups_excluded: basicFilters.forum_groups_excluded,
                 show_assignment_titles: basicFilters.show_assignment_titles,
                 mark_alternative_characters: basicFilters.mark_alternative_characters,
                 allow_roster_snapshots: basicFilters.allow_roster_snapshots,
                 labels: parseLabels(basicFilters.labels),
             };
+
+            if (!isOrgSelected) {
+                newJson.include_ranks = parseRanks(basicFilters.include_ranks);
+                newJson.exclude_ranks = parseRanks(basicFilters.exclude_ranks);
+                newJson.include_members = parseMembers(basicFilters.include_members);
+                newJson.exclude_members = parseMembers(basicFilters.exclude_members);
+                newJson.forum_groups_included = basicFilters.forum_groups_included;
+                newJson.forum_groups_excluded = basicFilters.forum_groups_excluded;
+            }
+
             form.setValue('roster_setup_json', JSON.stringify(newJson, null, 2), { shouldValidate: true });
         } catch (e) {
             // Could happen if json is malformed, but we proceed anyway
@@ -255,9 +260,7 @@ export default function EditRosterPage() {
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         try {
-            if (values.organization === 'none' || !values.organization) {
-                syncBasicToJson();
-            }
+            syncBasicToJson();
             const finalValues = form.getValues();
 
             let submissionData: any = { ...finalValues };
@@ -430,23 +433,24 @@ export default function EditRosterPage() {
                                                 ))}
                                             </SelectContent>
                                         </Select>
-                                        <FormDescription>If selected, this roster will automatically include all members of the chosen unit/detail.</FormDescription>
+                                        <FormDescription>If selected, this roster will automatically include all members of the chosen unit/detail. Manual filters will be disabled.</FormDescription>
                                         <FormMessage />
                                     </FormItem>
                                 )}
                             />
-                            {(watchOrganization === 'none' || !watchOrganization) && (
-                                <FormItem>
-                                    <FormLabel>Roster Configuration (Optional)</FormLabel>
-                                    <Tabs defaultValue="basic" className="w-full" onValueChange={(tab) => tab === 'basic' ? syncJsonToBasic() : syncBasicToJson()}>
-                                        <TabsList>
-                                            <TabsTrigger value="basic">Basic</TabsTrigger>
-                                            <TabsTrigger value="advanced">Advanced (JSON)</TabsTrigger>
-                                        </TabsList>
-                                        <TabsContent value="basic" className="space-y-4 pt-2">
+                            <FormItem>
+                                <FormLabel>Roster Configuration (Optional)</FormLabel>
+                                <Tabs defaultValue="basic" className="w-full" onValueChange={(tab) => tab === 'basic' ? syncJsonToBasic() : syncBasicToJson()}>
+                                    <TabsList>
+                                        <TabsTrigger value="basic">Basic</TabsTrigger>
+                                        <TabsTrigger value="advanced" disabled={isOrgSelected}>Advanced (JSON)</TabsTrigger>
+                                    </TabsList>
+                                    <TabsContent value="basic" className="space-y-4 pt-2">
+                                        <fieldset disabled={isOrgSelected}>
                                             <Card>
                                                 <CardHeader>
                                                     <CardTitle className="text-base">Filters</CardTitle>
+                                                    {isOrgSelected && <CardDescription>Filters are disabled because this roster is linked to a unit/detail.</CardDescription>}
                                                 </CardHeader>
                                                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                     <FormItem>
@@ -479,89 +483,91 @@ export default function EditRosterPage() {
                                                     </FormItem>
                                                 </CardContent>
                                             </Card>
-                                            <Card>
-                                                <CardHeader>
-                                                    <CardTitle className="text-base">Display Options</CardTitle>
-                                                </CardHeader>
-                                                <CardContent className="space-y-4">
-                                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                                        <div className="space-y-0.5">
-                                                            <FormLabel>Show Assignment Titles</FormLabel>
-                                                        </div>
-                                                        <Switch checked={basicFilters.show_assignment_titles} onCheckedChange={(checked) => setBasicFilters(f => ({...f, show_assignment_titles: checked}))} />
-                                                    </FormItem>
-                                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                                        <div className="space-y-0.5">
-                                                            <FormLabel>Mark Alternative Characters</FormLabel>
-                                                        </div>
-                                                        <Switch checked={basicFilters.mark_alternative_characters} onCheckedChange={(checked) => setBasicFilters(f => ({...f, mark_alternative_characters: checked}))} />
-                                                    </FormItem>
-                                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                                        <div className="space-y-0.5">
-                                                            <FormLabel>Allow Roster Snapshots</FormLabel>
-                                                        </div>
-                                                        <Switch checked={basicFilters.allow_roster_snapshots} onCheckedChange={(checked) => setBasicFilters(f => ({...f, allow_roster_snapshots: checked}))} />
-                                                    </FormItem>
-                                                </CardContent>
-                                            </Card>
-                                            <Card>
-                                                <CardHeader>
-                                                    <CardTitle className="text-base">Labels</CardTitle>
-                                                    <CardDescription>Create color-coded labels for members on this roster.</CardDescription>
-                                                </CardHeader>
-                                                <CardContent className="space-y-2">
-                                                    {basicFilters.labels.map((label, index) => (
-                                                        <div key={index} className="flex items-center gap-2">
-                                                            <Select value={label.color} onValueChange={(value) => handleLabelChange(index, 'color', value)}>
-                                                                <SelectTrigger className="w-[120px]">
-                                                                    <SelectValue>
+                                        </fieldset>
+                                        <Card>
+                                            <CardHeader>
+                                                <CardTitle className="text-base">Display Options</CardTitle>
+                                            </CardHeader>
+                                            <CardContent className="space-y-4">
+                                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                                    <div className="space-y-0.5">
+                                                        <FormLabel>Show Assignment Titles</FormLabel>
+                                                    </div>
+                                                    <Switch checked={basicFilters.show_assignment_titles} onCheckedChange={(checked) => setBasicFilters(f => ({...f, show_assignment_titles: checked}))} />
+                                                </FormItem>
+                                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                                    <div className="space-y-0.5">
+                                                        <FormLabel>Mark Alternative Characters</FormLabel>
+                                                    </div>
+                                                    <Switch checked={basicFilters.mark_alternative_characters} onCheckedChange={(checked) => setBasicFilters(f => ({...f, mark_alternative_characters: checked}))} />
+                                                </FormItem>
+                                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                                    <div className="space-y-0.5">
+                                                        <FormLabel>Allow Roster Snapshots</FormLabel>
+                                                    </div>
+                                                    <Switch checked={basicFilters.allow_roster_snapshots} onCheckedChange={(checked) => setBasicFilters(f => ({...f, allow_roster_snapshots: checked}))} />
+                                                </FormItem>
+                                            </CardContent>
+                                        </Card>
+                                        <Card>
+                                            <CardHeader>
+                                                <CardTitle className="text-base">Labels</CardTitle>
+                                                <CardDescription>Create color-coded labels for members on this roster.</CardDescription>
+                                            </CardHeader>
+                                            <CardContent className="space-y-2">
+                                                {basicFilters.labels.map((label, index) => (
+                                                    <div key={index} className="flex items-center gap-2">
+                                                        <Select value={label.color} onValueChange={(value) => handleLabelChange(index, 'color', value)}>
+                                                            <SelectTrigger className="w-[120px]">
+                                                                <SelectValue>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className={cn('h-2 w-2 rounded-full', `bg-${label.color}-500`)} />
+                                                                        {label.color}
+                                                                    </div>
+                                                                </SelectValue>
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {labelColors.map(color => (
+                                                                    <SelectItem key={color} value={color}>
                                                                         <div className="flex items-center gap-2">
-                                                                            <span className={cn('h-2 w-2 rounded-full', `bg-${label.color}-500`)} />
-                                                                            {label.color}
+                                                                            <span className={cn('h-2 w-2 rounded-full', `bg-${color}-500`)} />
+                                                                            {color}
                                                                         </div>
-                                                                    </SelectValue>
-                                                                </SelectTrigger>
-                                                                <SelectContent>
-                                                                    {labelColors.map(color => (
-                                                                        <SelectItem key={color} value={color}>
-                                                                            <div className="flex items-center gap-2">
-                                                                                <span className={cn('h-2 w-2 rounded-full', `bg-${color}-500`)} />
-                                                                                {color}
-                                                                            </div>
-                                                                        </SelectItem>
-                                                                    ))}
-                                                                </SelectContent>
-                                                            </Select>
-                                                            <Input value={label.title} onChange={(e) => handleLabelChange(index, 'title', e.target.value)} placeholder="Label Title" />
-                                                            <Button variant="ghost" size="icon" onClick={() => removeLabel(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                                        </div>
-                                                    ))}
-                                                    <Button type="button" variant="outline" size="sm" onClick={addLabel}><Plus className="mr-2" /> Add Label</Button>
-                                                </CardContent>
-                                            </Card>
-                                        </TabsContent>
-                                        <TabsContent value="advanced">
-                                            <FormField
-                                                control={form.control}
-                                                name="roster_setup_json"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormControl>
-                                                            <Textarea
-                                                                placeholder='Paste your JSON configuration here...'
-                                                                className="font-mono min-h-[250px]"
-                                                                {...field}
-                                                                value={field.value ?? ''}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </TabsContent>
-                                    </Tabs>
-                                </FormItem>
-                            )}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <Input value={label.title} onChange={(e) => handleLabelChange(index, 'title', e.target.value)} placeholder="Label Title" />
+                                                        <Button variant="ghost" size="icon" onClick={() => removeLabel(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                                    </div>
+                                                ))}
+                                                <Button type="button" variant="outline" size="sm" onClick={addLabel}><Plus className="mr-2" /> Add Label</Button>
+                                            </CardContent>
+                                        </Card>
+                                    </TabsContent>
+                                    <TabsContent value="advanced">
+                                        <FormField
+                                            control={form.control}
+                                            name="roster_setup_json"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormControl>
+                                                        <Textarea
+                                                            placeholder='Paste your JSON configuration here...'
+                                                            className="font-mono min-h-[250px]"
+                                                            {...field}
+                                                            value={field.value ?? ''}
+                                                            disabled={isOrgSelected}
+                                                        />
+                                                    </FormControl>
+                                                    {isOrgSelected && <FormDescription>JSON editing is disabled when a roster is linked to an organization.</FormDescription>}
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </TabsContent>
+                                </Tabs>
+                            </FormItem>
                              {form.formState.errors.root && (
                                 <Alert variant="destructive">
                                     <AlertTriangle className="h-4 w-4" />
