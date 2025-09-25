@@ -12,17 +12,18 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, AlertTriangle, Check, X, ArrowRight } from 'lucide-react';
+import { Loader2, AlertTriangle, HelpCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
-import { Badge } from '../ui/badge';
 import { Checkbox } from '../ui/checkbox';
 import { ScrollArea } from '../ui/scroll-area';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 interface Member {
     character_id: number;
     character_name: string;
     rank_name: string;
+    isAlreadyAssigned?: boolean;
 }
 
 interface DiffData {
@@ -59,7 +60,8 @@ export function ForumSyncDialog({ open, onOpenChange, onSyncSuccess, categoryTyp
                     if (!res.ok) throw new Error(data.error);
                     
                     setDiffData(data);
-                    setSelectedAdd(new Set(data.toAdd.map((m: Member) => m.character_id)));
+                    // Pre-select only those who are not already assigned to another primary unit
+                    setSelectedAdd(new Set(data.toAdd.filter((m: Member) => !m.isAlreadyAssigned).map((m: Member) => m.character_id)));
                     setSelectedRemove(new Set(data.toRemove.map((m: Member) => m.character_id)));
                 } catch (err: any) {
                     setError(err.message);
@@ -127,50 +129,70 @@ export function ForumSyncDialog({ open, onOpenChange, onSyncSuccess, categoryTyp
                             <AlertDescription>{error}</AlertDescription>
                         </Alert>
                     ) : diffData ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                             <div>
-                                <h3 className="font-semibold mb-2">Members to Add ({selectedAdd.size}/{diffData.toAdd.length})</h3>
-                                <ScrollArea className="h-64 border rounded-md">
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead className="w-12"><Checkbox checked={selectedAdd.size === diffData.toAdd.length && diffData.toAdd.length > 0} onCheckedChange={(checked) => setSelectedAdd(new Set(checked ? diffData.toAdd.map(m => m.character_id) : []))} /></TableHead>
-                                                <TableHead>Name</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {diffData.toAdd.map(member => (
-                                                <TableRow key={member.character_id}>
-                                                    <TableCell><Checkbox checked={selectedAdd.has(member.character_id)} onCheckedChange={() => toggleSelection(selectedAdd, setSelectedAdd, member.character_id)} /></TableCell>
-                                                    <TableCell>{member.character_name}</TableCell>
+                        <TooltipProvider>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <h3 className="font-semibold mb-2">Members to Add ({selectedAdd.size}/{diffData.toAdd.filter(m => !m.isAlreadyAssigned).length})</h3>
+                                    <ScrollArea className="h-64 border rounded-md">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead className="w-12"><Checkbox checked={selectedAdd.size === diffData.toAdd.filter(m => !m.isAlreadyAssigned).length && diffData.toAdd.length > 0} onCheckedChange={(checked) => setSelectedAdd(new Set(checked ? diffData.toAdd.filter(m => !m.isAlreadyAssigned).map(m => m.character_id) : []))} /></TableHead>
+                                                    <TableHead>Name</TableHead>
                                                 </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </ScrollArea>
-                            </div>
-                            <div>
-                                <h3 className="font-semibold mb-2">Members to Remove ({selectedRemove.size}/{diffData.toRemove.length})</h3>
-                                <ScrollArea className="h-64 border rounded-md">
-                                     <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead className="w-12"><Checkbox checked={selectedRemove.size === diffData.toRemove.length && diffData.toRemove.length > 0} onCheckedChange={(checked) => setSelectedRemove(new Set(checked ? diffData.toRemove.map(m => m.character_id) : []))} /></TableHead>
-                                                <TableHead>Name</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {diffData.toRemove.map(member => (
-                                                <TableRow key={member.character_id}>
-                                                    <TableCell><Checkbox checked={selectedRemove.has(member.character_id)} onCheckedChange={() => toggleSelection(selectedRemove, setSelectedRemove, member.character_id)} /></TableCell>
-                                                    <TableCell>{member.character_name}</TableCell>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {diffData.toAdd.map(member => (
+                                                    <TableRow key={member.character_id}>
+                                                        <TableCell>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <div className="flex items-center">
+                                                                        <Checkbox 
+                                                                            checked={selectedAdd.has(member.character_id)} 
+                                                                            onCheckedChange={() => toggleSelection(selectedAdd, setSelectedAdd, member.character_id)}
+                                                                            disabled={member.isAlreadyAssigned}
+                                                                        />
+                                                                        {member.isAlreadyAssigned && <HelpCircle className="h-4 w-4 ml-2 text-muted-foreground" />}
+                                                                    </div>
+                                                                </TooltipTrigger>
+                                                                {member.isAlreadyAssigned && (
+                                                                    <TooltipContent>
+                                                                        <p>This member is already in another primary assignment.</p>
+                                                                    </TooltipContent>
+                                                                )}
+                                                            </Tooltip>
+                                                        </TableCell>
+                                                        <TableCell>{member.character_name}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </ScrollArea>
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold mb-2">Members to Remove ({selectedRemove.size}/{diffData.toRemove.length})</h3>
+                                    <ScrollArea className="h-64 border rounded-md">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead className="w-12"><Checkbox checked={selectedRemove.size === diffData.toRemove.length && diffData.toRemove.length > 0} onCheckedChange={(checked) => setSelectedRemove(new Set(checked ? diffData.toRemove.map(m => m.character_id) : []))} /></TableHead>
+                                                    <TableHead>Name</TableHead>
                                                 </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </ScrollArea>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {diffData.toRemove.map(member => (
+                                                    <TableRow key={member.character_id}>
+                                                        <TableCell><Checkbox checked={selectedRemove.has(member.character_id)} onCheckedChange={() => toggleSelection(selectedRemove, setSelectedRemove, member.character_id)} /></TableCell>
+                                                        <TableCell>{member.character_name}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </ScrollArea>
+                                </div>
                             </div>
-                        </div>
+                        </TooltipProvider>
                     ) : null}
                 </div>
                 <DialogFooter>

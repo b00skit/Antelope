@@ -1,9 +1,10 @@
+
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
 import { factionOrganizationMembership, factionOrganizationCat2, factionOrganizationCat3, factionMembersCache, forumApiCache } from '@/db/schema';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, not } from 'drizzle-orm';
 import { canManageCat2 } from '../../../[cat1Id]/[cat2Id]/helpers';
 
 interface RouteParams {
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
     }
 
-    let category;
+    let category: any;
     let cat2IdToCheck;
     if (categoryType === 'cat_2') {
         category = await db.query.factionOrganizationCat2.findFirst({ where: eq(factionOrganizationCat2.id, categoryIdNum) });
@@ -39,6 +40,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     if (!category || !cat2IdToCheck) {
         return NextResponse.json({ error: 'Unit or Detail not found.' }, { status: 404 });
     }
+    
+    const isCurrentUnitSecondary = category.settings_json?.secondary ?? false;
 
     const { authorized, message } = await canManageCat2(session, cat2IdToCheck);
     if (!authorized) {
@@ -50,7 +53,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         return NextResponse.json({ error: 'No forum group is configured.' }, { status: 400 });
     }
 
-    const [forumCache, factionCache, existingMemberships] = await Promise.all([
+    const [forumCache, factionCache, existingMemberships, allPrimaryMemberships] = await Promise.all([
         db.query.forumApiCache.findFirst({
             where: and(
                 eq(forumApiCache.faction_id, category.faction_id),
@@ -64,6 +67,19 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             where: and(
                 eq(factionOrganizationMembership.category_id, categoryIdNum),
                 eq(factionOrganizationMembership.type, categoryType)
+            )
+        }),
+        // Fetch all primary assignments in the faction to check for conflicts
+        db.query.factionOrganizationMembership.findMany({
+            where: and(
+                eq(factionOrganizationMembership.secondary, false),
+                // Exclude members of the current unit being synced
+                not(
+                    and(
+                        eq(factionOrganizationMembership.category_id, categoryIdNum),
+                        eq(factionOrganizationMembership.type, categoryType)
+                    )
+                )
             )
         }),
     ]);
@@ -82,6 +98,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     
     const existingMemberIds = new Set(existingMemberships.map(m => m.character_id));
     const manuallyAddedMemberIds = new Set(existingMemberships.filter(m => m.manual).map(m => m.character_id));
+    const alreadyAssignedPrimaryIds = new Set(allPrimaryMemberships.map(m => m.character_id));
 
     const toAddIds = [...characterIdsInForumGroup].filter(id => !existingMemberIds.has(id));
     const toRemoveIds = [...existingMemberIds].filter(id => !characterIdsInForumGroup.has(id) && !manuallyAddedMemberIds.has(id));
@@ -90,7 +107,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const toAdd = toAddIds.map(id => {
         const memberInfo = allFactionMembers.find(m => m.character_id === id);
-        return { character_id: id, character_name: memberInfo?.character_name || `ID: ${id}`, rank_name: memberInfo?.rank_name || 'N/A' };
+        return { 
+            character_id: id, 
+            character_name: memberInfo?.character_name || `ID: ${id}`, 
+            rank_name: memberInfo?.rank_name || 'N/A',
+            isAlreadyAssigned: !isCurrentUnitSecondary && alreadyAssignedPrimaryIds.has(id),
+        };
     });
 
     const toRemove = toRemoveIds.map(id => {
