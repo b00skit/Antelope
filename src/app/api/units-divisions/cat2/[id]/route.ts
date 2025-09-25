@@ -23,11 +23,12 @@ const cat2UpdateSchema = z.object({
         allow_cat3: z.boolean().optional(),
         forum_group_id: z.coerce.number().optional().nullable(),
         secondary: z.boolean().optional(),
+        default_title: z.string().optional().nullable(),
     }).optional().nullable(),
 });
 
 
-export async function PUT(request: NextRequest, { params }: RouteParams) {
+export async function PUT(request: NextRequest, { params }: { params: RouteParams }) {
     const cookieStore = await cookies();
     const session = await getSession(cookieStore);
 
@@ -67,7 +68,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     }
 }
 
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(request: NextRequest, { params }: { params: RouteParams }) {
     const cookieStore = await cookies();
     const session = await getSession(cookieStore);
     if (!session.isLoggedIn || !session.userId) {

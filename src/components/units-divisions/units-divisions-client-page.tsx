@@ -68,6 +68,7 @@ interface PageData {
     cat1s: Cat1[];
     canAdminister: boolean;
     factionUsers: FactionUser[];
+    syncableForumGroups: { value: string, label: string }[];
 }
 
 const settingsSchema = z.object({
@@ -295,6 +296,7 @@ export function UnitsDivisionsClientPage() {
                     parentCat1={currentParentCat1}
                     settings={data.settings}
                     factionUsers={data.factionUsers || []}
+                    syncableForumGroups={data.syncableForumGroups || []}
                 />
             )}
             <PageHeader

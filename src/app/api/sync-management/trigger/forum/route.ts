@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { users, forumApiCache } from '@/db/schema';
+import { users, forumApiCache, factionAuditLogs } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 
 interface SyncPayload {
@@ -30,27 +30,38 @@ export async function POST(request: NextRequest) {
     }
     const factionId = user.selectedFaction.id;
     
-    const sourceData: SyncPayload[] = await request.json();
+    const { sourceData, ...diff } = await request.json();
+    const sourceDataTyped: SyncPayload[] = sourceData;
 
     try {
         const now = new Date();
         
-        for (const group of sourceData) {
-            await db.insert(forumApiCache).values({
-                faction_id: factionId,
-                group_id: group.group_id,
-                data: { members: group.members },
-                last_sync_timestamp: now,
-            }).onConflictDoUpdate({
-                target: [forumApiCache.faction_id, forumApiCache.group_id],
-                set: {
+        db.transaction((tx) => {
+            for (const group of sourceDataTyped) {
+                tx.insert(forumApiCache).values({
+                    faction_id: factionId,
+                    group_id: group.group_id,
                     data: { members: group.members },
                     last_sync_timestamp: now,
-                }
-            });
-        }
+                }).onConflictDoUpdate({
+                    target: [forumApiCache.faction_id, forumApiCache.group_id],
+                    set: {
+                        data: { members: group.members },
+                        last_sync_timestamp: now,
+                    }
+                }).run();
+            }
+
+             tx.insert(factionAuditLogs).values({
+                faction_id: factionId,
+                user_id: session.userId!,
+                category: 'sync_management',
+                action: 'Synced Forum Groups',
+                details: diff,
+            }).run();
+        });
         
-        return NextResponse.json({ success: true, message: `Successfully synced data for ${sourceData.length} forum groups.` });
+        return NextResponse.json({ success: true, message: `Successfully synced data for ${sourceDataTyped.length} forum groups.` });
 
     } catch (error) {
         console.error('[API Sync Forum] Error:', error);

@@ -14,4 +14,6 @@ export const factions = table('factions', {
     .default(jsonDefault({ activity_rosters_enabled: true, character_sheets_enabled: true, statistics_enabled: true, units_divisions_enabled: false, data_exports_enabled: false })),
   phpbb_api_url: text('phpbb_api_url', { length: 255 }),
   phpbb_api_key: text('phpbb_api_key', { length: 255 }),
+  phpbb_loa_forum_id: int('phpbb_loa_forum_id'),
+  phpbb_loa_archive_forum_id: int('phpbb_loa_archive_forum_id'),
 });

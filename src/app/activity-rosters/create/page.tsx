@@ -48,6 +48,7 @@ const formSchema = z.object({
     password: z.string().optional().nullable(),
     roster_setup_json: jsonString.optional().nullable(),
     access_json: z.array(z.number()).optional().nullable(),
+    organization: z.string().optional().nullable(),
 }).refine(data => data.visibility !== 'private' || (data.password && data.password.length > 0), {
     message: "Password is required for private rosters.",
     path: ["password"],
@@ -89,6 +90,7 @@ export default function CreateRosterPage() {
     const { session } = useSession();
     const [factionUsers, setFactionUsers] = useState<{ id: number; username: string }[]>([]);
     const [syncableForumGroups, setSyncableForumGroups] = useState<{ value: string; label: string; }[]>([]);
+    const [organizations, setOrganizations] = useState<{ value: string; label: string; }[]>([]);
     const [basicFilters, setBasicFilters] = useState<BasicFilters>({
         include_ranks: '',
         exclude_ranks: '',
@@ -110,18 +112,22 @@ export default function CreateRosterPage() {
             password: '',
             roster_setup_json: '',
             access_json: [],
+            organization: 'none',
         },
     });
 
     const watchVisibility = form.watch('visibility');
+    const watchOrganization = form.watch('organization');
+    const isOrgSelected = watchOrganization !== 'none' && !!watchOrganization;
     
     useEffect(() => {
         const fetchData = async () => {
             if (!session?.hasActiveFaction) return;
             try {
-                const [usersRes, groupsRes] = await Promise.all([
+                const [usersRes, groupsRes, orgsRes] = await Promise.all([
                     fetch('/api/rosters'),
-                    fetch(`/api/factions/${session.activeFaction?.id}/forum-groups`)
+                    fetch(`/api/factions/${session.activeFaction?.id}/forum-groups`),
+                    fetch('/api/rosters/organizations'),
                 ]);
                 const usersData = await usersRes.json();
                 if (usersRes.ok) setFactionUsers(usersData.factionUsers || []);
@@ -129,6 +135,11 @@ export default function CreateRosterPage() {
                 const groupsData = await groupsRes.json();
                 if (groupsRes.ok) {
                     setSyncableForumGroups((groupsData.syncableGroups || []).map((g: any) => ({ value: g.group_id.toString(), label: g.name })));
+                }
+
+                const orgsData = await orgsRes.json();
+                if(orgsRes.ok) {
+                    setOrganizations(orgsData.organizations || []);
                 }
             } catch (e) {
                 console.error("Failed to fetch initial data for roster creation");
@@ -172,19 +183,23 @@ export default function CreateRosterPage() {
                 return acc;
             }, {} as Record<string, string>);
 
-            const newJson = {
+            const newJson: any = {
                 ...currentJson,
-                include_ranks: parseRanks(basicFilters.include_ranks),
-                exclude_ranks: parseRanks(basicFilters.exclude_ranks),
-                include_members: parseMembers(basicFilters.include_members),
-                exclude_members: parseMembers(basicFilters.exclude_members),
-                forum_groups_included: basicFilters.forum_groups_included,
-                forum_groups_excluded: basicFilters.forum_groups_excluded,
                 show_assignment_titles: basicFilters.show_assignment_titles,
                 mark_alternative_characters: basicFilters.mark_alternative_characters,
                 allow_roster_snapshots: basicFilters.allow_roster_snapshots,
                 labels: parseLabels(basicFilters.labels),
             };
+
+            if (!isOrgSelected) {
+                newJson.include_ranks = parseRanks(basicFilters.include_ranks);
+                newJson.exclude_ranks = parseRanks(basicFilters.exclude_ranks);
+                newJson.include_members = parseMembers(basicFilters.include_members);
+                newJson.exclude_members = parseMembers(basicFilters.exclude_members);
+                newJson.forum_groups_included = basicFilters.forum_groups_included;
+                newJson.forum_groups_excluded = basicFilters.forum_groups_excluded;
+            }
+
             form.setValue('roster_setup_json', JSON.stringify(newJson, null, 2), { shouldValidate: true });
         } catch (e) {
             // Could happen if json is malformed, but we proceed anyway
@@ -197,10 +212,18 @@ export default function CreateRosterPage() {
             syncBasicToJson();
             const finalValues = form.getValues();
             
+            let submissionData: any = { ...finalValues };
+            if (finalValues.organization && finalValues.organization !== 'none') {
+                const [type, id] = finalValues.organization.split(':');
+                submissionData.organization_category_type = type;
+                submissionData.organization_category_id = parseInt(id, 10);
+            }
+            delete submissionData.organization;
+
             const response = await fetch('/api/rosters', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(finalValues),
+                body: JSON.stringify(submissionData),
             });
 
             if (!response.ok) {
@@ -319,50 +342,79 @@ export default function CreateRosterPage() {
                                     )}
                                 />
                             )}
+                            <FormField
+                                control={form.control}
+                                name="organization"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Filter by Unit/Detail (Optional)</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="None" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="none">None (Use manual filters)</SelectItem>
+                                                {organizations.map(org => (
+                                                    <SelectItem key={org.value} value={org.value}>
+                                                        {org.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormDescription>If selected, this roster will automatically include all members of the chosen unit/detail. Manual filters will be disabled.</FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
                             <FormItem>
                                 <FormLabel>Roster Configuration (Optional)</FormLabel>
                                 <Tabs defaultValue="basic" className="w-full" onValueChange={(tab) => tab === 'basic' ? syncJsonToBasic() : syncBasicToJson()}>
                                     <TabsList>
                                         <TabsTrigger value="basic">Basic</TabsTrigger>
-                                        <TabsTrigger value="advanced">Advanced (JSON)</TabsTrigger>
+                                        <TabsTrigger value="advanced" disabled={isOrgSelected}>Advanced (JSON)</TabsTrigger>
                                     </TabsList>
                                     <TabsContent value="basic" className="space-y-4 pt-2">
+                                        <fieldset disabled={isOrgSelected}>
+                                            <Card>
+                                                <CardHeader>
+                                                    <CardTitle className="text-base">Filters</CardTitle>
+                                                    {isOrgSelected && <CardDescription>Filters are disabled because this roster is linked to a unit/detail.</CardDescription>}
+                                                </CardHeader>
+                                                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    <FormItem>
+                                                        <FormLabel>Include Ranks</FormLabel>
+                                                        <Input value={basicFilters.include_ranks} onChange={(e) => setBasicFilters(f => ({...f, include_ranks: e.target.value}))} placeholder="e.g., 1,5,10" />
+                                                        <FormDescription>Comma-separated rank IDs to include.</FormDescription>
+                                                    </FormItem>
+                                                    <FormItem>
+                                                        <FormLabel>Exclude Ranks</FormLabel>
+                                                        <Input value={basicFilters.exclude_ranks} onChange={(e) => setBasicFilters(f => ({...f, exclude_ranks: e.target.value}))} placeholder="e.g., 14,15" />
+                                                        <FormDescription>Comma-separated rank IDs to exclude.</FormDescription>
+                                                    </FormItem>
+                                                    <FormItem>
+                                                        <FormLabel>Include Forum Groups</FormLabel>
+                                                        <MultiSelect
+                                                            options={syncableForumGroups}
+                                                            onValueChange={(selected) => setBasicFilters(f => ({...f, forum_groups_included: selected.map(Number)}))}
+                                                            defaultValue={basicFilters.forum_groups_included.map(String)}
+                                                            placeholder="Select groups..."
+                                                        />
+                                                    </FormItem>
+                                                    <FormItem>
+                                                        <FormLabel>Exclude Forum Groups</FormLabel>
+                                                        <MultiSelect
+                                                            options={syncableForumGroups}
+                                                            onValueChange={(selected) => setBasicFilters(f => ({...f, forum_groups_excluded: selected.map(Number)}))}
+                                                            defaultValue={basicFilters.forum_groups_excluded.map(String)}
+                                                            placeholder="Select groups..."
+                                                        />
+                                                    </FormItem>
+                                                </CardContent>
+                                            </Card>
+                                        </fieldset>
                                         <Card>
-                                            <CardHeader>
-                                                <CardTitle className="text-base">Filters</CardTitle>
-                                            </CardHeader>
-                                            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <FormItem>
-                                                    <FormLabel>Include Ranks</FormLabel>
-                                                    <Input value={basicFilters.include_ranks} onChange={(e) => setBasicFilters(f => ({...f, include_ranks: e.target.value}))} placeholder="e.g., 1,5,10" />
-                                                    <FormDescription>Comma-separated rank IDs to include.</FormDescription>
-                                                </FormItem>
-                                                <FormItem>
-                                                    <FormLabel>Exclude Ranks</FormLabel>
-                                                    <Input value={basicFilters.exclude_ranks} onChange={(e) => setBasicFilters(f => ({...f, exclude_ranks: e.target.value}))} placeholder="e.g., 14,15" />
-                                                    <FormDescription>Comma-separated rank IDs to exclude.</FormDescription>
-                                                </FormItem>
-                                                <FormItem>
-                                                    <FormLabel>Include Forum Groups</FormLabel>
-                                                    <MultiSelect
-                                                        options={syncableForumGroups}
-                                                        onValueChange={(selected) => setBasicFilters(f => ({...f, forum_groups_included: selected.map(Number)}))}
-                                                        defaultValue={basicFilters.forum_groups_included.map(String)}
-                                                        placeholder="Select groups..."
-                                                    />
-                                                </FormItem>
-                                                <FormItem>
-                                                    <FormLabel>Exclude Forum Groups</FormLabel>
-                                                    <MultiSelect
-                                                        options={syncableForumGroups}
-                                                        onValueChange={(selected) => setBasicFilters(f => ({...f, forum_groups_excluded: selected.map(Number)}))}
-                                                        defaultValue={basicFilters.forum_groups_excluded.map(String)}
-                                                        placeholder="Select groups..."
-                                                    />
-                                                </FormItem>
-                                            </CardContent>
-                                        </Card>
-                                         <Card>
                                             <CardHeader>
                                                 <CardTitle className="text-base">Display Options</CardTitle>
                                             </CardHeader>
@@ -387,7 +439,7 @@ export default function CreateRosterPage() {
                                                 </FormItem>
                                             </CardContent>
                                         </Card>
-                                         <Card>
+                                        <Card>
                                             <CardHeader>
                                                 <CardTitle className="text-base">Labels</CardTitle>
                                                 <CardDescription>Create color-coded labels for members on this roster.</CardDescription>
@@ -407,7 +459,7 @@ export default function CreateRosterPage() {
                                                             <SelectContent>
                                                                 {labelColors.map(color => (
                                                                     <SelectItem key={color} value={color}>
-                                                                         <div className="flex items-center gap-2">
+                                                                        <div className="flex items-center gap-2">
                                                                             <span className={cn('h-2 w-2 rounded-full', `bg-${color}-500`)} />
                                                                             {color}
                                                                         </div>
@@ -424,7 +476,7 @@ export default function CreateRosterPage() {
                                         </Card>
                                     </TabsContent>
                                     <TabsContent value="advanced">
-                                         <FormField
+                                        <FormField
                                             control={form.control}
                                             name="roster_setup_json"
                                             render={({ field }) => (
@@ -435,8 +487,10 @@ export default function CreateRosterPage() {
                                                             className="font-mono min-h-[250px]"
                                                             {...field}
                                                             value={field.value ?? ''}
+                                                            disabled={isOrgSelected}
                                                         />
                                                     </FormControl>
+                                                    {isOrgSelected && <FormDescription>JSON editing is disabled when a roster is linked to an organization.</FormDescription>}
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
@@ -444,7 +498,6 @@ export default function CreateRosterPage() {
                                     </TabsContent>
                                 </Tabs>
                             </FormItem>
-
                              {form.formState.errors.root && (
                                 <Alert variant="destructive">
                                     <AlertTriangle className="h-4 w-4" />

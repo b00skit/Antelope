@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, Loader2, PlusCircle, Pencil, Trash2, Eye, Star, Lock, EyeOff, User as UserIcon } from 'lucide-react';
+import { AlertTriangle, Loader2, PlusCircle, Pencil, Trash2, Eye, Star, Lock, EyeOff, User as UserIcon, Building } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
@@ -36,7 +36,7 @@ import {
 interface Roster {
   id: number;
   name: string;
-  visibility: 'personal' | 'private' | 'unlisted' | 'public';
+  visibility: 'personal' | 'private' | 'unlisted' | 'public' | 'organization';
   author: {
     username: string;
   };
@@ -59,6 +59,7 @@ const visibilityDetails = {
     private: { label: 'Private', icon: Lock, color: 'bg-red-500/10 text-red-500 border-red-500/50', description: 'Requires a password to view.' },
     unlisted: { label: 'Unlisted', icon: EyeOff, color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/50', description: 'Only accessible via direct link.' },
     personal: { label: 'Personal', icon: UserIcon, color: 'bg-blue-500/10 text-blue-500 border-blue-500/50', description: 'Only visible to you.' },
+    organization: { label: 'Organization', icon: Building, color: 'bg-purple-500/10 text-purple-500 border-purple-500/50', description: 'This roster is linked to a unit/detail.' },
 };
 
 
@@ -161,6 +162,7 @@ export default function ActivityRostersPage() {
                                     rosters.map(roster => {
                                         const isFavorited = favoriteIds.has(roster.id);
                                         const visibility = visibilityDetails[roster.visibility] || { label: 'Unknown', icon: Eye, color: 'bg-gray-500/10 text-gray-500 border-gray-500/50', description: '' };
+                                        const canModify = roster.isOwner && roster.visibility !== 'organization';
                                         return (
                                             <TableRow key={roster.id}>
                                                 <TableCell>
@@ -191,7 +193,7 @@ export default function ActivityRostersPage() {
                                                                 <Eye className="h-4 w-4" />
                                                             </Link>
                                                         </Button>
-                                                        {roster.isOwner && (
+                                                        {canModify && (
                                                             <>
                                                                 <Button variant="outline" size="icon" asChild>
                                                                     <Link href={`/activity-rosters/edit/${roster.id}`}>

@@ -10,7 +10,7 @@ import { z } from 'zod';
 const enrollSchema = z.object({
     id: z.number().int(),
     name: z.string().min(3, "Faction name must be at least 3 characters long."),
-    color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Color must be a valid hex color code.").optional().nullable(),
+    color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color code, e.g., #FFFFFF").optional().nullable(),
     access_rank: z.number().int().min(1).max(15),
     administration_rank: z.number().int().min(1).max(15),
     supervisor_rank: z.coerce.number().min(1, "Rank must be at least 1").max(15, "Rank must be 15 or less"),
@@ -24,6 +24,8 @@ const enrollSchema = z.object({
     data_exports_enabled: z.boolean().default(false),
     phpbb_api_url: z.string().url("Must be a valid URL").or(z.literal('')).optional().nullable(),
     phpbb_api_key: z.string().optional().nullable(),
+    phpbb_loa_forum_id: z.coerce.number().optional().nullable(),
+    phpbb_loa_archive_forum_id: z.coerce.number().optional().nullable(),
 });
 
 export async function POST(request: NextRequest) {
@@ -41,7 +43,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Invalid input.', details: parsed.error.flatten() }, { status: 400 });
     }
 
-    const { id, name, color, access_rank, administration_rank, supervisor_rank, minimum_abas, minimum_supervisor_abas, user_rank, activity_rosters_enabled, character_sheets_enabled, statistics_enabled, units_divisions_enabled, data_exports_enabled, phpbb_api_url, phpbb_api_key } = parsed.data;
+    const { id, name, color, access_rank, administration_rank, supervisor_rank, minimum_abas, minimum_supervisor_abas, user_rank, activity_rosters_enabled, character_sheets_enabled, statistics_enabled, units_divisions_enabled, data_exports_enabled, phpbb_api_url, phpbb_api_key, phpbb_loa_forum_id, phpbb_loa_archive_forum_id } = parsed.data;
 
     try {
         // Check if faction already exists
@@ -73,7 +75,9 @@ export async function POST(request: NextRequest) {
                     data_exports_enabled,
                 },
                 phpbb_api_url,
-                phpbb_api_key
+                phpbb_api_key,
+                phpbb_loa_forum_id,
+                phpbb_loa_archive_forum_id,
             }).run();
 
             // 2. Add the current user as a member of this new faction

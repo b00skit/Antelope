@@ -50,12 +50,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             .set({ title: parsed.data.title })
             .where(and(
                 eq(factionOrganizationMembership.id, membershipId),
-                eq(factionOrganizationMembership.category_id, cat2Id),
-                eq(factionOrganizationMembership.type, 'cat_2')
             )).returning();
 
         if (result.length === 0) {
-            return NextResponse.json({ error: 'Membership record not found or does not belong to this unit.' }, { status: 404 });
+            return NextResponse.json({ error: 'Membership record not found.' }, { status: 404 });
         }
         
         return NextResponse.json({ success: true, message: 'Member updated.' });
@@ -87,13 +85,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         const result = await db.delete(factionOrganizationMembership).where(
             and(
                 eq(factionOrganizationMembership.id, membershipId),
-                eq(factionOrganizationMembership.category_id, cat2Id),
-                eq(factionOrganizationMembership.type, 'cat_2')
             )
         ).returning();
         
         if (result.length === 0) {
-            return NextResponse.json({ error: 'Membership record not found or does not belong to this unit.' }, { status: 404 });
+            return NextResponse.json({ error: 'Membership record not found.' }, { status: 404 });
         }
 
         return NextResponse.json({ success: true, message: 'Member removed.' });

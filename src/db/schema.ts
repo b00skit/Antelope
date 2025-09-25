@@ -14,6 +14,8 @@ export * from './schema/forumApiCache';
 export * from './schema/apiForumSyncableGroups';
 export * from './schema/organization';
 export * from './schema/organizationFavorites';
+export * from './schema/organizationSyncExclusions';
 export * from './schema/setup';
 export * from './schema/factionBlockedUsers';
+export * from './schema/auditLogs';
 export * from './schema/relations';

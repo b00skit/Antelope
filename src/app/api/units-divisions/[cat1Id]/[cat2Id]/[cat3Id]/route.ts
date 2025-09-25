@@ -3,8 +3,8 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { factionOrganizationCat1, factionOrganizationCat2, factionOrganizationCat3, factionMembersCache, factionOrganizationMembership, factionMembers } from '@/db/schema';
-import { and, eq } from 'drizzle-orm';
+import { factionOrganizationCat1, factionOrganizationCat2, factionOrganizationCat3, factionMembersCache, factionOrganizationMembership, factionMembers, factionMembersAbasCache } from '@/db/schema';
+import { and, eq, inArray } from 'drizzle-orm';
 import { canManageCat2, canUserManage } from '../helpers';
 
 interface RouteParams {
@@ -15,10 +15,11 @@ interface RouteParams {
     }
 }
 
+
 export async function GET(request: NextRequest, { params }: RouteParams) {
     const cookieStore = await cookies();
     const session = await getSession(cookieStore);
-    if (!session.isLoggedIn) {
+    if (!session.isLoggedIn || !session.userId) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const { authorized, user, membership, faction } = await canManageCat2(session, cat3.cat2_id);
 
-    const [factionCache, members, factionUsers, allAssignedMembers, allCat1s] = await Promise.all([
+    const [factionCache, members, factionUsers, allAssignedMembers, allCat1s, abasCache] = await Promise.all([
         db.query.factionMembersCache.findFirst({
             where: eq(factionMembersCache.faction_id, cat3.faction_id)
         }),
@@ -84,16 +85,22 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
                     }
                 }
             }
+        }),
+         db.query.factionMembersAbasCache.findMany({
+            where: eq(factionMembersAbasCache.faction_id, cat3.faction_id)
         })
     ]);
 
     const allFactionMembers = factionCache?.members || [];
+    const abasMap = new Map(abasCache.map(a => [a.character_id, parseFloat(a.abas || '0')]));
+
     const memberDetails = members.map(m => {
         const factionMember = allFactionMembers.find((fm: any) => fm.character_id === m.character_id);
         return {
             ...m,
             character_name: factionMember?.character_name || 'Unknown',
             rank_name: factionMember?.rank_name || 'Unknown',
+            abas: abasMap.get(m.character_id) || 0,
         }
     });
     

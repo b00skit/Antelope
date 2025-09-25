@@ -18,6 +18,7 @@ import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { MultiSelect } from '../ui/multi-select';
 import { Switch } from '../ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 const cat2FormSchema = z.object({
     name: z.string().min(1, "Name cannot be empty."),
@@ -26,6 +27,7 @@ const cat2FormSchema = z.object({
     allow_cat3: z.boolean().default(false),
     forum_group_id: z.coerce.number().optional().nullable(),
     secondary: z.boolean().default(false),
+    default_title: z.string().optional().nullable(),
 });
 
 interface Cat2DialogProps {
@@ -36,9 +38,10 @@ interface Cat2DialogProps {
     parentCat1: Cat1;
     settings: { category_2_name: string; category_3_name: string };
     factionUsers: FactionUser[];
+    syncableForumGroups: { value: string, label: string }[];
 }
 
-export function Cat2Dialog({ open, onOpenChange, onSave, cat2, parentCat1, settings, factionUsers }: Cat2DialogProps) {
+export function Cat2Dialog({ open, onOpenChange, onSave, cat2, parentCat1, settings, factionUsers, syncableForumGroups }: Cat2DialogProps) {
     const { toast } = useToast();
     const form = useForm<z.infer<typeof cat2FormSchema>>({
         resolver: zodResolver(cat2FormSchema),
@@ -49,6 +52,7 @@ export function Cat2Dialog({ open, onOpenChange, onSave, cat2, parentCat1, setti
             allow_cat3: false,
             forum_group_id: undefined,
             secondary: false,
+            default_title: '',
         }
     });
 
@@ -61,6 +65,7 @@ export function Cat2Dialog({ open, onOpenChange, onSave, cat2, parentCat1, setti
                 allow_cat3: cat2.settings_json?.allow_cat3 ?? false,
                 forum_group_id: cat2.settings_json?.forum_group_id,
                 secondary: cat2.settings_json?.secondary ?? false,
+                default_title: cat2.settings_json?.default_title ?? '',
             });
         } else {
             form.reset({
@@ -70,6 +75,7 @@ export function Cat2Dialog({ open, onOpenChange, onSave, cat2, parentCat1, setti
                 allow_cat3: false,
                 forum_group_id: undefined,
                 secondary: false,
+                default_title: '',
             });
         }
     }, [cat2, form]);
@@ -88,6 +94,7 @@ export function Cat2Dialog({ open, onOpenChange, onSave, cat2, parentCat1, setti
                     allow_cat3: values.allow_cat3,
                     forum_group_id: values.forum_group_id,
                     secondary: values.secondary,
+                    default_title: values.default_title,
                 },
             };
 
@@ -169,9 +176,35 @@ export function Cat2Dialog({ open, onOpenChange, onSave, cat2, parentCat1, setti
                             name="forum_group_id"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Forum Group ID (Optional)</FormLabel>
-                                    <FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl>
+                                    <FormLabel>Forum Group (Optional)</FormLabel>
+                                     <Select onValueChange={field.onChange} defaultValue={field.value?.toString()}>
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select a forum group..." />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="0">None</SelectItem>
+                                            {syncableForumGroups.map(group => (
+                                                <SelectItem key={group.value} value={group.value}>
+                                                    {group.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                     <FormDescription>Sync this unit with a phpBB forum group.</FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="default_title"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Default Title (Optional)</FormLabel>
+                                    <FormControl><Input {...field} value={field.value ?? ''} placeholder="e.g., Member" /></FormControl>
+                                    <FormDescription>This title will be assigned to members when manually added.</FormDescription>
                                     <FormMessage />
                                 </FormItem>
                             )}

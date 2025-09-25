@@ -20,6 +20,7 @@ const protectedRoutes = [
     '/users',
     '/setup',
     '/sync-management',
+    '/audit-logs',
 ];
 const publicRoutes = ['/login', '/'];
 

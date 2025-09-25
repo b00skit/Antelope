@@ -12,9 +12,10 @@ export * from './factionMembersAbasCache';
 export * from './apiCacheAlternativeCharacters';
 export * from './forumApiCache';
 export * from './apiForumSyncableGroups';
-export * from './organization';
-export * from './organizationFavorites';
-export * from './setup';
-export * from './factionBlockedUsers';
+export * from './schema/organization';
+export * from './schema/organizationFavorites';
+export * from './schema/setup';
+export * from './schema/factionBlockedUsers';
+export * from './schema/auditLogs';
 // This file must be last
 export * from './relations';

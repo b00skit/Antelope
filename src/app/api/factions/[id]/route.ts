@@ -27,6 +27,8 @@ const updateSchema = z.object({
     data_exports_enabled: z.boolean().default(false),
     phpbb_api_url: z.string().url("Must be a valid URL").or(z.literal('')).optional().nullable(),
     phpbb_api_key: z.string().optional().nullable(),
+    phpbb_loa_forum_id: z.coerce.number().optional().nullable(),
+    phpbb_loa_archive_forum_id: z.coerce.number().optional().nullable(),
 });
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {

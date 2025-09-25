@@ -1,3 +1,4 @@
+
 import { notFound } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { getSession } from '@/lib/session';
@@ -41,6 +42,12 @@ interface SecondaryAssignmentData {
     path: string;
     link: string;
     title: string | null;
+}
+
+export interface LoaTopic {
+    id: number;
+    title: string;
+    author: string;
 }
 
 async function getCharacterData(name: string) {
@@ -138,23 +145,18 @@ async function getCharacterData(name: string) {
         return isNaN(value) ? sum : sum + value;
     }, 0);
 
-    const deriveNameParts = () => {
-        if (character.firstname && character.lastname) {
-            return { firstname: character.firstname, lastname: character.lastname };
-        }
-
-        const cleanedName = (character.character_name || '').replace(/_/g, ' ').trim();
+    const deriveNameParts = (charName: string) => {
+        const cleanedName = (charName || '').replace(/_/g, ' ').trim();
         if (!cleanedName) {
-            return { firstname: character.firstname ?? '', lastname: character.lastname ?? '' };
+            return { firstname: '', lastname: '' };
         }
-
         const parts = cleanedName.split(' ');
         const firstname = parts.shift() ?? '';
         const lastname = parts.join(' ') || '';
         return { firstname, lastname };
     };
 
-    const nameParts = deriveNameParts();
+    const nameParts = deriveNameParts(character.character_name);
 
     const alternativeCharacters: any[] = [];
     const addAlternativeCharacter = (candidate: any) => {
@@ -219,11 +221,14 @@ async function getCharacterData(name: string) {
     };
     
     let forumData: ForumData | null = null;
+    let forumProfileUrl: string | null = null;
+
     if (selectedFaction.phpbb_api_url && selectedFaction.phpbb_api_key) {
+        const baseUrl = selectedFaction.phpbb_api_url.endsWith('/') ? selectedFaction.phpbb_api_url : `${selectedFaction.phpbb_api_url}/`;
+        const apiKey = selectedFaction.phpbb_api_key;
+        
         try {
             const forumUsername = characterName;
-            const baseUrl = selectedFaction.phpbb_api_url.endsWith('/') ? selectedFaction.phpbb_api_url : `${selectedFaction.phpbb_api_url}/`;
-            const apiKey = selectedFaction.phpbb_api_key;
             const forumApiUrl = `${baseUrl}app.php/booskit/phpbbapi/user/username/${forumUsername}?key=${apiKey}`;
 
             const forumApiResponse = await fetch(forumApiUrl, { next: { revalidate: config.FORUM_API_REFRESH_MINUTES * 60 } });
@@ -231,6 +236,7 @@ async function getCharacterData(name: string) {
                 const data = await forumApiResponse.json();
                 if (data.user) {
                     forumData = data.user;
+                    forumProfileUrl = `${baseUrl}memberlist.php?mode=viewprofile&u=${data.user.id}`;
                 }
             } else {
                 console.warn(`[Forum API] Failed to fetch data for ${forumUsername}. Status: ${forumApiResponse.status}`);
@@ -349,8 +355,28 @@ async function getCharacterData(name: string) {
         }
     }
 
+    const mdcRecordUrl = `https://mdc.gta.world/record/${nameParts.firstname}_${nameParts.lastname}`;
 
-    return { character: { ...charData.data, id: characterId }, totalAbas, characterSheetsEnabled, forumData, abasSettings, assignment, canManageAssignments, allUnitsAndDetails, secondaryAssignments };
+    const factionForumSettings = {
+        phpbb_api_url: selectedFaction.phpbb_api_url,
+        phpbb_api_key: selectedFaction.phpbb_api_key,
+        phpbb_loa_forum_id: selectedFaction.phpbb_loa_forum_id,
+    };
+
+    return { 
+        character: { ...charData.data, id: characterId }, 
+        totalAbas, 
+        characterSheetsEnabled, 
+        forumData, 
+        abasSettings, 
+        assignment, 
+        canManageAssignments, 
+        allUnitsAndDetails, 
+        secondaryAssignments,
+        forumProfileUrl,
+        mdcRecordUrl,
+        factionForumSettings,
+    };
 }
 
 

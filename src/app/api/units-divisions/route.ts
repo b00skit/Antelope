@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { users, factions, factionMembers, factionOrganizationSettings, factionOrganizationCat1, factionOrganizationCat2 } from '@/db/schema';
+import { users, factions, factionMembers, factionOrganizationSettings, factionOrganizationCat1, factionOrganizationCat2, apiForumSyncableGroups } from '@/db/schema';
 import { and, eq, desc } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     const factionId = user.selectedFaction.id;
     
     try {
-        const [settings, cat1s, membership, factionUsers] = await Promise.all([
+        const [settings, cat1s, membership, factionUsers, syncableForumGroups] = await Promise.all([
             db.query.factionOrganizationSettings.findFirst({
                 where: eq(factionOrganizationSettings.faction_id, factionId),
             }),
@@ -59,6 +59,9 @@ export async function GET(request: NextRequest) {
                         }
                     }
                 }
+            }),
+            db.query.apiForumSyncableGroups.findMany({
+                where: eq(apiForumSyncableGroups.faction_id, factionId)
             })
         ]);
 
@@ -80,12 +83,15 @@ export async function GET(request: NextRequest) {
         });
         
         const availableUsers = factionUsers.map(fm => fm.user).filter(Boolean);
+        
+        const syncableGroupsOptions = syncableForumGroups.map(g => ({ value: g.group_id.toString(), label: g.name }));
 
         return NextResponse.json({
             settings: settings,
             cat1s: cat1sWithPermissions,
             canAdminister,
             factionUsers: availableUsers,
+            syncableForumGroups: syncableGroupsOptions,
         });
 
     } catch (error) {
