@@ -26,7 +26,7 @@ const jsonString = z.string().refine((value) => {
 
 const updateRosterSchema = z.object({
     name: z.string().min(3, "Roster name must be at least 3 characters long."),
-    visibility: z.enum(['personal', 'private', 'unlisted', 'public']).default('personal'),
+    visibility: z.enum(['personal', 'private', 'unlisted', 'public', 'organization']).default('personal'),
     password: z.string().optional().nullable(),
     roster_setup_json: jsonString.optional().nullable(),
     access_json: z.array(z.number()).optional().nullable(),
@@ -127,11 +127,11 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         
         const updateData: Partial<typeof activityRosters.$inferInsert> = {
             name: parsed.data.name,
-            visibility: parsed.data.visibility,
+            visibility: roster.visibility === 'organization' ? 'organization' : parsed.data.visibility, // Prevent changing visibility of org rosters
             roster_setup_json: parsed.data.roster_setup_json,
             access_json: parsed.data.visibility === 'personal' ? null : parsed.data.access_json,
-            organization_category_type: parsed.data.organization_category_type,
-            organization_category_id: parsed.data.organization_category_id,
+            organization_category_type: roster.visibility === 'organization' ? roster.organization_category_type : parsed.data.organization_category_type,
+            organization_category_id: roster.visibility === 'organization' ? roster.organization_category_id : parsed.data.organization_category_id,
             updated_at: sql`(strftime('%s', 'now'))`
         };
 
@@ -181,6 +181,10 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
         if (!roster) {
             return NextResponse.json({ error: 'Roster not found.' }, { status: 404 });
+        }
+        
+        if (roster.visibility === 'organization') {
+            return NextResponse.json({ error: 'Organizational rosters cannot be deleted from here.' }, { status: 403 });
         }
 
         const hasAccess = roster.created_by === session.userId || roster.access_json?.includes(session.userId);

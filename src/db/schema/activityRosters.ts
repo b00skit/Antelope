@@ -7,7 +7,7 @@ export const activityRosters = table('activity_rosters', {
   factionId: int('faction_id').notNull().references(() => factions.id, { onDelete: 'cascade' }),
   name: text('name', { length: 255 }).notNull(),
   roster_setup_json: text('roster_setup_json'),
-  visibility: enumeration('visibility', ['personal', 'private', 'unlisted', 'public']).default('personal').notNull(),
+  visibility: enumeration('visibility', ['personal', 'private', 'unlisted', 'public', 'organization']).default('personal').notNull(),
   password: text('password', { length: 255 }),
   access_json: json('access_json').$type<number[]>(),
   organization_category_type: enumeration('organization_category_type', ['cat_2', 'cat_3']),
