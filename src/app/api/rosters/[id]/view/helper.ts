@@ -12,11 +12,12 @@ import {
     activityRosterLabels,
     apiCacheAlternativeCharacters,
     forumApiCache,
-    apiForumSyncableGroups,
+    factionMembers,
 } from '@/db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import type { IronSession } from 'iron-session';
 import type { SessionData } from '@/lib/session';
+import { canUserManage } from '@/app/api/units-divisions/[cat1Id]/[cat2Id]/helpers';
 
 interface Member {
     user_id: number;
@@ -85,7 +86,7 @@ export async function getRosterViewData(
     }
 
     let hasAccess = false;
-    if (roster.visibility === 'public' || roster.visibility === 'unlisted') {
+    if (roster.visibility === 'public' || roster.visibility === 'unlisted' || roster.visibility === 'organization') {
         hasAccess = true;
     } else if (roster.created_by === session.userId) {
         hasAccess = true;
@@ -108,6 +109,20 @@ export async function getRosterViewData(
     if (!hasAccess) {
         return { error: 'You do not have permission to view this roster.' };
     }
+    
+    let canEdit = false;
+    if (roster.visibility === 'organization' && roster.organization_category_type && roster.organization_category_id) {
+        const userMembership = await db.query.factionMembers.findFirst({
+            where: and(eq(factionMembers.userId, session.userId!), eq(factionMembers.factionId, roster.factionId))
+        });
+        if (userMembership) {
+            const result = await canUserManage(session, user, userMembership, roster.faction, roster.organization_category_type, roster.organization_category_id);
+            canEdit = result.authorized;
+        }
+    } else {
+        canEdit = roster.created_by === session.userId || (roster.access_json && Array.isArray(roster.access_json) && roster.access_json.includes(session.userId!));
+    }
+
 
     const factionId = roster.factionId;
     let members: Member[] = [];
@@ -178,7 +193,6 @@ export async function getRosterViewData(
     let rosterConfig: RosterFilters = {};
     let usernameToGroupsMap = new Map<string, number[]>();
     let showAssignmentTitles = false;
-    let canEdit = roster.created_by === session.userId || (roster.access_json && Array.isArray(roster.access_json) && roster.access_json.includes(session.userId!));
     let canCreateSnapshot = false;
 
     if (roster.roster_setup_json) {

@@ -1,11 +1,13 @@
+
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { db } from '@/db';
-import { activityRosters, users as usersTable } from '@/db/schema';
+import { activityRosters, users as usersTable, factionMembers } from '@/db/schema';
 import { and, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
+import { canUserManage } from '../../units-divisions/[cat1Id]/[cat2Id]/helpers';
 
 
 interface RouteParams {
@@ -54,22 +56,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     try {
         const roster = await db.query.activityRosters.findFirst({
             where: eq(activityRosters.id, rosterId),
+            with: { faction: true }
         });
 
         if (!roster) {
             return NextResponse.json({ error: 'Roster not found.' }, { status: 404 });
         }
-
-        const hasAccess = roster.created_by === session.userId || roster.access_json?.includes(session.userId);
-
-        if (!hasAccess) {
-             return NextResponse.json({ error: 'You do not have permission to edit this roster.' }, { status: 403 });
-        }
         
-        // Don't expose the hashed password
-        const { password, ...rosterData } = roster;
-        
-        const user = await db.query.users.findFirst({
+        const user = await db.query.usersTable.findFirst({
             where: eq(usersTable.id, session.userId),
         });
 
@@ -77,7 +71,26 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             return NextResponse.json({ error: 'No active faction selected.' }, { status: 400 });
         }
 
-        const factionUsers = await db.query.users.findMany({
+        let hasAccess = false;
+        if (roster.visibility === 'organization' && roster.organization_category_type && roster.organization_category_id) {
+             const userMembership = await db.query.factionMembers.findFirst({
+                where: and(eq(factionMembers.userId, session.userId!), eq(factionMembers.factionId, roster.factionId))
+            });
+            if (userMembership) {
+                const result = await canUserManage(session, user, userMembership, roster.faction, roster.organization_category_type, roster.organization_category_id);
+                hasAccess = result.authorized;
+            }
+        } else {
+            hasAccess = roster.created_by === session.userId || roster.access_json?.includes(session.userId);
+        }
+        
+        if (!hasAccess) {
+             return NextResponse.json({ error: 'You do not have permission to edit this roster.' }, { status: 403 });
+        }
+        
+        const { password, ...rosterData } = roster;
+        
+        const factionUsers = await db.query.usersTable.findMany({
             where: eq(usersTable.selected_faction_id, user.selected_faction_id)
         });
 
@@ -113,21 +126,35 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     
     try {
         const roster = await db.query.activityRosters.findFirst({
-            where: eq(activityRosters.id, rosterId)
+            where: eq(activityRosters.id, rosterId),
+            with: { faction: true }
         });
 
         if (!roster) {
             return NextResponse.json({ error: 'Roster not found.' }, { status: 404 });
         }
 
-        const hasAccess = roster.created_by === session.userId || roster.access_json?.includes(session.userId);
+        let hasAccess = false;
+        if (roster.visibility === 'organization' && roster.organization_category_type && roster.organization_category_id) {
+            const user = await db.query.usersTable.findFirst({ where: eq(usersTable.id, session.userId) });
+            const userMembership = await db.query.factionMembers.findFirst({
+                where: and(eq(factionMembers.userId, session.userId!), eq(factionMembers.factionId, roster.factionId))
+            });
+            if (user && userMembership) {
+                const result = await canUserManage(session, user, userMembership, roster.faction, roster.organization_category_type, roster.organization_category_id);
+                hasAccess = result.authorized;
+            }
+        } else {
+            hasAccess = roster.created_by === session.userId || roster.access_json?.includes(session.userId);
+        }
+
         if (!hasAccess) {
             return NextResponse.json({ error: 'You do not have permission to edit this roster.' }, { status: 403 });
         }
         
         const updateData: Partial<typeof activityRosters.$inferInsert> = {
             name: parsed.data.name,
-            visibility: roster.visibility === 'organization' ? 'organization' : parsed.data.visibility, // Prevent changing visibility of org rosters
+            visibility: roster.visibility === 'organization' ? 'organization' : parsed.data.visibility,
             roster_setup_json: parsed.data.roster_setup_json,
             access_json: parsed.data.visibility === 'personal' ? null : parsed.data.access_json,
             organization_category_type: roster.visibility === 'organization' ? roster.organization_category_type : parsed.data.organization_category_type,
@@ -135,11 +162,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             updated_at: sql`(strftime('%s', 'now'))`
         };
 
-        // Only hash and update password if a new one is provided
         if (parsed.data.visibility === 'private' && parsed.data.password) {
             updateData.password = await bcrypt.hash(parsed.data.password, 10);
         } else if (parsed.data.visibility !== 'private') {
-            updateData.password = null; // Clear password if not private
+            updateData.password = null;
         }
 
         const result = await db.update(activityRosters)
