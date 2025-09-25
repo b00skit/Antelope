@@ -5,7 +5,7 @@ import { getSession } from '@/lib/session';
 import { db } from '@/db';
 import { factionOrganizationCat1, factionOrganizationCat2, factionOrganizationCat3, factionMembersCache, factionOrganizationMembership, factionMembers, factionMembersAbasCache } from '@/db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
-import { canManageCat2, canUserManage } from '../helpers';
+import { canManageCat2, canUserManage } from '../../helpers';
 
 interface RouteParams {
     params: {
