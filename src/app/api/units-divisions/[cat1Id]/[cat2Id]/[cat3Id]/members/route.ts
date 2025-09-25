@@ -1,4 +1,6 @@
 
+'use client';
+
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
@@ -6,18 +8,10 @@ import { db } from '@/db';
 import { factionOrganizationMembership, factionOrganizationCat3 } from '@/db/schema';
 import { z } from 'zod';
 import { canManageCat2 } from '../../helpers';
-import { eq, and } from 'drizzle-orm';
-
-interface RouteParams {
-    params: {
-        cat1Id: string;
-        cat2Id: string;
-        cat3Id: string;
-    }
-}
+import { eq, and, inArray } from 'drizzle-orm';
 
 const addMemberSchema = z.object({
-    character_id: z.number().int(),
+    character_ids: z.array(z.number().int()),
     title: z.string().optional().nullable(),
     manual: z.boolean().default(false),
 });
@@ -55,36 +49,44 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
              return NextResponse.json({ error: 'Detail not found.' }, { status: 404 });
         }
 
+        const { character_ids, title, manual } = parsed.data;
+
+        if (character_ids.length === 0) {
+            return NextResponse.json({ error: 'No members to add.' }, { status: 400 });
+        }
+
         const isSecondaryUnit = cat3?.settings_json?.secondary ?? false;
-        let titleToSet = parsed.data.title;
+        let titleToSet = title;
         if (!titleToSet && cat3?.settings_json?.default_title) {
             titleToSet = cat3.settings_json.default_title;
         }
 
+        const valuesToInsert = character_ids.map(charId => ({
+            type: 'cat_3' as const,
+            category_id: cat3Id,
+            character_id: charId,
+            title: titleToSet,
+            secondary: isSecondaryUnit,
+            manual: manual,
+            created_by: session.userId!,
+        }));
+
         if (!isSecondaryUnit) {
-            const existingAssignment = await db.query.factionOrganizationMembership.findFirst({
+            const existingAssignments = await db.query.factionOrganizationMembership.findMany({
                 where: and(
-                    eq(factionOrganizationMembership.character_id, parsed.data.character_id),
+                    inArray(factionOrganizationMembership.character_id, character_ids),
                     eq(factionOrganizationMembership.secondary, false)
                 )
             });
 
-            if (existingAssignment) {
-                return NextResponse.json({ error: 'This character is already assigned to a primary unit or detail.' }, { status: 409 });
+            if (existingAssignments.length > 0) {
+                 return NextResponse.json({ error: 'One or more members are already in a primary assignment.' }, { status: 409 });
             }
         }
 
-        await db.insert(factionOrganizationMembership).values({
-            type: 'cat_3',
-            category_id: cat3Id,
-            character_id: parsed.data.character_id,
-            title: titleToSet,
-            secondary: isSecondaryUnit,
-            manual: parsed.data.manual,
-            created_by: session.userId,
-        });
+        await db.insert(factionOrganizationMembership).values(valuesToInsert);
 
-        return NextResponse.json({ success: true, message: 'Member added successfully.' }, { status: 201 });
+        return NextResponse.json({ success: true, message: `${character_ids.length} member(s) added successfully.` }, { status: 201 });
     } catch (error) {
         console.error(`[API Add Member to Cat3] Error for detail ${cat3Id}:`, error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

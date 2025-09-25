@@ -31,6 +31,8 @@ import { cn } from '@/lib/utils';
 import { TransferMemberDialog } from './transfer-member-dialog';
 import { Badge } from '../ui/badge';
 import { ForumSyncDialog } from './forum-sync-dialog';
+import { Textarea } from '../ui/textarea';
+import { Label } from '../ui/label';
 
 
 interface Member {
@@ -61,7 +63,7 @@ interface MembersTableProps {
 
 export function MembersTable({ members, allFactionMembers, allAssignedCharacterIds, canManage, cat1Id, cat2Id, onDataChange, allUnitsAndDetails, forumGroupId, isSecondary }: MembersTableProps) {
     const [isAdding, setIsAdding] = useState(false);
-    const [selectedCharacterId, setSelectedCharacterId] = useState<string>('');
+    const [namesToAdd, setNamesToAdd] = useState('');
     const [newTitle, setNewTitle] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingMember, setEditingMember] = useState<Member | null>(null);
@@ -71,36 +73,36 @@ export function MembersTable({ members, allFactionMembers, allAssignedCharacterI
     const [isSyncDialogOpen, setIsSyncDialogOpen] = useState(false);
     const { toast } = useToast();
 
-    const currentMemberIds = new Set(members.map(m => m.character_id));
-    const assignedIds = new Set(allAssignedCharacterIds);
-    
-    const characterOptions = allFactionMembers
-        .filter(fm => {
-            if (isSecondary) return true; // For secondary units, show everyone
-            return !assignedIds.has(fm.character_id) || currentMemberIds.has(fm.character_id);
-        })
-        .map(fm => fm.character_name);
-
-
     const handleAddMember = async () => {
-        if (!selectedCharacterId) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Please select a character.' });
+        const names = namesToAdd.split('\n').map(n => n.trim()).filter(Boolean);
+        if (names.length === 0) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Please enter at least one character name.' });
             return;
         }
+
         setIsSubmitting(true);
         try {
-            const character = allFactionMembers.find(fm => fm.character_name === selectedCharacterId);
+            const characterIds = names.map(name => {
+                const member = allFactionMembers.find(fm => fm.character_name === name);
+                return member ? member.character_id : null;
+            }).filter((id): id is number => id !== null);
+
+            if (characterIds.length !== names.length) {
+                toast({ variant: 'destructive', title: 'Error', description: 'One or more character names were not found.' });
+                return;
+            }
+
             const res = await fetch(`/api/units-divisions/${cat1Id}/${cat2Id}/members`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ character_id: character.character_id, title: newTitle, manual: true }),
+                body: JSON.stringify({ character_ids: characterIds, title: newTitle, manual: true }),
             });
             const result = await res.json();
             if (!res.ok) throw new Error(result.error);
-            toast({ title: 'Success', description: 'Member added.' });
+            toast({ title: 'Success', description: `${result.message}` });
             onDataChange();
             setIsAdding(false);
-            setSelectedCharacterId('');
+            setNamesToAdd('');
             setNewTitle('');
         } catch (err: any) {
             toast({ variant: 'destructive', title: 'Error', description: err.message });
@@ -190,7 +192,7 @@ export function MembersTable({ members, allFactionMembers, allAssignedCharacterI
                              )}
                              <Button onClick={() => setIsAdding(!isAdding)}>
                                 <PlusCircle className="mr-2" />
-                                {isAdding ? 'Cancel' : 'Add Member'}
+                                {isAdding ? 'Cancel' : 'Add Members'}
                             </Button>
                         </div>
                     )}
@@ -200,12 +202,12 @@ export function MembersTable({ members, allFactionMembers, allAssignedCharacterI
                 {isAdding && (
                     <div className="p-4 border rounded-md mb-4 flex flex-col sm:flex-row gap-4 items-end">
                         <div className="flex-1 w-full">
-                            <label className="text-sm font-medium">Character</label>
-                            <Combobox options={characterOptions} value={selectedCharacterId} onChange={setSelectedCharacterId} placeholder="Select a character..." />
+                            <Label htmlFor="names-to-add">Character Names (one per line)</Label>
+                            <Textarea id="names-to-add" value={namesToAdd} onChange={(e) => setNamesToAdd(e.target.value)} placeholder="Firstname_Lastname&#10;Firstname_Lastname" />
                         </div>
-                         <div className="flex-1 w-full">
-                            <label className="text-sm font-medium">Title (Optional)</label>
-                            <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="e.g., Senior Deputy" />
+                         <div className="w-full sm:w-auto">
+                            <Label htmlFor="title-to-add">Title (Optional)</Label>
+                            <Input id="title-to-add" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="e.g., Senior Deputy" />
                         </div>
                         <Button onClick={handleAddMember} disabled={isSubmitting}>
                              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
