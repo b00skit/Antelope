@@ -21,8 +21,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { TransferMemberDialog } from '@/components/units-divisions/transfer-member-dialog';
 import { Button } from '@/components/ui/button';
-import { LoaTopic } from '@/app/character-sheets/[name]/page';
-import config from '@config';
+import type { LoaTopic } from '@/app/character-sheets/[name]/page';
 
 interface CharacterSheetClientPageProps {
     initialData: any;
@@ -57,27 +56,18 @@ const LoaSection = ({ characterName, factionForumSettings }: { characterName: st
 
     useEffect(() => {
         const fetchLoaData = async () => {
-            if (!factionForumSettings?.phpbb_api_url || !factionForumSettings?.phpbb_api_key || !factionForumSettings?.phpbb_loa_forum_id) {
+            if (!factionForumSettings?.phpbb_loa_forum_id) {
                 setIsLoading(false);
                 return;
             }
 
             setIsLoading(true);
             try {
-                const baseUrl = factionForumSettings.phpbb_api_url.endsWith('/') ? factionForumSettings.phpbb_api_url : `${factionForumSettings.phpbb_api_url}/`;
-                const apiKey = factionForumSettings.phpbb_api_key;
-                const loaForumUrl = `${baseUrl}app.php/booskit/phpbbapi/forum/${factionForumSettings.phpbb_loa_forum_id}?key=${apiKey}`;
-                
-                const loaResponse = await fetch(loaForumUrl, { next: { revalidate: config.FORUM_API_REFRESH_MINUTES * 60 } });
+                const urlSafeCharacterName = encodeURIComponent(characterName.replace(/ /g, '_'));
+                const loaResponse = await fetch(`/api/character-sheets/${urlSafeCharacterName}/loa`);
                 if (loaResponse.ok) {
                     const data = await loaResponse.json();
-                    if (data.forum?.topics) {
-                        const records = data.forum.topics.filter((topic: LoaTopic) => {
-                            const match = topic.title.match(/\[.*?\]\s*(.*?)\s*\[/);
-                            return match && match[1].toLowerCase() === characterName.toLowerCase();
-                        });
-                        setLoaRecords(records);
-                    }
+                    setLoaRecords(data.loaRecords || []);
                 }
             } catch (error) {
                 console.error("Failed to fetch LOA records", error);
@@ -130,7 +120,7 @@ const LoaSection = ({ characterName, factionForumSettings }: { characterName: st
 
 export function CharacterSheetClientPage({ initialData }: CharacterSheetClientPageProps) {
     const router = useRouter();
-    const [data, setData] = useState<any>(initialData);
+    const [data] = useState<any>(initialData);
     const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
     
     if (data.reauth) {
@@ -138,7 +128,7 @@ export function CharacterSheetClientPage({ initialData }: CharacterSheetClientPa
         return null;
     }
 
-    const { character, totalAbas, characterSheetsEnabled, forumData, abasSettings, assignment, canManageAssignments, allUnitsAndDetails, secondaryAssignments, forumProfileUrl, mdcRecordUrl, factionForumSettings } = data;
+    const { character, totalAbas, forumData, abasSettings, assignment, canManageAssignments, allUnitsAndDetails, secondaryAssignments, forumProfileUrl, mdcRecordUrl, factionForumSettings } = data;
     const characterImage = `https://mdc.gta.world/img/persons/${character.firstname}_${character.lastname}.png?${Date.now()}`;
     
     const handleTransferSuccess = () => {
@@ -175,7 +165,7 @@ export function CharacterSheetClientPage({ initialData }: CharacterSheetClientPa
             />
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                 <div className="lg:col-span-3 space-y-6">
+                <div className="lg:col-span-3 space-y-6">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         <div className="lg:col-span-2 space-y-6">
                             <Card>
@@ -381,13 +371,9 @@ export function CharacterSheetClientPage({ initialData }: CharacterSheetClientPa
                                         {character.alternative_characters.map((alt: any) => (
                                             <TableRow key={alt.character_id}>
                                                 <TableCell className="font-medium">
-                                                    {characterSheetsEnabled ? (
-                                                        <Link href={`/character-sheets/${alt.character_name.replace(/ /g, '_')}`} className="hover:underline text-primary">
-                                                            {alt.character_name}
-                                                        </Link>
-                                                    ) : (
-                                                        alt.character_name
-                                                    )}
+                                                    <Link href={`/character-sheets/${alt.character_name.replace(/ /g, '_')}`} className="hover:underline text-primary">
+                                                        {alt.character_name}
+                                                    </Link>
                                                 </TableCell>
                                                 <TableCell>{alt.rank_name}</TableCell>
                                                 <TableCell className={cn(getAbasClass(parseFloat(alt.abas), alt.rank, abasSettings))}>{formatAbas(alt.abas)}</TableCell>
