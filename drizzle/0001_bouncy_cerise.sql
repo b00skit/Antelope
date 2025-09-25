@@ -1,0 +1,1 @@
+ALTER TABLE `faction_organization_membership` ADD `manual` integer DEFAULT false;

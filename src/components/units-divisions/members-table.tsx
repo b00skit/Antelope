@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, MoreVertical, Pencil, Trash2, User, Loader2, Move, UserCog } from "lucide-react";
+import { PlusCircle, MoreVertical, Pencil, Trash2, User, Loader2, Move, UserCog, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { Combobox } from '../ui/combobox';
 import { Input } from '../ui/input';
@@ -30,6 +30,7 @@ import {
 import { cn } from '@/lib/utils';
 import { TransferMemberDialog } from './transfer-member-dialog';
 import { Badge } from '../ui/badge';
+import { ForumSyncDialog } from './forum-sync-dialog';
 
 
 interface Member {
@@ -67,6 +68,7 @@ export function MembersTable({ members, allFactionMembers, allAssignedCharacterI
     const [isDeleting, setIsDeleting] = useState<number | null>(null);
     const [transferringMember, setTransferringMember] = useState<Member | null>(null);
     const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
+    const [isSyncDialogOpen, setIsSyncDialogOpen] = useState(false);
     const { toast } = useToast();
 
     const currentMemberIds = new Set(members.map(m => m.character_id));
@@ -161,6 +163,16 @@ export function MembersTable({ members, allFactionMembers, allAssignedCharacterI
                 opt => !(opt.type === 'cat_2' && opt.value === cat2Id.toString())
             )}
         />
+        {forumGroupId && (
+            <ForumSyncDialog
+                open={isSyncDialogOpen}
+                onOpenChange={setIsSyncDialogOpen}
+                onSyncSuccess={onDataChange}
+                categoryType="cat_2"
+                categoryId={cat2Id}
+                allFactionMembers={allFactionMembers}
+            />
+        )}
         <Card>
             <CardHeader>
                 <div className="flex justify-between items-start">
@@ -170,6 +182,12 @@ export function MembersTable({ members, allFactionMembers, allAssignedCharacterI
                     </div>
                     {canManage && (
                         <div className="flex gap-2">
+                             {forumGroupId && (
+                                <Button variant="secondary" onClick={() => setIsSyncDialogOpen(true)}>
+                                    <RefreshCw className="mr-2" />
+                                    Compare &amp; Sync
+                                </Button>
+                             )}
                              <Button onClick={() => setIsAdding(!isAdding)}>
                                 <PlusCircle className="mr-2" />
                                 {isAdding ? 'Cancel' : 'Add Member'}
