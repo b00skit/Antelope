@@ -30,6 +30,8 @@ const updateRosterSchema = z.object({
     password: z.string().optional().nullable(),
     roster_setup_json: jsonString.optional().nullable(),
     access_json: z.array(z.number()).optional().nullable(),
+    organization_category_type: z.enum(['cat_2', 'cat_3']).optional().nullable(),
+    organization_category_id: z.number().optional().nullable(),
 }).refine(data => data.visibility !== 'private' || (data.password && data.password.length > 0) || (data.password === null), {
     message: "A new password is required to keep this roster private.",
     path: ["password"],
@@ -128,6 +130,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             visibility: parsed.data.visibility,
             roster_setup_json: parsed.data.roster_setup_json,
             access_json: parsed.data.visibility === 'personal' ? null : parsed.data.access_json,
+            organization_category_type: parsed.data.organization_category_type,
+            organization_category_id: parsed.data.organization_category_id,
             updated_at: sql`(strftime('%s', 'now'))`
         };
 
