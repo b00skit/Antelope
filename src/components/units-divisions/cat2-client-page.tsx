@@ -52,6 +52,7 @@ interface PageData {
     canManage: boolean;
     factionUsers: FactionUser[];
     allUnitsAndDetails: { label: string; value: string; type: 'cat_2' | 'cat_3' }[];
+    syncableForumGroups: { value: string; label: string; }[];
 }
 
 interface Cat2ClientPageProps {
@@ -146,7 +147,7 @@ export function Cat2ClientPage({ cat1Id, cat2Id }: Cat2ClientPageProps) {
                 parentCat2={data.unit}
                 settings={{ category_3_name: 'Detail' }} // This should be dynamic later
                 factionUsers={data.factionUsers}
-                syncableForumGroups={[]} // This needs to be passed if needed
+                syncableForumGroups={data.syncableForumGroups || []}
             />
             <ForumSyncDialog
                 open={isSyncDialogOpen}
@@ -210,7 +211,7 @@ export function Cat2ClientPage({ cat1Id, cat2Id }: Cat2ClientPageProps) {
                 </Card>
                 <Card>
                     <CardHeader>
-                        <CardTitle>Top Performers</CardTitle>
+                        <CardTitle className="flex items-center gap-2"><Trophy /> Top Performers</CardTitle>
                     </CardHeader>
                     <CardContent>
                         {topPerformers.length > 0 ? (

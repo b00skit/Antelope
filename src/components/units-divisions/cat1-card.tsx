@@ -38,7 +38,6 @@ interface Cat1CardProps {
 
 export function Cat1Card({ cat1, onEdit, onDelete, onCreateCat2, onEditCat2, settings, favorites, onToggleFavorite }: Cat1CardProps) {
     const favoriteIdsCat2 = new Set(favorites.filter(f => f.category_type === 'cat_2').map(f => f.category_id));
-    const favoriteIdsCat3 = new Set(favorites.filter(f => f.category_type === 'cat_3').map(f => f.category_id));
     
     return (
         <Card>
