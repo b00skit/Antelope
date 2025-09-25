@@ -45,7 +45,7 @@ const jsonString = z.string().refine((value) => {
 
 const formSchema = z.object({
     name: z.string().min(3, "Roster name must be at least 3 characters long."),
-    visibility: z.enum(['personal', 'private', 'unlisted', 'public']).default('personal'),
+    visibility: z.enum(['personal', 'private', 'unlisted', 'public', 'organization']).default('personal'),
     password: z.string().optional().nullable(),
     roster_setup_json: jsonString.optional().nullable(),
     access_json: z.array(z.number()).optional().nullable(),
@@ -347,110 +347,114 @@ export default function EditRosterPage() {
                                     </FormItem>
                                 )}
                             />
-                             <FormField
-                                control={form.control}
-                                name="visibility"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Visibility</FormLabel>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                            <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select visibility..." />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                {visibilityOptions.map(option => (
-                                                    <SelectItem key={option.value} value={option.value}>
-                                                        {option.label} - <span className="text-muted-foreground text-xs">{option.description}</span>
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            {watchVisibility === 'private' && (
-                                <FormField
-                                    control={form.control}
-                                    name="password"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>New Password</FormLabel>
-                                            <FormControl>
-                                                <Input type="password" placeholder="Leave blank to keep current password" {...field} value={field.value ?? ''} />
-                                            </FormControl>
-                                            <FormDescription>
-                                                 {initialVisibility === 'private'
-                                                    ? 'Only enter a value here if you want to change the password.'
-                                                    : 'A new password is required to make this roster private.'}
-                                            </FormDescription>
-                                            <FormMessage />
-                                        </FormItem>
+                            {initialVisibility !== 'organization' && (
+                                <>
+                                    <FormField
+                                        control={form.control}
+                                        name="visibility"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Visibility</FormLabel>
+                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                    <FormControl>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Select visibility..." />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        {visibilityOptions.map(option => (
+                                                            <SelectItem key={option.value} value={option.value}>
+                                                                {option.label} - <span className="text-muted-foreground text-xs">{option.description}</span>
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    {watchVisibility === 'private' && (
+                                        <FormField
+                                            control={form.control}
+                                            name="password"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>New Password</FormLabel>
+                                                    <FormControl>
+                                                        <Input type="password" placeholder="Leave blank to keep current password" {...field} value={field.value ?? ''} />
+                                                    </FormControl>
+                                                    <FormDescription>
+                                                        {initialVisibility === 'private'
+                                                            ? 'Only enter a value here if you want to change the password.'
+                                                            : 'A new password is required to make this roster private.'}
+                                                    </FormDescription>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
                                     )}
-                                />
-                            )}
-                             {watchVisibility !== 'personal' && (
-                                <FormField
-                                    control={form.control}
-                                    name="access_json"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Edit Access</FormLabel>
-                                            <FormControl>
-                                                 <MultiSelect
-                                                    options={userOptions}
-                                                    onValueChange={(selected) => field.onChange(selected.map(Number))}
-                                                    defaultValue={field.value?.map(String) ?? []}
-                                                    placeholder="Select users..."
-                                                />
-                                            </FormControl>
-                                            <FormDescription>Grant other users permission to edit this roster.</FormDescription>
-                                            <FormMessage />
-                                        </FormItem>
+                                    {watchVisibility !== 'personal' && (
+                                        <FormField
+                                            control={form.control}
+                                            name="access_json"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Edit Access</FormLabel>
+                                                    <FormControl>
+                                                        <MultiSelect
+                                                            options={userOptions}
+                                                            onValueChange={(selected) => field.onChange(selected.map(Number))}
+                                                            defaultValue={field.value?.map(String) ?? []}
+                                                            placeholder="Select users..."
+                                                        />
+                                                    </FormControl>
+                                                    <FormDescription>Grant other users permission to edit this roster.</FormDescription>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
                                     )}
-                                />
+                                    <FormField
+                                        control={form.control}
+                                        name="organization"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Filter by Unit/Detail (Optional)</FormLabel>
+                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                    <FormControl>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="None" />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        <SelectItem value="none">None (Use manual filters)</SelectItem>
+                                                        {organizations.map(org => (
+                                                            <SelectItem key={org.value} value={org.value}>
+                                                                {org.label}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormDescription>If selected, this roster will automatically include all members of the chosen unit/detail. Manual filters will be disabled.</FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </>
                             )}
-                            <FormField
-                                control={form.control}
-                                name="organization"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Filter by Unit/Detail (Optional)</FormLabel>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                            <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="None" />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                <SelectItem value="none">None (Use manual filters)</SelectItem>
-                                                {organizations.map(org => (
-                                                    <SelectItem key={org.value} value={org.value}>
-                                                        {org.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        <FormDescription>If selected, this roster will automatically include all members of the chosen unit/detail. Manual filters will be disabled.</FormDescription>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
                             <FormItem>
                                 <FormLabel>Roster Configuration (Optional)</FormLabel>
                                 <Tabs defaultValue="basic" className="w-full" onValueChange={(tab) => tab === 'basic' ? syncJsonToBasic() : syncBasicToJson()}>
                                     <TabsList>
                                         <TabsTrigger value="basic">Basic</TabsTrigger>
-                                        <TabsTrigger value="advanced" disabled={isOrgSelected}>Advanced (JSON)</TabsTrigger>
+                                        <TabsTrigger value="advanced" disabled={isOrgSelected || initialVisibility === 'organization'}>Advanced (JSON)</TabsTrigger>
                                     </TabsList>
                                     <TabsContent value="basic" className="space-y-4 pt-2">
-                                        <fieldset disabled={isOrgSelected}>
+                                        <fieldset disabled={isOrgSelected || initialVisibility === 'organization'}>
                                             <Card>
                                                 <CardHeader>
                                                     <CardTitle className="text-base">Filters</CardTitle>
-                                                    {isOrgSelected && <CardDescription>Filters are disabled because this roster is linked to a unit/detail.</CardDescription>}
+                                                    {(isOrgSelected || initialVisibility === 'organization') && <CardDescription>Filters are disabled because this roster is linked to a unit/detail.</CardDescription>}
                                                 </CardHeader>
                                                 <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                     <FormItem>
@@ -557,10 +561,10 @@ export default function EditRosterPage() {
                                                             className="font-mono min-h-[250px]"
                                                             {...field}
                                                             value={field.value ?? ''}
-                                                            disabled={isOrgSelected}
+                                                            disabled={isOrgSelected || initialVisibility === 'organization'}
                                                         />
                                                     </FormControl>
-                                                    {isOrgSelected && <FormDescription>JSON editing is disabled when a roster is linked to an organization.</FormDescription>}
+                                                    {(isOrgSelected || initialVisibility === 'organization') && <FormDescription>JSON editing is disabled when a roster is linked to an organization.</FormDescription>}
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
