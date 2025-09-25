@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/dashboard/page-header';
-import { User, Briefcase, Users, Hash, Calendar, Clock, Sigma, BookUser, Building, Move, Award, ExternalLink } from 'lucide-react';
+import { User, Briefcase, Users, Hash, Calendar, Clock, Sigma, BookUser, Building, Move, Award, ExternalLink, Plane } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
@@ -60,7 +60,7 @@ export function CharacterSheetClientPage({ initialData }: CharacterSheetClientPa
         return null;
     }
 
-    const { character, totalAbas, characterSheetsEnabled, forumData, abasSettings, assignment, canManageAssignments, allUnitsAndDetails, secondaryAssignments, forumProfileUrl, mdcRecordUrl } = data;
+    const { character, totalAbas, characterSheetsEnabled, forumData, abasSettings, assignment, canManageAssignments, allUnitsAndDetails, secondaryAssignments, forumProfileUrl, mdcRecordUrl, loaRecords } = data;
     const characterImage = `https://mdc.gta.world/img/persons/${character.firstname}_${character.lastname}.png?${Date.now()}`;
     
     const handleTransferSuccess = () => {
@@ -273,6 +273,33 @@ export function CharacterSheetClientPage({ initialData }: CharacterSheetClientPa
                                                     </Link>
                                                 </TableCell>
                                                 <TableCell>{assignment.title || <span className="text-muted-foreground">N/A</span>}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {loaRecords && loaRecords.length > 0 && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Leave of Absence Records</CardTitle>
+                                <CardDescription>LOA records found on the forums for this character.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Title</TableHead>
+                                            <TableHead>Author</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {loaRecords.map((record: any) => (
+                                            <TableRow key={record.id}>
+                                                <TableCell className="font-medium">{record.title}</TableCell>
+                                                <TableCell>{record.author}</TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>

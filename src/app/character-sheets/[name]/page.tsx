@@ -44,6 +44,12 @@ interface SecondaryAssignmentData {
     title: string | null;
 }
 
+interface LoaTopic {
+    id: number;
+    title: string;
+    author: string;
+}
+
 async function getCharacterData(name: string) {
     const cookieStore = cookies();
     const session = await getSession(cookieStore);
@@ -139,23 +145,18 @@ async function getCharacterData(name: string) {
         return isNaN(value) ? sum : sum + value;
     }, 0);
 
-    const deriveNameParts = () => {
-        if (character.firstname && character.lastname) {
-            return { firstname: character.firstname, lastname: character.lastname };
-        }
-
-        const cleanedName = (character.character_name || '').replace(/_/g, ' ').trim();
+    const deriveNameParts = (charName: string) => {
+        const cleanedName = (charName || '').replace(/_/g, ' ').trim();
         if (!cleanedName) {
-            return { firstname: character.firstname ?? '', lastname: character.lastname ?? '' };
+            return { firstname: '', lastname: '' };
         }
-
         const parts = cleanedName.split(' ');
         const firstname = parts.shift() ?? '';
         const lastname = parts.join(' ') || '';
         return { firstname, lastname };
     };
 
-    const nameParts = deriveNameParts();
+    const nameParts = deriveNameParts(character.character_name);
 
     const alternativeCharacters: any[] = [];
     const addAlternativeCharacter = (candidate: any) => {
@@ -221,11 +222,14 @@ async function getCharacterData(name: string) {
     
     let forumData: ForumData | null = null;
     let forumProfileUrl: string | null = null;
+    let loaRecords: LoaTopic[] = [];
+
     if (selectedFaction.phpbb_api_url && selectedFaction.phpbb_api_key) {
+        const baseUrl = selectedFaction.phpbb_api_url.endsWith('/') ? selectedFaction.phpbb_api_url : `${selectedFaction.phpbb_api_url}/`;
+        const apiKey = selectedFaction.phpbb_api_key;
+        
         try {
             const forumUsername = characterName;
-            const baseUrl = selectedFaction.phpbb_api_url.endsWith('/') ? selectedFaction.phpbb_api_url : `${selectedFaction.phpbb_api_url}/`;
-            const apiKey = selectedFaction.phpbb_api_key;
             const forumApiUrl = `${baseUrl}app.php/booskit/phpbbapi/user/username/${forumUsername}?key=${apiKey}`;
 
             const forumApiResponse = await fetch(forumApiUrl, { next: { revalidate: config.FORUM_API_REFRESH_MINUTES * 60 } });
@@ -240,6 +244,26 @@ async function getCharacterData(name: string) {
             }
         } catch (error) {
             console.error(`[Forum API] Error fetching forum data:`, error);
+        }
+
+        if (selectedFaction.phpbb_loa_forum_id) {
+            try {
+                const loaForumUrl = `${baseUrl}app.php/booskit/phpbbapi/forum/${selectedFaction.phpbb_loa_forum_id}?key=${apiKey}`;
+                const loaResponse = await fetch(loaForumUrl, { next: { revalidate: config.FORUM_API_REFRESH_MINUTES * 60 } });
+                if (loaResponse.ok) {
+                    const data = await loaResponse.json();
+                    if (data.forum?.topics) {
+                        loaRecords = data.forum.topics.filter((topic: LoaTopic) => {
+                            const match = topic.title.match(/\[.*?\]\s*(.*?)\s*\[/);
+                            return match && match[1].toLowerCase() === characterName.toLowerCase();
+                        });
+                    }
+                } else {
+                     console.warn(`[Forum API] Failed to fetch LOA data. Status: ${loaResponse.status}`);
+                }
+            } catch (error) {
+                console.error(`[Forum API] Error fetching LOA data:`, error);
+            }
         }
     }
     
@@ -352,7 +376,7 @@ async function getCharacterData(name: string) {
         }
     }
 
-    const mdcRecordUrl = `https://mdc.gta.world/records/${nameParts.firstname}_${nameParts.lastname}`;
+    const mdcRecordUrl = `https://mdc.gta.world/record/${nameParts.firstname}_${nameParts.lastname}`;
 
     return { 
         character: { ...charData.data, id: characterId }, 
@@ -366,6 +390,7 @@ async function getCharacterData(name: string) {
         secondaryAssignments,
         forumProfileUrl,
         mdcRecordUrl,
+        loaRecords,
     };
 }
 

@@ -61,6 +61,8 @@ const formSchema = z.object({
     data_exports_enabled: z.boolean().default(false),
     phpbb_api_url: z.string().url("Must be a valid URL").or(z.literal('')).optional().nullable(),
     phpbb_api_key: z.string().optional().nullable(),
+    phpbb_loa_forum_id: z.coerce.number().optional().nullable(),
+    phpbb_loa_archive_forum_id: z.coerce.number().optional().nullable(),
 });
 
 export function ManageFactionClientPage({ faction }: ManageFactionClientPageProps) {
@@ -87,6 +89,8 @@ export function ManageFactionClientPage({ faction }: ManageFactionClientPageProp
             data_exports_enabled: faction.feature_flags?.data_exports_enabled ?? false,
             phpbb_api_url: faction.phpbb_api_url,
             phpbb_api_key: faction.phpbb_api_key,
+            phpbb_loa_forum_id: faction.phpbb_loa_forum_id,
+            phpbb_loa_archive_forum_id: faction.phpbb_loa_archive_forum_id,
         },
     });
     
@@ -412,6 +416,32 @@ export function ManageFactionClientPage({ faction }: ManageFactionClientPageProp
                                     <div>
                                         <Label>REST API Endpoint Preview</Label>
                                         <Input readOnly value={apiEndpointPreview} className="mt-1 font-mono text-xs" />
+                                    </div>
+                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <FormField
+                                            control={form.control}
+                                            name="phpbb_loa_forum_id"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>LOA Forum ID</FormLabel>
+                                                    <FormControl>
+                                                        <Input type="number" placeholder="e.g., 123" {...field} value={field.value ?? ''} />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="phpbb_loa_archive_forum_id"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>LOA Archive Forum ID</FormLabel>
+                                                    <FormControl>
+                                                        <Input type="number" placeholder="e.g., 456" {...field} value={field.value ?? ''} />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
                                     </div>
                                     <div className="pt-2">
                                         <Button type="button" variant="secondary" onClick={() => setIsForumGroupsOpen(true)} disabled={!watchUrl || !watchKey}>
