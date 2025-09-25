@@ -34,6 +34,9 @@ interface Member {
     abas?: string | null;
     assignmentTitle?: string | null;
     label?: string | null;
+    isPrimary?: boolean;
+    isAlternative?: boolean;
+    membershipId?: number;
 }
 
 interface Section {
@@ -57,9 +60,11 @@ interface RosterSectionProps {
     selectedMemberIds: Set<number>;
     onToggleSelection: (characterId: number) => void;
     labels: Record<string, string>;
-    onSetLabel: (characterId: number, color: string | null) => void;
+    onSetLabel?: (characterId: number, color: string | null) => void;
     readOnly?: boolean;
     markAlts?: boolean;
+    onEditTitle?: (member: Member) => void;
+    isOrganizational?: boolean;
 }
 
 
@@ -81,6 +86,8 @@ export function RosterSection({
     onSetLabel,
     readOnly = false,
     markAlts = false,
+    onEditTitle,
+    isOrganizational = false,
 }: RosterSectionProps) {
     const ref = useRef<HTMLDivElement>(null);
 
@@ -199,8 +206,10 @@ export function RosterSection({
                                     onToggleSelection={onToggleSelection}
                                     labels={labels}
                                     onSetLabel={onSetLabel}
+                                    onEditTitle={onEditTitle}
                                     readOnly={readOnly}
                                     markAlts={markAlts}
+                                    isOrganizational={isOrganizational}
                                 />
                             ))}
                         </TableBody>

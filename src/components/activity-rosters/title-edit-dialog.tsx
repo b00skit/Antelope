@@ -21,6 +21,7 @@ interface Member {
     character_id: number;
     character_name: string;
     membershipId?: number;
+    assignmentTitle?: string | null;
 }
 
 interface TitleEditDialogProps {
@@ -31,6 +32,7 @@ interface TitleEditDialogProps {
     organizationInfo?: {
         type: 'cat_2' | 'cat_3';
         id: number;
+        parentId?: number;
     };
 }
 
@@ -49,22 +51,38 @@ export function TitleEditDialog({ open, onOpenChange, onSuccess, members, organi
 
     const handleSave = async () => {
         if (!organizationInfo) return;
+
+        const targetMembers = members.filter(member => member.membershipId);
+        if (targetMembers.length === 0) {
+            toast({ variant: 'destructive', title: 'Error', description: 'No eligible members found for updating titles.' });
+            return;
+        }
+
+        if (targetMembers.length !== members.length) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Some selected members are missing membership data.' });
+            return;
+        }
+
+        const cat2Id = organizationInfo.type === 'cat_2' ? organizationInfo.id : organizationInfo.parentId;
+        if (!cat2Id) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Organization data is incomplete for this roster.' });
+            return;
+        }
+
+        const cat1Id = organizationInfo.type === 'cat_2' ? (organizationInfo.parentId ?? 0) : 0;
+        const basePath = organizationInfo.type === 'cat_2'
+            ? `/api/units-divisions/${cat1Id}/${organizationInfo.id}/members`
+            : `/api/units-divisions/${cat1Id}/${cat2Id}/${organizationInfo.id}/members`;
+
         setIsSaving(true);
         try {
-            const promises = members.map(member => {
-                let url;
-                if (organizationInfo.type === 'cat_2') {
-                    url = `/api/units-divisions/cat1/0/members/${member.membershipId}`; // cat1Id is not used in the API
-                } else {
-                    url = `/api/units-divisions/cat1/0/cat2/0/members/${member.membershipId}`; // cat1Id and cat2Id are not used
-                }
-                
-                return fetch(url, {
+            const promises = targetMembers.map(member =>
+                fetch(`${basePath}/${member.membershipId}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ title }),
-                });
-            });
+                })
+            );
 
             const responses = await Promise.all(promises);
             const errorResponse = responses.find(res => !res.ok);
@@ -83,7 +101,11 @@ export function TitleEditDialog({ open, onOpenChange, onSuccess, members, organi
         }
     };
 
-    const titleText = members.length > 1 ? `Mass Assign Title for ${members.length} Members` : `Edit Title for ${members[0]?.character_name}`;
+    const titleText = members.length > 1
+        ? `Mass Assign Title for ${members.length} Members`
+        : members.length === 1
+            ? `Edit Title for ${members[0]?.character_name}`
+            : 'Edit Title';
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>

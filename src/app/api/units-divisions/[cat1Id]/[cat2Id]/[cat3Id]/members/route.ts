@@ -19,6 +19,7 @@ interface RouteParams {
 const addMemberSchema = z.object({
     character_id: z.number().int(),
     title: z.string().optional().nullable(),
+    manual: z.boolean().default(false),
 });
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
@@ -49,8 +50,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         const cat3 = await db.query.factionOrganizationCat3.findFirst({
             where: eq(factionOrganizationCat3.id, cat3Id)
         });
+        
+        if (!cat3) {
+             return NextResponse.json({ error: 'Detail not found.' }, { status: 404 });
+        }
 
         const isSecondaryUnit = cat3?.settings_json?.secondary ?? false;
+        let titleToSet = parsed.data.title;
+        if (!titleToSet && cat3?.settings_json?.default_title) {
+            titleToSet = cat3.settings_json.default_title;
+        }
 
         if (!isSecondaryUnit) {
             const existingAssignment = await db.query.factionOrganizationMembership.findFirst({
@@ -69,8 +78,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             type: 'cat_3',
             category_id: cat3Id,
             character_id: parsed.data.character_id,
-            title: parsed.data.title,
+            title: titleToSet,
             secondary: isSecondaryUnit,
+            manual: parsed.data.manual,
             created_by: session.userId,
         });
 

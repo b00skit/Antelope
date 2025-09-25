@@ -75,7 +75,7 @@ interface RosterConfig {
 }
 
 interface RosterData {
-    roster: { id: number; name: string, isOrganizational?: boolean; organizationInfo?: { type: 'cat_2' | 'cat_3', id: number } };
+    roster: { id: number; name: string, isOrganizational?: boolean; organizationInfo?: { type: 'cat_2' | 'cat_3', id: number; parentId?: number } };
     faction: { id: number; name: string; supervisor_rank: number; minimum_abas: number; minimum_supervisor_abas: number; };
     members: Member[];
     missingForumUsers: string[];

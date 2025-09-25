@@ -26,6 +26,7 @@ const cat3FormSchema = z.object({
     access_json: z.array(z.number()).optional().nullable(),
     forum_group_id: z.coerce.number().optional().nullable(),
     secondary: z.boolean().default(false),
+    default_title: z.string().optional().nullable(),
 });
 
 interface Cat3DialogProps {
@@ -49,6 +50,7 @@ export function Cat3Dialog({ open, onOpenChange, onSave, cat3, parentCat2, setti
             access_json: [],
             forum_group_id: undefined,
             secondary: false,
+            default_title: '',
         }
     });
 
@@ -60,6 +62,7 @@ export function Cat3Dialog({ open, onOpenChange, onSave, cat3, parentCat2, setti
                 access_json: cat3.access_json,
                 forum_group_id: cat3.settings_json?.forum_group_id,
                 secondary: cat3.settings_json?.secondary ?? false,
+                default_title: cat3.settings_json?.default_title ?? '',
             });
         } else {
             form.reset({
@@ -68,6 +71,7 @@ export function Cat3Dialog({ open, onOpenChange, onSave, cat3, parentCat2, setti
                 access_json: [],
                 forum_group_id: undefined,
                 secondary: false,
+                default_title: '',
             });
         }
     }, [cat3, form]);
@@ -85,6 +89,7 @@ export function Cat3Dialog({ open, onOpenChange, onSave, cat3, parentCat2, setti
                 settings_json: {
                     forum_group_id: values.forum_group_id,
                     secondary: values.secondary,
+                    default_title: values.default_title,
                 },
             };
 
@@ -183,6 +188,18 @@ export function Cat3Dialog({ open, onOpenChange, onSave, cat3, parentCat2, setti
                                         </SelectContent>
                                     </Select>
                                     <FormDescription>Sync this detail with a phpBB forum group.</FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name="default_title"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Default Title (Optional)</FormLabel>
+                                    <FormControl><Input {...field} value={field.value ?? ''} placeholder="e.g., Member" /></FormControl>
+                                    <FormDescription>This title will be assigned to members when manually added.</FormDescription>
                                     <FormMessage />
                                 </FormItem>
                             )}

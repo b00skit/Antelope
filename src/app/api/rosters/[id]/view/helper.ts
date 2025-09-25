@@ -13,6 +13,8 @@ import {
     apiCacheAlternativeCharacters,
     forumApiCache,
     factionMembers,
+    factionOrganizationCat2,
+    factionOrganizationCat3,
 } from '@/db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import type { IronSession } from 'iron-session';
@@ -129,11 +131,35 @@ export async function getRosterViewData(
     let members: Member[] = [];
     let orgMemberships: { character_id: number; id: number, title: string | null }[] = [];
 
-    if (roster.organization_category_type && roster.organization_category_id) {
+    const rosterOrgType = roster.organization_category_type;
+    const rosterOrgId = roster.organization_category_id;
+
+    let organizationInfo: { type: 'cat_2' | 'cat_3'; id: number; parentId?: number } | undefined;
+    if (rosterOrgType && rosterOrgId) {
+        organizationInfo = { type: rosterOrgType, id: rosterOrgId };
+
+        if (rosterOrgType === 'cat_2') {
+            const cat2 = await db.query.factionOrganizationCat2.findFirst({
+                where: eq(factionOrganizationCat2.id, rosterOrgId),
+            });
+            if (cat2?.cat1_id) {
+                organizationInfo.parentId = cat2.cat1_id;
+            }
+        } else if (rosterOrgType === 'cat_3') {
+            const cat3 = await db.query.factionOrganizationCat3.findFirst({
+                where: eq(factionOrganizationCat3.id, rosterOrgId),
+            });
+            if (cat3?.cat2_id) {
+                organizationInfo.parentId = cat3.cat2_id;
+            }
+        }
+    }
+
+    if (rosterOrgType && rosterOrgId) {
         orgMemberships = await db.query.factionOrganizationMembership.findMany({
             where: and(
-                eq(factionOrganizationMembership.type, roster.organization_category_type),
-                eq(factionOrganizationMembership.category_id, roster.organization_category_id)
+                eq(factionOrganizationMembership.type, rosterOrgType),
+                eq(factionOrganizationMembership.category_id, rosterOrgId)
             ),
             columns: {
                 id: true,
@@ -382,7 +408,7 @@ export async function getRosterViewData(
         }
     }
 
-    if (showAssignmentTitles && memberIds.length > 0 && !roster.organization_category_type) {
+    if (showAssignmentTitles && memberIds.length > 0 && !rosterOrgType) {
         const assignments = await db.query.factionOrganizationMembership.findMany({
             where: and(
                 inArray(factionOrganizationMembership.character_id, memberIds),
@@ -401,10 +427,7 @@ export async function getRosterViewData(
             name: roster.name,
             isPrivate: roster.visibility === 'private',
             isOrganizational: roster.visibility === 'organization',
-            organizationInfo: {
-                type: roster.organization_category_type,
-                id: roster.organization_category_id,
-            },
+            organizationInfo,
         },
         faction: {
             id: roster.faction.id,

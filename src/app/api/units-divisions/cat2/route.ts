@@ -16,6 +16,7 @@ const cat2Schema = z.object({
         allow_cat3: z.boolean().optional(),
         forum_group_id: z.coerce.number().optional().nullable(),
         secondary: z.boolean().optional(),
+        default_title: z.string().optional().nullable(),
     }).optional().nullable(),
 });
 

@@ -5,7 +5,7 @@ import { getSession } from '@/lib/session';
 import { db } from '@/db';
 import { z } from 'zod';
 import { canManageCat2 } from '../../../[cat1Id]/[cat2Id]/helpers';
-import { factionOrganizationMembership, factionOrganizationCat3 } from '@/db/schema';
+import { factionOrganizationMembership, factionOrganizationCat2, factionOrganizationCat3 } from '@/db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 
 interface RouteParams {
@@ -43,17 +43,25 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Authorization check
     let cat2IdToCheck;
+    let category: any;
     if (categoryType === 'cat_2') {
+        category = await db.query.factionOrganizationCat2.findFirst({ where: eq(factionOrganizationCat2.id, categoryIdNum) });
         cat2IdToCheck = categoryIdNum;
     } else {
-        const cat3 = await db.query.factionOrganizationCat3.findFirst({ where: eq(factionOrganizationCat3.id, categoryIdNum) });
-        if (!cat3) return NextResponse.json({ error: 'Detail not found.' }, { status: 404 });
-        cat2IdToCheck = cat3.cat2_id;
+        category = await db.query.factionOrganizationCat3.findFirst({ where: eq(factionOrganizationCat3.id, categoryIdNum) });
+        if (category) cat2IdToCheck = category.cat2_id;
     }
+    
+    if (!category || !cat2IdToCheck) {
+        return NextResponse.json({ error: 'Unit or Detail not found.' }, { status: 404 });
+    }
+
     const { authorized, message } = await canManageCat2(session, cat2IdToCheck);
     if (!authorized) {
         return NextResponse.json({ error: message }, { status: 403 });
     }
+
+    const defaultTitle = category.settings_json?.default_title || null;
 
     try {
         db.transaction((tx) => {
@@ -65,6 +73,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
                         character_id: charId,
                         created_by: session.userId!,
                         manual: false,
+                        title: defaultTitle,
                     }))
                 ).run();
             }

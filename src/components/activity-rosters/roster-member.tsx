@@ -8,7 +8,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { Checkbox } from '../ui/checkbox';
-import { MoreVertical, Move, Tag, User, UserCheck, Award } from 'lucide-react';
+import { MoreVertical, Move, Tag, User, UserCheck, Award, Pencil } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
