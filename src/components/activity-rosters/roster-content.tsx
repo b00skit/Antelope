@@ -550,53 +550,57 @@ export function RosterContent({ initialData, rosterId, readOnly = false, onRefre
                         animate={{ y: 0, opacity: 1 }}
                         exit={{ y: 100, opacity: 0 }}
                         transition={{ type: 'spring', stiffness: 200, damping: 25 }}
-                        className="fixed bottom-4 left-1/2 -translate-x-1/2 w-auto bg-card border shadow-lg rounded-lg p-2 flex items-center gap-4 z-50"
+                        className="fixed bottom-4 left-0 right-0 w-full flex justify-center z-50 pointer-events-none"
                     >
-                         <p className="text-sm font-medium">{selectedMemberIds.size} selected</p>
-                         <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button>
-                                    <Move className="mr-2 h-4 w-4" />
-                                    Move Selected To...
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                                {sections.map(s => (
-                                    <DropdownMenuItem key={s.id} onSelect={() => handleBulkMove(s.id as number)}>
-                                        {s.name}
-                                    </DropdownMenuItem>
-                                ))}
-                                 <DropdownMenuItem onSelect={() => handleBulkMove('unassigned')}>
-                                    Unassigned
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                         </DropdownMenu>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="outline">
-                                    <Tag className="mr-2 h-4 w-4" />
-                                    Set Label
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                                {Object.entries(labels).map(([color, title]) => (
-                                    <DropdownMenuItem key={color} onSelect={() => handleBulkSetLabel(color)}>
-                                        <span className={cn('mr-2 h-2 w-2 rounded-full', `bg-${color}-500`)} />
-                                        {title}
-                                    </DropdownMenuItem>
-                                ))}
-                                <DropdownMenuSeparator />
-                                 <DropdownMenuItem onSelect={() => handleBulkSetLabel(null)}>
-                                    Clear Label
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                         </DropdownMenu>
-                         {initialData.roster.isOrganizational && showAssignmentTitles && (
-                            <Button variant="outline" onClick={() => handleOpenTitleDialog(members.filter(m => selectedMemberIds.has(m.character_id)))}>
-                                <Award className="mr-2" />
-                                Mass Assign Title
-                            </Button>
-                         )}
+                        <div className="bg-card border shadow-lg rounded-lg p-2 flex items-center gap-4 pointer-events-auto">
+                            <p className="text-sm font-medium px-2">{selectedMemberIds.size} selected</p>
+                            <div className="flex items-center gap-2">
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button>
+                                            <Move className="mr-2 h-4 w-4" />
+                                            Move To...
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent>
+                                        {sections.map(s => (
+                                            <DropdownMenuItem key={s.id} onSelect={() => handleBulkMove(s.id as number)}>
+                                                {s.name}
+                                            </DropdownMenuItem>
+                                        ))}
+                                        <DropdownMenuItem onSelect={() => handleBulkMove('unassigned')}>
+                                            Unassigned
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="outline">
+                                            <Tag className="mr-2 h-4 w-4" />
+                                            Set Label
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent>
+                                        {Object.entries(labels).map(([color, title]) => (
+                                            <DropdownMenuItem key={color} onSelect={() => handleBulkSetLabel(color)}>
+                                                <span className={cn('mr-2 h-2 w-2 rounded-full', `bg-${color}-500`)} />
+                                                {title}
+                                            </DropdownMenuItem>
+                                        ))}
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem onSelect={() => handleBulkSetLabel(null)}>
+                                            Clear Label
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                                {initialData.roster.isOrganizational && showAssignmentTitles && (
+                                    <Button variant="outline" onClick={() => handleOpenTitleDialog(members.filter(m => selectedMemberIds.has(m.character_id)))}>
+                                        <Award className="mr-2" />
+                                        Mass Assign Title
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>
