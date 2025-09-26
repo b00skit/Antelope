@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import * as XLSX from 'xlsx';
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -9,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, Loader2, DollarSign, Calendar, Users, TrendingUp } from 'lucide-react';
+import { AlertTriangle, Loader2, DollarSign, Calendar, Users, TrendingUp, Download } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart, Bar, XAxis, YAxis } from 'recharts';
@@ -28,6 +29,13 @@ interface FiscalData {
     membersByRank: Record<number, number>;
     totalMembers: number;
     membersWithAbas: { rank: number; abas: number }[];
+}
+
+interface RankBreakdown {
+    rank_id: number;
+    rank_name: string;
+    member_count: number;
+    weekly_cost: number;
 }
 
 const StatCard = ({ title, value, icon, description }: { title: string; value: string; icon: React.ReactNode; description: string; }) => (
@@ -104,33 +112,42 @@ export default function FiscalPage() {
         }));
     };
     
-    const { weeklyTotal, projections, chartData } = useMemo(() => {
-        if (!data) return { weeklyTotal: 0, projections: {}, chartData: [] };
-
-        let weeklyTotal = 0;
-        const includedRanks = Object.entries(rankPay)
+    const { weeklyTotal, projections, chartData, rankBreakdown } = useMemo(() => {
+        if (!data || Object.keys(rankPay).length === 0) return { weeklyTotal: 0, projections: {}, chartData: [], rankBreakdown: [] };
+        
+        const includedRankIds = Object.entries(rankPay)
             .filter(([, payInfo]) => payInfo.included)
             .map(([rankId]) => parseInt(rankId, 10));
+            
+        const breakdown: RankBreakdown[] = [];
 
-        if (calculationMode === 'absolute') {
-            weeklyTotal = includedRanks.reduce((total, rankId) => {
-                const memberCount = data.membersByRank[rankId] || 0;
-                const wage = rankPay[rankId].wage;
-                return total + (memberCount * wage * 20); // 20 hours max
-            }, 0);
-        } else { // Relative
-            weeklyTotal = data.membersWithAbas
-                .filter(member => includedRanks.includes(member.rank))
-                .reduce((total, member) => {
-                    const wage = rankPay[member.rank].wage;
-                    const hours = Math.min(member.abas, 20); // Cap at 20 hours
-                    return total + (hours * wage);
-                }, 0);
+        for (const rankId of includedRankIds) {
+            const rankName = data.ranks.find(r => r.rank_id === rankId)?.rank_name || `Rank ${rankId}`;
+            const memberCount = data.membersByRank[rankId] || 0;
+            const wage = rankPay[rankId].wage;
+            let weeklyCost = 0;
+
+            if (calculationMode === 'absolute') {
+                weeklyCost = memberCount * wage * 20;
+            } else { // Relative
+                weeklyCost = data.membersWithAbas
+                    .filter(m => m.rank === rankId)
+                    .reduce((total, member) => total + (Math.min(member.abas, 20) * wage), 0);
+            }
+            
+            breakdown.push({
+                rank_id: rankId,
+                rank_name: rankName,
+                member_count: memberCount,
+                weekly_cost: Math.ceil(weeklyCost),
+            });
         }
         
-        const currentMemberCount = includedRanks.reduce((sum, rankId) => sum + (data.membersByRank[rankId] || 0), 0);
-        const averageWeeklyPay = currentMemberCount > 0 ? weeklyTotal / currentMemberCount : 0;
-        const adjustedWeeklyTotal = weeklyTotal + (memberAdjustment * averageWeeklyPay);
+        const totalWeeklyFromBreakdown = breakdown.reduce((sum, rank) => sum + rank.weekly_cost, 0);
+
+        const currentMemberCount = includedRankIds.reduce((sum, rankId) => sum + (data.membersByRank[rankId] || 0), 0);
+        const averageWeeklyPay = currentMemberCount > 0 ? totalWeeklyFromBreakdown / currentMemberCount : 0;
+        const adjustedWeeklyTotal = totalWeeklyFromBreakdown + (memberAdjustment * averageWeeklyPay);
 
         const roundedWeekly = Math.ceil(adjustedWeeklyTotal);
 
@@ -147,7 +164,7 @@ export default function FiscalPage() {
             { name: 'Yearly', value: projections.yearly, fill: 'var(--color-yearly)' },
         ];
         
-        return { weeklyTotal: roundedWeekly, projections, chartData };
+        return { weeklyTotal: roundedWeekly, projections, chartData, rankBreakdown: breakdown };
     }, [data, rankPay, memberAdjustment, calculationMode]);
     
     const chartConfig = {
@@ -157,6 +174,32 @@ export default function FiscalPage() {
       quarterly: { label: 'Quarterly', color: 'hsl(var(--chart-3))' },
       yearly: { label: 'Yearly', color: 'hsl(var(--chart-4))' },
     } as const;
+
+    const handleExport = () => {
+        const breakdownSheet = rankBreakdown.map(r => ({
+            'Rank ID': r.rank_id,
+            'Rank Name': r.rank_name,
+            'Member Count': r.member_count,
+            'Weekly Cost': r.weekly_cost
+        }));
+
+        const summarySheet = [
+            { Category: 'Weekly Payroll', Amount: weeklyTotal },
+            { Category: 'Monthly Payroll', Amount: projections.monthly },
+            { Category: 'Quarterly Payroll', Amount: projections.quarterly },
+            { Category: 'Yearly Payroll', Amount: projections.yearly },
+            { Category: 'Calculation Mode', Amount: calculationMode },
+            { Category: 'Member Adjustment', Amount: memberAdjustment },
+        ];
+
+        const wb = XLSX.utils.book_new();
+        const wsBreakdown = XLSX.utils.json_to_sheet(breakdownSheet);
+        const wsSummary = XLSX.utils.json_to_sheet(summarySheet);
+        XLSX.utils.book_append_sheet(wb, wsBreakdown, "Rank Breakdown");
+        XLSX.utils.book_append_sheet(wb, wsSummary, "Summary");
+        XLSX.writeFile(wb, "Fiscal_Report.xlsx");
+    };
+
 
     if (isLoading) {
         return (
@@ -183,7 +226,11 @@ export default function FiscalPage() {
 
     return (
         <div className="container mx-auto p-4 md:p-6 lg:p-8 space-y-6">
-            <PageHeader title="Fiscal Projections" description="Calculate your faction's payroll expenses." />
+            <PageHeader
+              title="Fiscal Projections"
+              description="Calculate your faction's payroll expenses."
+              actions={<Button onClick={handleExport}><Download className="mr-2" /> Export to Excel</Button>}
+            />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-1 space-y-6">
@@ -269,6 +316,31 @@ export default function FiscalPage() {
                          <StatCard title="Total Members" value={`${data.totalMembers + memberAdjustment}`} icon={<Users className="text-muted-foreground" />} description="Adjusted total member count." />
                          <StatCard title="Yearly Payroll" value={`$${projections.yearly.toLocaleString()}`} icon={<TrendingUp className="text-muted-foreground" />} description="Based on 52 weeks." />
                     </div>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Cost Breakdown by Rank</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Rank Name</TableHead>
+                                        <TableHead>Members</TableHead>
+                                        <TableHead className="text-right">Est. Weekly Cost</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {rankBreakdown.map(rank => (
+                                        <TableRow key={rank.rank_id}>
+                                            <TableCell>{rank.rank_name}</TableCell>
+                                            <TableCell>{rank.member_count}</TableCell>
+                                            <TableCell className="text-right font-mono">${rank.weekly_cost.toLocaleString()}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
                      <Card>
                         <CardHeader>
                             <CardTitle>Expense Projections</CardTitle>
