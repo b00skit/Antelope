@@ -83,6 +83,7 @@ export default function FiscalPage() {
         if (session?.hasActiveFaction) {
             fetchData();
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [session]);
 
     const handleWageChange = (rankId: number, value: string) => {
