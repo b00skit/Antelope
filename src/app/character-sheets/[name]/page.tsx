@@ -102,6 +102,24 @@ async function getCharacterData(name: string) {
     }
     const characterId = character.character_id;
 
+    // Fetch live data for the specific character
+    let liveCharacterData: any = {};
+    try {
+        const liveResponse = await fetch(`https://ucp.gta.world/api/faction/${factionId}/character/${characterId}`, {
+            headers: { Authorization: `Bearer ${session.gtaw_access_token}` },
+            next: { revalidate: 300 } // Cache for 5 minutes
+        });
+        if (liveResponse.ok) {
+            const liveData = await liveResponse.json();
+            liveCharacterData = liveData.data || {};
+        }
+    } catch (e) {
+        console.error("Failed to fetch live character data", e);
+    }
+
+    const mergedCharacter = { ...character, ...liveCharacterData };
+
+
     const altCacheEntry = await db.query.apiCacheAlternativeCharacters.findFirst({
         where: and(
             eq(apiCacheAlternativeCharacters.faction_id, factionId),
@@ -212,7 +230,7 @@ async function getCharacterData(name: string) {
 
     const charData = {
         data: {
-            ...character,
+            ...mergedCharacter,
             firstname: nameParts.firstname,
             lastname: nameParts.lastname,
             abas: mainAbasEntry?.abas ?? character.abas,
@@ -356,6 +374,7 @@ async function getCharacterData(name: string) {
     }
 
     const mdcRecordUrl = `https://mdc.gta.world/record/${nameParts.firstname}_${nameParts.lastname}`;
+    const factionHubUrl = `https://ucp.gta.world/view/faction/${factionId}/character/${nameParts.firstname}_${nameParts.lastname}`;
 
     const factionForumSettings = {
         phpbb_api_url: selectedFaction.phpbb_api_url,
@@ -375,6 +394,7 @@ async function getCharacterData(name: string) {
         secondaryAssignments,
         forumProfileUrl,
         mdcRecordUrl,
+        factionHubUrl,
         factionForumSettings,
     };
 }

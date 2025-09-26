@@ -4,10 +4,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/dashboard/page-header';
-import { User, Briefcase, Users, Hash, Calendar, Clock, Sigma, BookUser, Building, Move, Award, ExternalLink, Plane, Loader2 } from 'lucide-react';
+import { User, Briefcase, Users, Hash, Calendar, Clock, Sigma, BookUser, Building, Move, Award, ExternalLink, Plane, Loader2, DollarSign } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 import { CharacterImage } from '@/components/character-sheets/character-image';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
@@ -32,6 +32,13 @@ const formatTimestamp = (timestamp: string | null) => {
     const date = new Date(timestamp);
     if (isNaN(date.getTime())) return <Badge variant="destructive">Invalid Date</Badge>;
     return `${formatDistanceToNow(date)} ago`;
+};
+
+const formatDate = (timestamp: string | null) => {
+    if (!timestamp) return <Badge variant="secondary">N/A</Badge>;
+    const date = new Date(timestamp);
+    if (isNaN(date.getTime())) return <Badge variant="destructive">Invalid Date</Badge>;
+    return format(date, 'PPP');
 };
 
 const getAbasClass = (abas: number | null | undefined, rank: number, settings: any) => {
@@ -128,7 +135,7 @@ export function CharacterSheetClientPage({ initialData }: CharacterSheetClientPa
         return null;
     }
 
-    const { character, totalAbas, forumData, abasSettings, assignment, canManageAssignments, allUnitsAndDetails, secondaryAssignments, forumProfileUrl, mdcRecordUrl, factionForumSettings } = data;
+    const { character, totalAbas, forumData, abasSettings, assignment, canManageAssignments, allUnitsAndDetails, secondaryAssignments, forumProfileUrl, mdcRecordUrl, factionHubUrl, factionForumSettings } = data;
     const characterImage = `https://mdc.gta.world/img/persons/${character.firstname}_${character.lastname}.png?${Date.now()}`;
     
     const handleTransferSuccess = () => {
@@ -263,6 +270,10 @@ export function CharacterSheetClientPage({ initialData }: CharacterSheetClientPa
                                                     <Clock className="h-5 w-5 text-primary" />
                                                     <div><strong className="text-muted-foreground block text-sm">Last On Duty</strong> {formatTimestamp(character.last_duty)}</div>
                                                 </div>
+                                                <div className="flex items-center gap-3">
+                                                    <DollarSign className="h-5 w-5 text-primary" />
+                                                    <div><strong className="text-muted-foreground block text-sm">Last Weekly Payment</strong> {formatDate(character.last_weekly_payment)}</div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -279,6 +290,12 @@ export function CharacterSheetClientPage({ initialData }: CharacterSheetClientPa
                                         <Link href={mdcRecordUrl} target="_blank" rel="noopener noreferrer">
                                             <ExternalLink className="mr-2" />
                                             Open MDC Record
+                                        </Link>
+                                    </Button>
+                                     <Button asChild variant="secondary">
+                                        <Link href={factionHubUrl} target="_blank" rel="noopener noreferrer">
+                                            <ExternalLink className="mr-2" />
+                                            Open Faction Character Hub
                                         </Link>
                                     </Button>
                                     {forumProfileUrl && (

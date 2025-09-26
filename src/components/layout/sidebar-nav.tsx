@@ -32,6 +32,7 @@ import {
   RefreshCw,
   Camera,
   Download,
+  DollarSign,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useState, useEffect } from 'react';
@@ -314,6 +315,20 @@ export function SidebarNav() {
                 <Link href="/data-exports">
                     <Download />
                     <span>Data Exports</span>
+                </Link>
+                </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
+          {session?.hasActiveFaction && (
+            <SidebarMenuItem>
+                <SidebarMenuButton
+                asChild
+                isActive={isActive('/fiscal')}
+                tooltip="Fiscal"
+                >
+                <Link href="/fiscal">
+                    <DollarSign />
+                    <span>Fiscal</span>
                 </Link>
                 </SidebarMenuButton>
             </SidebarMenuItem>
