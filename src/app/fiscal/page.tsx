@@ -15,6 +15,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/
 import { BarChart, Bar, XAxis, YAxis } from 'recharts';
 import { useSession } from '@/hooks/use-session';
 import { useRouter } from 'next/navigation';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface Rank {
     rank_id: number;
@@ -26,6 +27,7 @@ interface FiscalData {
     ranks: Rank[];
     membersByRank: Record<number, number>;
     totalMembers: number;
+    membersWithAbas: { rank: number; abas: number }[];
 }
 
 const StatCard = ({ title, value, icon, description }: { title: string; value: string; icon: React.ReactNode; description: string; }) => (
@@ -50,6 +52,7 @@ export default function FiscalPage() {
 
     const [rankPay, setRankPay] = useState<Record<number, { wage: number; included: boolean }>>({});
     const [memberAdjustment, setMemberAdjustment] = useState(0);
+    const [calculationMode, setCalculationMode] = useState<'absolute' | 'relative'>('absolute');
 
     const fetchData = async () => {
         setIsLoading(true);
@@ -104,36 +107,48 @@ export default function FiscalPage() {
     const { weeklyTotal, projections, chartData } = useMemo(() => {
         if (!data) return { weeklyTotal: 0, projections: {}, chartData: [] };
 
-        const adjustedTotalMembers = data.totalMembers + memberAdjustment;
+        let weeklyTotal = 0;
+        const includedRanks = Object.entries(rankPay)
+            .filter(([, payInfo]) => payInfo.included)
+            .map(([rankId]) => parseInt(rankId, 10));
 
-        const weeklyTotal = Object.entries(rankPay).reduce((total, [rankIdStr, payInfo]) => {
-            const rankId = parseInt(rankIdStr, 10);
-            if (payInfo.included) {
+        if (calculationMode === 'absolute') {
+            weeklyTotal = includedRanks.reduce((total, rankId) => {
                 const memberCount = data.membersByRank[rankId] || 0;
-                return total + (memberCount * payInfo.wage);
-            }
-            return total;
-        }, 0);
+                const wage = rankPay[rankId].wage;
+                return total + (memberCount * wage * 20); // 20 hours max
+            }, 0);
+        } else { // Relative
+            weeklyTotal = data.membersWithAbas
+                .filter(member => includedRanks.includes(member.rank))
+                .reduce((total, member) => {
+                    const wage = rankPay[member.rank].wage;
+                    const hours = Math.min(member.abas, 20); // Cap at 20 hours
+                    return total + (hours * wage);
+                }, 0);
+        }
         
-        // Adjust total based on percentage change of members, not absolute.
-        const averageWage = data.totalMembers > 0 ? weeklyTotal / data.totalMembers : 0;
-        const adjustedWeeklyTotal = weeklyTotal + (memberAdjustment * averageWage);
+        const currentMemberCount = includedRanks.reduce((sum, rankId) => sum + (data.membersByRank[rankId] || 0), 0);
+        const averageWeeklyPay = currentMemberCount > 0 ? weeklyTotal / currentMemberCount : 0;
+        const adjustedWeeklyTotal = weeklyTotal + (memberAdjustment * averageWeeklyPay);
+
+        const roundedWeekly = Math.ceil(adjustedWeeklyTotal);
 
         const projections = {
-            monthly: adjustedWeeklyTotal * 4,
-            quarterly: adjustedWeeklyTotal * 4 * 3,
-            yearly: adjustedWeeklyTotal * 52,
+            monthly: Math.ceil(roundedWeekly * 4),
+            quarterly: Math.ceil(roundedWeekly * 4 * 3),
+            yearly: Math.ceil(roundedWeekly * 52),
         };
 
         const chartData = [
-            { name: 'Weekly', value: adjustedWeeklyTotal, fill: 'var(--color-weekly)' },
+            { name: 'Weekly', value: roundedWeekly, fill: 'var(--color-weekly)' },
             { name: 'Monthly', value: projections.monthly, fill: 'var(--color-monthly)' },
             { name: 'Quarterly', value: projections.quarterly, fill: 'var(--color-quarterly)' },
             { name: 'Yearly', value: projections.yearly, fill: 'var(--color-yearly)' },
         ];
         
-        return { weeklyTotal: adjustedWeeklyTotal, projections, chartData };
-    }, [data, rankPay, memberAdjustment]);
+        return { weeklyTotal: roundedWeekly, projections, chartData };
+    }, [data, rankPay, memberAdjustment, calculationMode]);
     
     const chartConfig = {
       value: { label: 'Amount ($)' },
@@ -175,14 +190,14 @@ export default function FiscalPage() {
                     <Card>
                         <CardHeader>
                             <CardTitle>Rank Paychecks</CardTitle>
-                            <CardDescription>Set the weekly wage for each rank. Toggling 'Include' will add or remove them from calculations.</CardDescription>
+                            <CardDescription>Set the hourly wage for each rank. Toggling 'Include' will add or remove them from calculations.</CardDescription>
                         </CardHeader>
-                        <CardContent className="max-h-96 overflow-y-auto">
+                        <CardContent className="max-h-[500px] overflow-y-auto">
                             <Table>
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Rank</TableHead>
-                                        <TableHead>Wage</TableHead>
+                                        <TableHead>Wage/hr</TableHead>
                                         <TableHead>Include</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -229,6 +244,25 @@ export default function FiscalPage() {
                     </Card>
                 </div>
                 <div className="lg:col-span-2 space-y-6">
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>Calculation Mode</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                             <Tabs value={calculationMode} onValueChange={(v) => setCalculationMode(v as any)}>
+                                <TabsList className="grid w-full grid-cols-2">
+                                    <TabsTrigger value="absolute">Absolute</TabsTrigger>
+                                    <TabsTrigger value="relative">Relative</TabsTrigger>
+                                </TabsList>
+                                <TabsContent value="absolute" className="pt-2">
+                                    <p className="text-sm text-muted-foreground">Calculates payroll assuming every included member works the maximum of 20 hours per week.</p>
+                                </TabsContent>
+                                <TabsContent value="relative" className="pt-2">
+                                    <p className="text-sm text-muted-foreground">Calculates payroll based on each member's actual weekly ABAS (activity), capped at 20 hours.</p>
+                                </TabsContent>
+                            </Tabs>
+                        </CardContent>
+                    </Card>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                          <StatCard title="Weekly Payroll" value={`$${weeklyTotal.toLocaleString()}`} icon={<DollarSign className="text-muted-foreground" />} description="Total estimated weekly cost." />
                          <StatCard title="Monthly Payroll" value={`$${projections.monthly.toLocaleString()}`} icon={<Calendar className="text-muted-foreground" />} description="Based on 4 weeks." />
