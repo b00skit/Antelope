@@ -17,6 +17,7 @@ import { BarChart, Bar, XAxis, YAxis } from 'recharts';
 import { useSession } from '@/hooks/use-session';
 import { useRouter } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
 
 interface Rank {
     rank_id: number;
@@ -365,3 +366,5 @@ export default function FiscalPage() {
         </div>
     )
 }
+
+    
