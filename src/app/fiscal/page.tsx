@@ -11,7 +11,8 @@ import { Slider } from "@/components/ui/slider";
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle, Loader2, DollarSign, Calendar, Users, TrendingUp } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ChartContainer, ChartTooltip, ChartTooltipContent, BarChart, Bar, XAxis, YAxis } from '@/components/ui/chart';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { BarChart, Bar, XAxis, YAxis } from 'recharts';
 import { useSession } from '@/hooks/use-session';
 import { useRouter } from 'next/navigation';
 
