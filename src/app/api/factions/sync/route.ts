@@ -29,14 +29,8 @@ async function syncFactions(session: IronSession<SessionData>) {
     if (!user) {
         return { success: false, error: 'User not found.' };
     }
-
+    
     const now = new Date();
-    const factionRefreshThreshold = now.getTime() - config.GTAW_API_REFRESH_MINUTES_FACTIONS * 60 * 1000;
-
-    // Sync if last_sync_timestamp is null or older than the configured refresh window
-    if (user.last_sync_timestamp && new Date(user.last_sync_timestamp).getTime() > factionRefreshThreshold) {
-        return { success: true, message: 'Faction data is up to date.' };
-    }
 
     try {
         const factionsResponse = await fetch('https://ucp.gta.world/api/factions', {
@@ -122,6 +116,14 @@ export async function GET(request: NextRequest) {
           const session = await getSession(cookieStore);
         if (!session.isLoggedIn) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+        
+        const syncResult = await syncFactions(session);
+        if (!syncResult.success && syncResult.reauth) {
+            return NextResponse.json({ error: syncResult.error, reauth: true }, { status: 401 });
+        }
+        if (!syncResult.success) {
+            return NextResponse.json({ error: syncResult.error }, { status: 500 });
         }
         
         const user = await db.query.users.findFirst({
