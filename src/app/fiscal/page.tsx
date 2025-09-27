@@ -73,10 +73,11 @@ export default function FiscalPage() {
                 if(result.reauth) router.push('/api/auth/logout');
                 throw new Error(result.error);
             }
-            setData(result);
+            const ranks = Array.isArray(result.ranks) ? result.ranks : [];
+            setData({ ...result, ranks });
 
             const initialPay: Record<number, { wage: number, included: boolean }> = {};
-            const gtawRanks = new Map((result.ranks || []).map((r: Rank) => [r.rank_id, r.rank_wage]));
+            const gtawRanks = new Map(ranks.map((r: Rank) => [r.rank_id, r.rank_wage]));
 
             for (let i = 1; i <= 15; i++) {
                 initialPay[i] = {
@@ -123,7 +124,7 @@ export default function FiscalPage() {
         const breakdown: RankBreakdown[] = [];
 
         for (const rankId of includedRankIds) {
-            const rankName = data.ranks.find(r => r.rank_id === rankId)?.rank_name || `Rank ${rankId}`;
+            const rankName = data.ranks?.find(r => r.rank_id === rankId)?.rank_name || `Rank ${rankId}`;
             const memberCount = data.membersByRank[rankId] || 0;
             const wage = rankPay[rankId].wage;
             let weeklyCost = 0;
