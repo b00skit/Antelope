@@ -73,11 +73,15 @@ export default function FiscalPage() {
                 if(result.reauth) router.push('/api/auth/logout');
                 throw new Error(result.error);
             }
-            const ranks = Array.isArray(result.ranks) ? result.ranks : [];
-            setData({ ...result, ranks });
+            const ranksArray = Array.isArray(result.ranks)
+                ? result.ranks
+                : Object.values(result.ranks ?? {});
+            setData({ ...result, ranks: ranksArray });
 
             const initialPay: Record<number, { wage: number, included: boolean }> = {};
-            const gtawRanks = new Map(ranks.map((r: Rank) => [r.rank_id, r.rank_wage]));
+            const gtawRanks = new Map(
+                ranksArray.map((r: Rank) => [r.rank_id, Number(r.rank_wage) || 0])
+            );
 
             for (let i = 1; i <= 15; i++) {
                 initialPay[i] = {
