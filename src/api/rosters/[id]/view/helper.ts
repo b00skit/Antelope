@@ -374,14 +374,16 @@ export async function getRosterViewData(
             }));
 
             const includeMembersByName = (filters.include_members || []).map(name => name.replace(/_/g, ' '));
-
+            
             if (includeMembersByName.length > 0 || includedUsernames.size > 0) {
-                const finalIncluded = new Set([
+                 const finalIncluded = new Set([
                     ...includeMembersByName,
                     ...[...includedUsernames].filter(username => !excludedUsernames.has(username)),
                 ]);
 
-                missingUsers = [...finalIncluded].filter(name => !originalMemberNames.has(name));
+                if (finalIncluded.size > 0) {
+                    missingUsers = [...finalIncluded].filter(name => !originalMemberNames.has(name));
+                }
             }
 
             members = members.filter(member => {
@@ -394,10 +396,10 @@ export async function getRosterViewData(
                     return false;
                 }
                 if (filters.include_members && filters.include_members.length > 0) {
-                    if (!filters.include_members.includes(charName)) return false;
+                    if (!filters.include_members.some(name => name.replace(/_/g, ' ') === charName)) return false;
                 }
                 if (filters.exclude_members && filters.exclude_members.length > 0) {
-                    if (filters.exclude_members.includes(charName)) return false;
+                    if (filters.exclude_members.some(name => name.replace(/_/g, ' ') === charName)) return false;
                 }
 
                 if (isForumFilterActive) {
@@ -442,7 +444,7 @@ export async function getRosterViewData(
             minimum_supervisor_abas: roster.faction.minimum_supervisor_abas,
         },
         members: Array.from(new Map(members.map(item => [item['character_id'], item])).values()),
-        missingUsers: missingUsers || [],
+        missingUsers,
         sections: (roster.sections || [])
             .map(section => ({
                 id: section.id,
