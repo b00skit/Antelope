@@ -162,7 +162,12 @@ export default function CreateRosterPage() {
                 show_assignment_titles: json.show_assignment_titles ?? true,
                 mark_alternative_characters: json.mark_alternative_characters ?? true,
                 allow_roster_snapshots: json.allow_roster_snapshots ?? false,
-                labels: Array.isArray(json.labels) ? json.labels : [],
+                labels: Array.isArray(json.labels)
+                    ? json.labels.map((label: LabelConfig) => ({
+                        color: label.color,
+                        title: label.title,
+                    }))
+                    : [],
             });
         } catch (e) {
             // Invalid JSON, do nothing
@@ -240,9 +245,17 @@ export default function CreateRosterPage() {
     const userOptions = factionUsers.map(user => ({ value: user.id.toString(), label: user.username }));
 
     const handleLabelChange = (index: number, field: 'color' | 'title', value: string) => {
-        const newLabels = [...basicFilters.labels];
-        newLabels[index][field] = value;
-        setBasicFilters(f => ({ ...f, labels: newLabels }));
+        setBasicFilters(prev => ({
+            ...prev,
+            labels: prev.labels.map((label, i) =>
+                i === index
+                    ? {
+                        ...label,
+                        [field]: value,
+                    }
+                    : label,
+            ),
+        }));
     };
 
     const addLabel = () => {
@@ -250,8 +263,10 @@ export default function CreateRosterPage() {
     };
 
     const removeLabel = (index: number) => {
-        const newLabels = basicFilters.labels.filter((_, i) => i !== index);
-        setBasicFilters(f => ({ ...f, labels: newLabels }));
+        setBasicFilters(prev => ({
+            ...prev,
+            labels: prev.labels.filter((_, i) => i !== index),
+        }));
     };
 
     return (
