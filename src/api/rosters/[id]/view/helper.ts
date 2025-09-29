@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { db } from '@/db';
@@ -239,8 +238,7 @@ export async function getRosterViewData(
             );
             canCreateSnapshot = canEdit && !!filters.allow_roster_snapshots;
             
-            const originalMemberCount = members.length;
-            const originalMemberNames = new Set(members.map(m => m.character_name));
+            const originalMemberNames = new Set(members.map(m => m.character_name.replace(/_/g, ' ')));
 
             if (filters.mark_alternative_characters) {
                 const altCache = await db.query.apiCacheAlternativeCharacters.findMany({
@@ -397,14 +395,14 @@ export async function getRosterViewData(
                 return true;
             });
             
-            // Missing users check
             if (filters.alert_forum_users_missing) {
                  const finalMemberNames = new Set(members.map(m => m.character_name.replace('_', ' ')));
-                 const nameIncludes = new Set(filters.include_members?.map(name => name.replace('_', ' ')) || []);
-                 const allIncludes = new Set([...nameIncludes, ...includedUsernames]);
                  
-                 allIncludes.forEach(name => {
-                     if (!finalMemberNames.has(name) && !originalMemberNames.has(name.replace(/ /g, '_'))) {
+                 const includedMembersByName = new Set(filters.include_members?.map(name => name.replace('_', ' ')) || []);
+                 const allToBeIncluded = new Set([...includedMembersByName, ...includedUsernames]);
+                 
+                 allToBeIncluded.forEach(name => {
+                     if (!finalMemberNames.has(name) && !originalMemberNames.has(name)) {
                          missingUsers.push(name);
                      }
                  });

@@ -444,7 +444,7 @@ export function RosterContent({ initialData, rosterId, readOnly = false, onRefre
     return (
         <DndProvider backend={HTML5Backend}>
             <div className="space-y-6">
-                {initialData.missingUsers.length > 0 && (
+                {initialData.missingUsers && initialData.missingUsers.length > 0 && (
                      <Alert variant="warning">
                         <AlertTriangle className="h-4 w-4" />
                         <AlertTitle>Missing Members Detected</AlertTitle>
@@ -506,9 +506,10 @@ export function RosterContent({ initialData, rosterId, readOnly = false, onRefre
                             selectedMemberIds={selectedMemberIds}
                             onToggleSelection={handleToggleSelection}
                             labels={labels}
-                            onEditTitle={handleOpenTitleDialog}
+                            onSetLabel={onSetLabel}
                             readOnly={readOnly}
                             markAlts={markAlternativeCharacters}
+                            onEditTitle={handleOpenTitleDialog}
                             isOrganizational={initialData.roster.isOrganizational}
                         />
                     );
@@ -525,9 +526,9 @@ export function RosterContent({ initialData, rosterId, readOnly = false, onRefre
                     selectedMemberIds={selectedMemberIds}
                     onToggleSelection={handleToggleSelection}
                     labels={labels}
-                    onEditTitle={handleOpenTitleDialog}
                     readOnly={readOnly}
                     markAlts={markAlternativeCharacters}
+                    onEditTitle={handleOpenTitleDialog}
                     isOrganizational={initialData.roster.isOrganizational}
                 />
             </div>
