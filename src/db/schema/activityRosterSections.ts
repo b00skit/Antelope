@@ -1,3 +1,4 @@
+
 import { table, serial, int, text, json, jsonDefault } from './helpers';
 import { activityRosters } from './activityRosters';
 
@@ -14,5 +15,6 @@ export const activityRosterSections = table('activity_roster_sections', {
     include_forum_groups?: number[];
     exclude_names?: string[];
     alternative_characters?: boolean;
+    include_labels?: string[];
   }>(),
 });

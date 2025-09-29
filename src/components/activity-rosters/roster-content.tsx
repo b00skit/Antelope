@@ -63,6 +63,7 @@ interface SectionConfig {
     include_ranks?: number[];
     include_forum_groups?: number[];
     alternative_characters?: boolean;
+    include_labels?: string[];
 }
 interface Section {
     id: number | 'unassigned';
@@ -100,11 +101,13 @@ const SectionDialog = ({
     onClose,
     onSave,
     section,
+    labels
 }: {
     isOpen: boolean;
     onClose: () => void;
     onSave: (name: string, description: string, config: SectionConfig | null) => void;
     section?: Section | null;
+    labels: Record<string, string>;
 }) => {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
@@ -159,10 +162,18 @@ const SectionDialog = ({
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Include Forum Groups</Label>
-                                    <Input
+                                     <Input
                                          placeholder="e.g., 25,30"
                                          value={(config.include_forum_groups || []).join(',')}
                                          onChange={e => handleBasicChange('include_forum_groups', e.target.value.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n)))}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Include Labels</Label>
+                                     <Input
+                                         placeholder="e.g., red,blue"
+                                         value={(config.include_labels || []).join(',')}
+                                         onChange={e => handleBasicChange('include_labels', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -386,8 +397,10 @@ export function RosterContent({ initialData, rosterId, readOnly = false, onRefre
 
                 const nameMatch = config.include_names?.some(n => n === memberName || n === memberSlug);
                 const rankMatch = config.include_ranks?.includes(member.rank);
-                
-                const shouldBeIncluded = nameMatch || rankMatch;
+                const labelMatch = config.include_labels?.includes(member.label!);
+                const forumGroupMatch = config.include_forum_groups?.some(groupId => member.forum_groups?.includes(groupId));
+
+                const shouldBeIncluded = nameMatch || rankMatch || labelMatch || forumGroupMatch;
 
                 if (shouldBeIncluded) {
                     const isExcluded = config.exclude_names?.some(n => n === memberName || n === memberSlug);
@@ -464,6 +477,24 @@ export function RosterContent({ initialData, rosterId, readOnly = false, onRefre
         const membersToEdit = Array.isArray(member) ? member : [member];
         setEditingMembersForTitle(membersToEdit);
         setIsTitleDialogOpen(true);
+    };
+
+    const handleSetLabel = async (characterId: number, color: string | null) => {
+        const originalMembers = [...members];
+        setMembers(prev => prev.map(m => m.character_id === characterId ? { ...m, label: color } : m));
+    
+        try {
+            const res = await fetch(`/api/rosters/${rosterId}/label`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ characterId, color }),
+            });
+             if (!res.ok) throw new Error('Failed to set label.');
+             toast({ title: 'Success', description: 'Label updated.'});
+        } catch (err: any) {
+             toast({ variant: 'destructive', title: 'Error', description: err.message });
+             setMembers(originalMembers);
+        }
     };
 
     const handleBulkSetLabel = async (color: string | null) => {
@@ -553,7 +584,7 @@ export function RosterContent({ initialData, rosterId, readOnly = false, onRefre
                             selectedMemberIds={selectedMemberIds}
                             onToggleSelection={handleToggleSelection}
                             labels={labels}
-                            onSetLabel={(onSetLabel as any)}
+                            onSetLabel={handleSetLabel}
                             readOnly={readOnly}
                             markAlts={markAlternativeCharacters}
                             onEditTitle={handleOpenTitleDialog}
@@ -573,6 +604,7 @@ export function RosterContent({ initialData, rosterId, readOnly = false, onRefre
                     selectedMemberIds={selectedMemberIds}
                     onToggleSelection={handleToggleSelection}
                     labels={labels}
+                    onSetLabel={handleSetLabel}
                     readOnly={readOnly}
                     markAlts={markAlternativeCharacters}
                     onEditTitle={handleOpenTitleDialog}
@@ -584,6 +616,7 @@ export function RosterContent({ initialData, rosterId, readOnly = false, onRefre
                 onClose={() => setIsDialogOpen(false)}
                 onSave={handleAddOrUpdateSection}
                 section={editingSection}
+                labels={labels}
             />
              <TitleEditDialog
                 open={isTitleDialogOpen}

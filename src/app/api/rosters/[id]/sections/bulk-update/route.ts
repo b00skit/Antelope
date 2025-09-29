@@ -1,4 +1,5 @@
 
+
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
@@ -60,6 +61,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         // We will execute updates sequentially within the transaction block.
         db.transaction((tx) => {
             for (const section of sections) {
+                 if (typeof section.id !== 'number') continue;
                 tx.update(activityRosterSections)
                     .set({ character_ids_json: section.character_ids_json })
                     .where(and(
