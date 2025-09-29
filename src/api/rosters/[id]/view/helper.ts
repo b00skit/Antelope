@@ -188,6 +188,8 @@ export async function getRosterViewData(
         }
         members = cachedFaction.members || [];
     }
+    
+    const originalMemberNames = new Set(members.map(m => m.character_name.replace(/_/g, ' ')));
 
     const memberIds = members.map(m => m.character_id);
     if (memberIds.length > 0) {
@@ -223,11 +225,12 @@ export async function getRosterViewData(
             assignmentTitle: orgMembershipMap.get(member.character_id)?.title ?? member.assignmentTitle,
         }));
     }
-    
-    const originalMemberNames = new Set(members.map(m => m.character_name.replace(/_/g, ' ')));
 
     let missingUsers: string[] = [];
+    let includedUsernames = new Set<string>();
+    let excludedUsernames = new Set<string>();
     let rosterConfig: RosterFilters = {};
+    let usernameToGroupsMap = new Map<string, number[]>();
     let showAssignmentTitles = false;
     let canCreateSnapshot = false;
 
@@ -239,7 +242,7 @@ export async function getRosterViewData(
                 roster.faction.feature_flags?.units_divisions_enabled && filters.show_assignment_titles
             );
             canCreateSnapshot = canEdit && !!filters.allow_roster_snapshots;
-            
+
             if (filters.mark_alternative_characters) {
                 const altCache = await db.query.apiCacheAlternativeCharacters.findMany({
                     where: eq(apiCacheAlternativeCharacters.faction_id, factionId),
@@ -283,10 +286,6 @@ export async function getRosterViewData(
                 .flatMap(section => section.configuration_json?.include_forum_groups || [])
                 .filter((groupId): groupId is number => typeof groupId === 'number');
 
-            let includedUsernames = new Set<string>();
-            let excludedUsernames = new Set<string>();
-            let usernameToGroupsMap = new Map<string, number[]>();
-            
             const isForumFilterActive =
                 filters.forum_groups_included?.length ||
                 filters.forum_groups_excluded?.length ||
@@ -377,11 +376,7 @@ export async function getRosterViewData(
                  const includedByName = filters.include_members?.map(name => name.replace('_', ' ')) || [];
                  const allToBeIncluded = new Set([...includedByName, ...includedUsernames]);
                  
-                 allToBeIncluded.forEach(name => {
-                     if (!originalMemberNames.has(name)) {
-                         missingUsers.push(name);
-                     }
-                 });
+                 missingUsers = [...allToBeIncluded].filter(name => !originalMemberNames.has(name));
             }
 
             members = members.filter(member => {
@@ -392,10 +387,10 @@ export async function getRosterViewData(
                 if (filters.exclude_ranks && filters.exclude_ranks.includes(member.rank)) {
                     return false;
                 }
-                if (filters.include_members && filters.include_members.length > 0 && !filters.include_members.includes(charName)) {
+                if (filters.include_members && filters.include_members.length > 0 && !filters.include_members.map(n => n.replace('_', ' ')).includes(charName)) {
                     return false;
                 }
-                if (filters.exclude_members && filters.exclude_members.includes(charName)) {
+                if (filters.exclude_members && filters.exclude_members.map(n => n.replace('_', ' ')).includes(charName)) {
                     return false;
                 }
                 if (excludedUsernames.has(charName)) {
