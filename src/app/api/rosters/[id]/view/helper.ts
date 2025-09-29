@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { db } from '@/db';
@@ -40,6 +41,11 @@ interface Member {
     membershipId?: number;
 }
 
+interface RosterLabel {
+    color: string;
+    title: string;
+}
+
 interface RosterFilters {
     include_ranks?: number[];
     exclude_ranks?: number[];
@@ -57,7 +63,7 @@ interface RosterFilters {
         by_rank?: Record<string, number>;
         by_name?: Record<string, number>;
     };
-    labels?: Record<string, string>;
+    labels?: RosterLabel[];
 }
 
 export async function getRosterViewData(
@@ -373,15 +379,16 @@ export async function getRosterViewData(
             }));
 
             const includeMembersByName = (filters.include_members || []).map(name => name.replace(/_/g, ' '));
+            
+            const finalIncluded = new Set([
+                ...includeMembersByName,
+                ...[...includedUsernames].filter(username => !excludedUsernames.has(username)),
+            ]);
 
-            if (includeMembersByName.length > 0 || includedUsernames.size > 0) {
-                const finalIncluded = new Set([
-                    ...includeMembersByName,
-                    ...[...includedUsernames].filter(username => !excludedUsernames.has(username)),
-                ]);
-
+            if (finalIncluded.size > 0) {
                 missingUsers = [...finalIncluded].filter(name => !originalMemberNames.has(name));
             }
+
 
             members = members.filter(member => {
                 const charName = member.character_name.replace('_', ' ');

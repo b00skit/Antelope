@@ -74,8 +74,13 @@ interface Section {
     configuration_json: SectionConfig | null;
 }
 
+interface LabelConfig {
+    color: string;
+    title: string;
+}
+
 interface RosterConfig {
-    labels?: Record<string, string>;
+    labels?: LabelConfig[];
     [key: string]: any;
 }
 
@@ -107,7 +112,7 @@ const SectionDialog = ({
     onClose: () => void;
     onSave: (name: string, description: string, config: SectionConfig | null) => void;
     section?: Section | null;
-    labels: Record<string, string>;
+    labels: LabelConfig[];
 }) => {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
@@ -530,7 +535,7 @@ export function RosterContent({ initialData, rosterId, readOnly = false, onRefre
         }
     }
 
-    const labels = initialData.rosterConfig?.labels || {};
+    const labels = initialData.rosterConfig?.labels || [];
     
     return (
         <DndProvider backend={HTML5Backend}>
@@ -560,18 +565,18 @@ export function RosterContent({ initialData, rosterId, readOnly = false, onRefre
                             )}
                         </div>
                     )}
-                     {Object.keys(labels).length > 0 && (
+                     {labels.length > 0 && (
                         <div className="flex items-center gap-2 flex-wrap">
                              <Badge variant={!labelFilter ? 'default' : 'secondary'} className="cursor-pointer" onClick={() => setLabelFilter(null)}>All</Badge>
-                            {Object.entries(labels).map(([color, title]) => (
+                            {labels.map((label: LabelConfig) => (
                                 <Badge
-                                    key={color}
-                                    variant={labelFilter === color ? 'default' : 'secondary'}
+                                    key={label.color}
+                                    variant={labelFilter === label.color ? 'default' : 'secondary'}
                                     className="cursor-pointer"
-                                    onClick={() => setLabelFilter(labelFilter === color ? null : color)}
+                                    onClick={() => setLabelFilter(labelFilter === label.color ? null : label.color)}
                                 >
-                                    <span className={cn('mr-2 h-2 w-2 rounded-full', `bg-${color}-500`)} />
-                                    {title}
+                                    <span className={cn('mr-2 h-2 w-2 rounded-full', `bg-${label.color}-500`)} />
+                                    {label.title}
                                 </Badge>
                             ))}
                         </div>
@@ -676,10 +681,10 @@ export function RosterContent({ initialData, rosterId, readOnly = false, onRefre
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent>
-                                        {Object.entries(labels).map(([color, title]) => (
-                                            <DropdownMenuItem key={color} onSelect={() => handleBulkSetLabel(color)}>
-                                                <span className={cn('mr-2 h-2 w-2 rounded-full', `bg-${color}-500`)} />
-                                                {title}
+                                        {labels.map((label: LabelConfig) => (
+                                            <DropdownMenuItem key={label.color} onSelect={() => handleBulkSetLabel(label.color)}>
+                                                <span className={cn('mr-2 h-2 w-2 rounded-full', `bg-${label.color}-500`)} />
+                                                {label.title}
                                             </DropdownMenuItem>
                                         ))}
                                         <DropdownMenuSeparator />
