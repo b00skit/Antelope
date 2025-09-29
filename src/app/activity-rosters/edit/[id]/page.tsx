@@ -164,7 +164,12 @@ export default function EditRosterPage() {
                         show_assignment_titles: json.show_assignment_titles ?? true,
                         mark_alternative_characters: json.mark_alternative_characters ?? true,
                         allow_roster_snapshots: json.allow_roster_snapshots ?? false,
-                        labels: Array.isArray(json.labels) ? json.labels : [],
+                        labels: Array.isArray(json.labels)
+                            ? json.labels.map((label: LabelConfig) => ({
+                                color: label.color,
+                                title: label.title,
+                            }))
+                            : [],
                     });
                 } catch (e) {
                     // ignore
@@ -233,12 +238,19 @@ export default function EditRosterPage() {
             const parseRanks = (rankString: string) => rankString.split(',').map(r => parseInt(r.trim(), 10)).filter(r => !isNaN(r));
             const parseMembers = (memberString: string) => memberString.split('\n').map(m => m.trim()).filter(Boolean);
 
+            const sanitizedLabels = basicFilters.labels
+                .map(label => ({
+                    color: label.color,
+                    title: label.title,
+                }))
+                .filter(label => label.color && label.title);
+
             const newJson: any = {
                 ...currentJson,
                 show_assignment_titles: basicFilters.show_assignment_titles,
                 mark_alternative_characters: basicFilters.mark_alternative_characters,
                 allow_roster_snapshots: basicFilters.allow_roster_snapshots,
-                labels: basicFilters.labels.filter(l => l.color && l.title),
+                labels: sanitizedLabels,
             };
 
             if (!isOrgSelected) {
