@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState } from 'react';
@@ -78,7 +79,7 @@ interface RosterData {
     roster: { id: number; name: string, isOrganizational?: boolean; organizationInfo?: { type: 'cat_2' | 'cat_3', id: number; parentId?: number } };
     faction: { id: number; name: string; supervisor_rank: number; minimum_abas: number; minimum_supervisor_abas: number; };
     members: Member[];
-    missingForumUsers: string[];
+    missingUsers: string[];
     sections: Section[];
     rosterConfig: RosterConfig;
 }
@@ -443,12 +444,12 @@ export function RosterContent({ initialData, rosterId, readOnly = false, onRefre
     return (
         <DndProvider backend={HTML5Backend}>
             <div className="space-y-6">
-                {initialData.missingForumUsers.length > 0 && (
+                {initialData.missingUsers.length > 0 && (
                      <Alert variant="warning">
                         <AlertTriangle className="h-4 w-4" />
-                        <AlertTitle>Forum Sync Mismatch</AlertTitle>
+                        <AlertTitle>Missing Members Detected</AlertTitle>
                         <AlertDescription>
-                            The following forum users specified in the filters could not be found in the GTA:W faction roster: {initialData.missingForumUsers.join(', ')}.
+                            The following members specified in the filters could not be found in the roster: {initialData.missingUsers.join(', ')}. They may have left the faction or there might be a typo in your filter configuration.
                         </AlertDescription>
                     </Alert>
                 )}

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -48,7 +49,7 @@ interface RosterData {
     roster: { id: number; name: string, isPrivate?: boolean, isOrganizational?: boolean; organizationInfo?: { type: 'cat_2' | 'cat_3', id: number; parentId?: number } };
     faction: { id: number; name: string; supervisor_rank: number; minimum_abas: number; minimum_supervisor_abas: number; };
     members: Member[];
-    missingForumUsers: string[];
+    missingUsers: string[];
     sections: Section[];
     rosterConfig: any;
     canEdit: boolean;

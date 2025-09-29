@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { db } from '@/db';
@@ -12,11 +13,14 @@ import {
     activityRosterLabels,
     apiCacheAlternativeCharacters,
     forumApiCache,
-    apiForumSyncableGroups,
+    factionMembers,
+    factionOrganizationCat2,
+    factionOrganizationCat3,
 } from '@/db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import type { IronSession } from 'iron-session';
 import type { SessionData } from '@/lib/session';
+import { canUserManage } from '@/app/api/units-divisions/[cat1Id]/[cat2Id]/helpers';
 
 interface Member {
     user_id: number;
@@ -34,6 +38,7 @@ interface Member {
     label?: string | null;
     isPrimary?: boolean;
     isAlternative?: boolean;
+    membershipId?: number;
 }
 
 interface RosterFilters {
@@ -85,7 +90,7 @@ export async function getRosterViewData(
     }
 
     let hasAccess = false;
-    if (roster.visibility === 'public' || roster.visibility === 'unlisted') {
+    if (roster.visibility === 'public' || roster.visibility === 'unlisted' || roster.visibility === 'organization') {
         hasAccess = true;
     } else if (roster.created_by === session.userId) {
         hasAccess = true;
@@ -108,17 +113,82 @@ export async function getRosterViewData(
     if (!hasAccess) {
         return { error: 'You do not have permission to view this roster.' };
     }
-
-    const factionId = roster.factionId;
-    const cachedFaction = await db.query.factionMembersCache.findFirst({
-        where: eq(factionMembersCache.faction_id, factionId),
-    });
-
-    if (!cachedFaction?.members || cachedFaction.members.length === 0) {
-        return { error: 'Faction data has not been synced. Please go to Sync Management.' };
+    
+    let canEdit = false;
+    if (roster.visibility === 'organization' && roster.organization_category_type && roster.organization_category_id) {
+        const userMembership = await db.query.factionMembers.findFirst({
+            where: and(eq(factionMembers.userId, session.userId!), eq(factionMembers.factionId, roster.factionId))
+        });
+        if (userMembership) {
+            const result = await canUserManage(session, user, userMembership, roster.faction, roster.organization_category_type, roster.organization_category_id);
+            canEdit = result.authorized;
+        }
+    } else {
+        canEdit = roster.created_by === session.userId || (roster.access_json && Array.isArray(roster.access_json) && roster.access_json.includes(session.userId!));
     }
 
-    let members: Member[] = cachedFaction.members || [];
+
+    const factionId = roster.factionId;
+    let members: Member[] = [];
+    let orgMemberships: { character_id: number; id: number, title: string | null }[] = [];
+
+    const rosterOrgType = roster.organization_category_type;
+    const rosterOrgId = roster.organization_category_id;
+
+    let organizationInfo: { type: 'cat_2' | 'cat_3'; id: number; parentId?: number } | undefined;
+    if (rosterOrgType && rosterOrgId) {
+        organizationInfo = { type: rosterOrgType, id: rosterOrgId };
+
+        if (rosterOrgType === 'cat_2') {
+            const cat2 = await db.query.factionOrganizationCat2.findFirst({
+                where: eq(factionOrganizationCat2.id, rosterOrgId),
+            });
+            if (cat2?.cat1_id) {
+                organizationInfo.parentId = cat2.cat1_id;
+            }
+        } else if (rosterOrgType === 'cat_3') {
+            const cat3 = await db.query.factionOrganizationCat3.findFirst({
+                where: eq(factionOrganizationCat3.id, rosterOrgId),
+            });
+            if (cat3?.cat2_id) {
+                organizationInfo.parentId = cat3.cat2_id;
+            }
+        }
+    }
+
+    if (rosterOrgType && rosterOrgId) {
+        orgMemberships = await db.query.factionOrganizationMembership.findMany({
+            where: and(
+                eq(factionOrganizationMembership.type, rosterOrgType),
+                eq(factionOrganizationMembership.category_id, rosterOrgId)
+            ),
+            columns: {
+                id: true,
+                character_id: true,
+                title: true,
+            }
+        });
+        const orgMemberIds = orgMemberships.map(m => m.character_id);
+
+        if (orgMemberIds.length > 0) {
+            const cachedFaction = await db.query.factionMembersCache.findFirst({
+                where: eq(factionMembersCache.faction_id, factionId),
+            });
+            if (!cachedFaction?.members) {
+                return { error: 'Faction member data not available.' };
+            }
+            const allFactionMembers: Member[] = cachedFaction.members;
+            members = allFactionMembers.filter(m => orgMemberIds.includes(m.character_id));
+        }
+    } else {
+        const cachedFaction = await db.query.factionMembersCache.findFirst({
+            where: eq(factionMembersCache.faction_id, factionId),
+        });
+        if (!cachedFaction?.members || cachedFaction.members.length === 0) {
+            return { error: 'Faction data has not been synced. Please go to Sync Management.' };
+        }
+        members = cachedFaction.members || [];
+    }
 
     const memberIds = members.map(m => m.character_id);
     if (memberIds.length > 0) {
@@ -141,6 +211,8 @@ export async function getRosterViewData(
             abasCache.map(a => [a.character_id, { abas: a.abas, last_sync: a.last_sync_timestamp, total_abas: a.total_abas }]),
         );
         const labelMap = new Map(labels.map(l => [l.character_id, l.color]));
+        const orgMembershipMap = new Map(orgMemberships.map(m => [m.character_id, m]));
+
 
         members = members.map(member => ({
             ...member,
@@ -148,16 +220,14 @@ export async function getRosterViewData(
             abas_last_sync: abasMap.get(member.character_id)?.last_sync,
             total_abas: abasMap.get(member.character_id)?.total_abas,
             label: labelMap.get(member.character_id),
+            membershipId: orgMembershipMap.get(member.character_id)?.id,
+            assignmentTitle: orgMembershipMap.get(member.character_id)?.title ?? member.assignmentTitle,
         }));
     }
 
-    let missingForumUsers: string[] = [];
-    let includedUsernames = new Set<string>();
-    let excludedUsernames = new Set<string>();
+    let missingUsers: string[] = [];
     let rosterConfig: RosterFilters = {};
-    let usernameToGroupsMap = new Map<string, number[]>();
     let showAssignmentTitles = false;
-    let canEdit = roster.created_by === session.userId || (roster.access_json && Array.isArray(roster.access_json) && roster.access_json.includes(session.userId!));
     let canCreateSnapshot = false;
 
     if (roster.roster_setup_json) {
@@ -168,6 +238,9 @@ export async function getRosterViewData(
                 roster.faction.feature_flags?.units_divisions_enabled && filters.show_assignment_titles
             );
             canCreateSnapshot = canEdit && !!filters.allow_roster_snapshots;
+            
+            const originalMemberCount = members.length;
+            const originalMemberNames = new Set(members.map(m => m.character_name));
 
             if (filters.mark_alternative_characters) {
                 const altCache = await db.query.apiCacheAlternativeCharacters.findMany({
@@ -212,6 +285,8 @@ export async function getRosterViewData(
                 .flatMap(section => section.configuration_json?.include_forum_groups || [])
                 .filter((groupId): groupId is number => typeof groupId === 'number');
 
+            let includedUsernames = new Set<string>();
+            
             const isForumFilterActive =
                 filters.forum_groups_included?.length ||
                 filters.forum_groups_excluded?.length ||
@@ -244,12 +319,13 @@ export async function getRosterViewData(
 
                 const groupMembersMap = new Map<number, { id: number; username: string }[]>();
                 const userIdToUsername = new Map<number, string>();
+                let usernameToGroupsMap = new Map<string, number[]>();
 
                 for (const group of cachedForumGroups) {
-                    const members = Array.isArray(group.data?.members) ? group.data.members : [];
-                    groupMembersMap.set(group.group_id, members);
+                    const groupDataMembers = Array.isArray(group.data?.members) ? group.data.members : [];
+                    groupMembersMap.set(group.group_id, groupDataMembers);
 
-                    for (const member of members) {
+                    for (const member of groupDataMembers) {
                         if (!member?.username) continue;
                         const cleanUsername = member.username.replace('_', ' ');
                         if (!usernameToGroupsMap.has(cleanUsername)) {
@@ -272,7 +348,7 @@ export async function getRosterViewData(
                         .map(member => member.username.replace('_', ' ')),
                 );
 
-                excludedUsernames = new Set(
+                let excludedUsernames = new Set(
                     (filters.forum_groups_excluded || [])
                         .flatMap(groupId => groupMembersMap.get(groupId) || [])
                         .map(member => member.username.replace('_', ' ')),
@@ -291,52 +367,56 @@ export async function getRosterViewData(
                         excludedUsernames.add(username);
                     }
                 }
-            }
-
-            members = members.map(m => ({
-                ...m,
-                forum_groups: usernameToGroupsMap.get(m.character_name.replace('_', ' ')) || [],
-            }));
-
-            if (filters.alert_forum_users_missing && isForumFilterActive) {
-                const gtawUsernames = new Set(members.map(m => m.character_name.replace('_', ' ')));
-                const finalIncluded = new Set([...includedUsernames].filter(u => !excludedUsernames.has(u)));
-                missingForumUsers = [...finalIncluded].filter(fu => !gtawUsernames.has(fu));
+                
+                 members = members.map(m => ({
+                    ...m,
+                    forum_groups: usernameToGroupsMap.get(m.character_name.replace('_', ' ')) || [],
+                })).filter(member => {
+                    const charName = member.character_name.replace('_', ' ');
+                    if (excludedUsernames.has(charName)) return false;
+                    if (includedUsernames.size > 0 && !includedUsernames.has(charName)) return false;
+                    return true;
+                });
             }
 
             members = members.filter(member => {
                 const charName = member.character_name.replace('_', ' ');
-
                 if (filters.include_ranks && filters.include_ranks.length > 0 && !filters.include_ranks.includes(member.rank)) {
                     return false;
                 }
                 if (filters.exclude_ranks && filters.exclude_ranks.includes(member.rank)) {
                     return false;
                 }
-                if (
-                    filters.include_members &&
-                    filters.include_members.length > 0 &&
-                    !filters.include_members.some(name => charName.includes(name))
-                ) {
+                if (filters.include_members && filters.include_members.length > 0 && !filters.include_members.includes(charName)) {
                     return false;
                 }
-                if (filters.exclude_members && filters.exclude_members.some(name => charName.includes(name))) {
+                if (filters.exclude_members && filters.exclude_members.includes(charName)) {
                     return false;
-                }
-
-                if (isForumFilterActive) {
-                    if (excludedUsernames.has(charName)) return false;
-                    if (includedUsernames.size > 0 && !includedUsernames.has(charName)) return false;
                 }
 
                 return true;
             });
+            
+            // Missing users check
+            if (filters.alert_forum_users_missing) {
+                 const finalMemberNames = new Set(members.map(m => m.character_name.replace('_', ' ')));
+                 const nameIncludes = new Set(filters.include_members?.map(name => name.replace('_', ' ')) || []);
+                 const allIncludes = new Set([...nameIncludes, ...includedUsernames]);
+                 
+                 allIncludes.forEach(name => {
+                     if (!finalMemberNames.has(name) && !originalMemberNames.has(name.replace(/ /g, '_'))) {
+                         missingUsers.push(name);
+                     }
+                 });
+            }
+
+
         } catch (e) {
             console.error(`[API Roster View] Invalid JSON in roster ${rosterId}:`, e);
         }
     }
 
-    if (showAssignmentTitles && memberIds.length > 0) {
+    if (showAssignmentTitles && memberIds.length > 0 && !rosterOrgType) {
         const assignments = await db.query.factionOrganizationMembership.findMany({
             where: and(
                 inArray(factionOrganizationMembership.character_id, memberIds),
@@ -354,6 +434,8 @@ export async function getRosterViewData(
             id: roster.id,
             name: roster.name,
             isPrivate: roster.visibility === 'private',
+            isOrganizational: roster.visibility === 'organization',
+            organizationInfo,
         },
         faction: {
             id: roster.faction.id,
@@ -364,7 +446,7 @@ export async function getRosterViewData(
             minimum_supervisor_abas: roster.faction.minimum_supervisor_abas,
         },
         members: Array.from(new Map(members.map(item => [item['character_id'], item])).values()),
-        missingForumUsers,
+        missingUsers,
         sections: (roster.sections || [])
             .map(section => ({
                 id: section.id,
