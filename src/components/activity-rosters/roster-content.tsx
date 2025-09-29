@@ -36,6 +36,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Badge } from '../ui/badge';
 import { TitleEditDialog } from './title-edit-dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { Switch } from '../ui/switch';
 
 
 // Interfaces matching the API response
@@ -57,9 +59,10 @@ interface Member {
 
 interface SectionConfig {
     include_names?: string[];
+    exclude_names?: string[];
     include_ranks?: number[];
     include_forum_groups?: number[];
-    exclude_names?: string[];
+    alternative_characters?: boolean;
 }
 interface Section {
     id: number | 'unassigned';
@@ -105,35 +108,27 @@ const SectionDialog = ({
 }) => {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
-    const [configJson, setConfigJson] = useState('');
-    const [jsonError, setJsonError] = useState<string | null>(null);
+    const [config, setConfig] = useState<SectionConfig>({});
 
     React.useEffect(() => {
         if (isOpen) {
             setName(section?.name || '');
             setDescription(section?.description || '');
-            setConfigJson(section?.configuration_json ? JSON.stringify(section.configuration_json, null, 2) : '');
-            setJsonError(null);
+            setConfig(section?.configuration_json || {});
         }
     }, [section, isOpen]);
 
     const handleSave = () => {
-        let finalConfig: SectionConfig | null = null;
-        if (configJson) {
-            try {
-                finalConfig = JSON.parse(configJson);
-                setJsonError(null);
-            } catch (e) {
-                setJsonError('Invalid JSON format.');
-                return;
-            }
-        }
-        onSave(name, description, finalConfig);
+        onSave(name, description, Object.keys(config).length > 0 ? config : null);
     };
-    
+
+    const handleBasicChange = (field: keyof SectionConfig, value: any) => {
+        setConfig(prev => ({ ...prev, [field]: value }));
+    };
+
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent>
+            <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
                     <DialogTitle>{section ? 'Edit Section' : 'Create Section'}</DialogTitle>
                 </DialogHeader>
@@ -146,17 +141,69 @@ const SectionDialog = ({
                         <Label htmlFor="section-description">Description (Optional)</Label>
                         <Textarea id="section-description" value={description} onChange={(e) => setDescription(e.target.value)} />
                     </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="section-config">Auto-Filter Rules (JSON, Optional)</Label>
-                        <Textarea
-                            id="section-config"
-                            value={configJson}
-                            onChange={(e) => setConfigJson(e.target.value)}
-                            placeholder='{ "include_ranks": [1, 5], "exclude_names": ["Some_Name"] }'
-                            className="font-mono h-32"
-                        />
-                        {jsonError && <p className="text-sm text-destructive">{jsonError}</p>}
-                    </div>
+                    
+                    <Tabs defaultValue="basic">
+                        <TabsList>
+                            <TabsTrigger value="basic">Basic Filters</TabsTrigger>
+                            <TabsTrigger value="advanced">Advanced (JSON)</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="basic" className="space-y-4 pt-2">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Include Ranks</Label>
+                                    <Input 
+                                        placeholder="e.g., 1,5,10"
+                                        value={(config.include_ranks || []).join(',')}
+                                        onChange={e => handleBasicChange('include_ranks', e.target.value.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n)))}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Include Forum Groups</Label>
+                                    <Input
+                                         placeholder="e.g., 25,30"
+                                         value={(config.include_forum_groups || []).join(',')}
+                                         onChange={e => handleBasicChange('include_forum_groups', e.target.value.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n)))}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Include Members</Label>
+                                    <Textarea
+                                        placeholder="One name per line, e.g. Firstname_Lastname"
+                                        value={(config.include_names || []).join('\n')}
+                                        onChange={e => handleBasicChange('include_names', e.target.value.split('\n').filter(Boolean))}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Exclude Members</Label>
+                                     <Textarea
+                                        placeholder="One name per line, e.g. Firstname_Lastname"
+                                        value={(config.exclude_names || []).join('\n')}
+                                        onChange={e => handleBasicChange('exclude_names', e.target.value.split('\n').filter(Boolean))}
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex items-center space-x-2 rounded-lg border p-4">
+                                <Switch
+                                    id="alt-chars-switch"
+                                    checked={config.alternative_characters ?? false}
+                                    onCheckedChange={checked => handleBasicChange('alternative_characters', checked)}
+                                />
+                                <Label htmlFor="alt-chars-switch">Automatically include Alternative Characters</Label>
+                            </div>
+                        </TabsContent>
+                        <TabsContent value="advanced">
+                             <Textarea
+                                value={JSON.stringify(config, null, 2)}
+                                onChange={(e) => {
+                                    try {
+                                        setConfig(JSON.parse(e.target.value));
+                                    } catch {}
+                                }}
+                                className="font-mono h-48"
+                            />
+                        </TabsContent>
+                    </Tabs>
+
                 </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={onClose}>Cancel</Button>
@@ -506,7 +553,7 @@ export function RosterContent({ initialData, rosterId, readOnly = false, onRefre
                             selectedMemberIds={selectedMemberIds}
                             onToggleSelection={handleToggleSelection}
                             labels={labels}
-                            onSetLabel={onSetLabel}
+                            onSetLabel={(onSetLabel as any)}
                             readOnly={readOnly}
                             markAlts={markAlternativeCharacters}
                             onEditTitle={handleOpenTitleDialog}

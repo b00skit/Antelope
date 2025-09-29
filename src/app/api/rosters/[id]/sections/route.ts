@@ -1,3 +1,4 @@
+
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
@@ -17,6 +18,7 @@ const configSchema = z.object({
     include_ranks: z.array(z.number()).optional(),
     include_forum_groups: z.array(z.number()).optional(),
     exclude_names: z.array(z.string()).optional(),
+    alternative_characters: z.boolean().optional(),
 }).optional().nullable();
 
 const sectionSchema = z.object({

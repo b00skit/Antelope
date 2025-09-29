@@ -372,11 +372,14 @@ export async function getRosterViewData(
                 forum_groups: usernameToGroupsMap.get(m.character_name.replace('_', ' ')) || [],
             }));
 
-            if (filters.alert_forum_users_missing) {
-                 const includedByName = filters.include_members?.map(name => name.replace('_', ' ')) || [];
-                 const allToBeIncluded = new Set([...includedByName, ...includedUsernames]);
-                 
-                 missingUsers = [...allToBeIncluded].filter(name => !originalMemberNames.has(name));
+            const includeMembersByName = (filters.include_members || []).map(name => name.replace(/_/g, ' '));
+            if (includeMembersByName.length > 0 || includedUsernames.size > 0) {
+                 const finalIncluded = new Set([
+                     ...includeMembersByName,
+                     ...[...includedUsernames].filter(username => !excludedUsernames.has(username)),
+                 ]);
+
+                 missingUsers = [...finalIncluded].filter(name => !originalMemberNames.has(name));
             }
 
             members = members.filter(member => {

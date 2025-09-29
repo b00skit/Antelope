@@ -224,7 +224,9 @@ export async function getRosterViewData(
         }));
     }
 
-    let missingForumUsers: string[] = [];
+    const originalMemberNames = new Set(members.map(m => m.character_name.replace(/_/g, ' ')));
+
+    let missingUsers: string[] = [];
     let includedUsernames = new Set<string>();
     let excludedUsernames = new Set<string>();
     let rosterConfig: RosterFilters = {};
@@ -370,10 +372,15 @@ export async function getRosterViewData(
                 forum_groups: usernameToGroupsMap.get(m.character_name.replace('_', ' ')) || [],
             }));
 
-            if (filters.alert_forum_users_missing && isForumFilterActive) {
-                const gtawUsernames = new Set(members.map(m => m.character_name.replace('_', ' ')));
-                const finalIncluded = new Set([...includedUsernames].filter(u => !excludedUsernames.has(u)));
-                missingForumUsers = [...finalIncluded].filter(fu => !gtawUsernames.has(fu));
+            const includeMembersByName = (filters.include_members || []).map(name => name.replace(/_/g, ' '));
+
+            if (includeMembersByName.length > 0 || includedUsernames.size > 0) {
+                const finalIncluded = new Set([
+                    ...includeMembersByName,
+                    ...[...includedUsernames].filter(username => !excludedUsernames.has(username)),
+                ]);
+
+                missingUsers = [...finalIncluded].filter(name => !originalMemberNames.has(name));
             }
 
             members = members.filter(member => {
@@ -434,7 +441,7 @@ export async function getRosterViewData(
             minimum_supervisor_abas: roster.faction.minimum_supervisor_abas,
         },
         members: Array.from(new Map(members.map(item => [item['character_id'], item])).values()),
-        missingForumUsers,
+        missingUsers,
         sections: (roster.sections || [])
             .map(section => ({
                 id: section.id,
