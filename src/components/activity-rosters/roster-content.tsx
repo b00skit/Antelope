@@ -387,9 +387,22 @@ export function RosterContent({ initialData, rosterId, readOnly = false, onRefre
 
         const sectionsWithConfig = newSections.filter(s => s.configuration_json && Object.keys(s.configuration_json).length > 0);
 
+        const alternativeCharacterIds = members
+            .filter(member => member.isAlternative)
+            .map(member => member.character_id);
+
+        const sectionsForFiltering = sectionsWithConfig.filter(section => {
+            if (section.configuration_json?.alternative_characters === true) {
+                section.character_ids_json = [...alternativeCharacterIds];
+                alternativeCharacterIds.forEach(id => assignedMemberIds.add(id));
+                return false;
+            }
+            return true;
+        });
+
         for (const member of members) {
             let assigned = false;
-            for (const section of sectionsWithConfig) {
+            for (const section of sectionsForFiltering) {
                 const config = section.configuration_json!;
 
                 const memberName = member.character_name;
