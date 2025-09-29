@@ -164,7 +164,7 @@ export default function EditRosterPage() {
                         show_assignment_titles: json.show_assignment_titles ?? true,
                         mark_alternative_characters: json.mark_alternative_characters ?? true,
                         allow_roster_snapshots: json.allow_roster_snapshots ?? false,
-                        labels: json.labels ? Object.entries(json.labels).map(([color, title]) => ({ color, title: title as string })) : [],
+                        labels: Array.isArray(json.labels) ? json.labels : [],
                     });
                 } catch (e) {
                     // ignore
@@ -213,7 +213,7 @@ export default function EditRosterPage() {
                 show_assignment_titles: json.show_assignment_titles ?? true,
                 mark_alternative_characters: json.mark_alternative_characters ?? true,
                 allow_roster_snapshots: json.allow_roster_snapshots ?? false,
-                labels: json.labels ? Object.entries(json.labels).map(([color, title]) => ({ color, title: title as string })) : [],
+                labels: Array.isArray(json.labels) ? json.labels : [],
             });
         } catch (e) {
             // Invalid JSON, do nothing
@@ -227,19 +227,13 @@ export default function EditRosterPage() {
             
             const parseRanks = (rankString: string) => rankString.split(',').map(r => parseInt(r.trim(), 10)).filter(r => !isNaN(r));
             const parseMembers = (memberString: string) => memberString.split('\n').map(m => m.trim()).filter(Boolean);
-            const parseLabels = (labels: LabelConfig[]) => labels.reduce((acc, label) => {
-                if (label.color && label.title) {
-                    acc[label.color] = label.title;
-                }
-                return acc;
-            }, {} as Record<string, string>);
 
             const newJson: any = {
                 ...currentJson,
                 show_assignment_titles: basicFilters.show_assignment_titles,
                 mark_alternative_characters: basicFilters.mark_alternative_characters,
                 allow_roster_snapshots: basicFilters.allow_roster_snapshots,
-                labels: parseLabels(basicFilters.labels),
+                labels: basicFilters.labels.filter(l => l.color && l.title),
             };
 
             if (!isOrgSelected) {
