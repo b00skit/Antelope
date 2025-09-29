@@ -385,15 +385,11 @@ export async function getRosterViewData(
                 if (filters.exclude_ranks && filters.exclude_ranks.includes(member.rank)) {
                     return false;
                 }
-                if (
-                    filters.include_members &&
-                    filters.include_members.length > 0 &&
-                    !filters.include_members.some(name => charName.includes(name))
-                ) {
-                    return false;
+                if (filters.include_members && filters.include_members.length > 0) {
+                    if (!filters.include_members.includes(charName)) return false;
                 }
-                if (filters.exclude_members && filters.exclude_members.some(name => charName.includes(name))) {
-                    return false;
+                if (filters.exclude_members && filters.exclude_members.length > 0) {
+                    if (filters.exclude_members.includes(charName)) return false;
                 }
 
                 if (isForumFilterActive) {

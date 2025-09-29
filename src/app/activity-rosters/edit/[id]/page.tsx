@@ -485,6 +485,16 @@ export default function EditRosterPage() {
                                                             placeholder="Select groups..."
                                                         />
                                                     </FormItem>
+                                                    <FormItem className="md:col-span-1">
+                                                        <FormLabel>Include Members</FormLabel>
+                                                        <Textarea value={basicFilters.include_members} onChange={(e) => setBasicFilters(f => ({...f, include_members: e.target.value}))} placeholder="Firstname_Lastname (one per line)" />
+                                                        <FormDescription>Only members with these names will appear.</FormDescription>
+                                                    </FormItem>
+                                                     <FormItem className="md:col-span-1">
+                                                        <FormLabel>Exclude Members</FormLabel>
+                                                        <Textarea value={basicFilters.exclude_members} onChange={(e) => setBasicFilters(f => ({...f, exclude_members: e.target.value}))} placeholder="Firstname_Lastname (one per line)" />
+                                                        <FormDescription>Members with these names will be hidden.</FormDescription>
+                                                    </FormItem>
                                                 </CardContent>
                                             </Card>
                                         </fieldset>
