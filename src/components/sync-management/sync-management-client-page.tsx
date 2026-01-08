@@ -5,7 +5,18 @@ import { useEffect, useState } from 'react';
 import { PageHeader } from '@/components/dashboard/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, Loader2, RefreshCw, Users, Activity, MessageSquare, Check, X, ArrowRight, Save, ArrowLeft } from 'lucide-react';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+  } from '@/components/ui/alert-dialog';
+import { AlertTriangle, Loader2, RefreshCw, Users, Activity, MessageSquare, Check, X, ArrowRight, Save, ArrowLeft, Trash } from 'lucide-react';
 import { Skeleton } from '../ui/skeleton';
 import { useSession } from '@/hooks/use-session';
 import { Button } from '../ui/button';
@@ -215,6 +226,23 @@ export function SyncManagementClientPage() {
             setIsLoading(false);
         }
     }
+
+    const handleDeleteData = async () => {
+        setIsLoading(true);
+        try {
+            const res = await fetch('/api/sync-management/delete', {
+                method: 'DELETE',
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+            toast({ title: 'Success', description: data.message });
+            await fetchStatus();
+        } catch (err: any) {
+            toast({ variant: 'destructive', title: 'Delete Failed', description: err.message });
+        } finally {
+            setIsLoading(false);
+        }
+    }
     
     const handleDiscard = () => {
         setPreviewing(null);
@@ -313,6 +341,37 @@ export function SyncManagementClientPage() {
                                 </CardContent>
                             </Card>
                         )}
+
+                        <Card className="border-destructive/50">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2 text-destructive"><AlertTriangle /> Danger Zone</CardTitle>
+                                <CardDescription>Manage destructive actions for your sync data.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="flex items-center justify-between">
+                                <div>
+                                    <p className="font-semibold">Delete Sync Data</p>
+                                    <p className="text-sm text-muted-foreground">Permanently delete all synced data. This acts as a hard reset for corrupted data.</p>
+                                </div>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="destructive"><Trash className="mr-2 h-4 w-4"/> Delete Data</Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                This action cannot be undone. This will permanently delete all synced data (members, ABAS, forum cache) for your faction.
+                                                You will need to re-sync all data manually.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={handleDeleteData} className="bg-destructive hover:bg-destructive/90">Delete Data</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </CardContent>
+                        </Card>
                     </>
                 ) : null}
             </div>
